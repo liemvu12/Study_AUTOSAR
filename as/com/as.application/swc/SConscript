@@ -1,0 +1,23 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+
+Import('asenv')
+MODULES = asenv['MODULES']
+
+objs = []
+
+if('RTE_SWC_TELLTALE' in MODULES):
+    objs += Glob('telltale/*.c')
+    objs += Glob('telltale/swc.py')
+
+if('RTE_SWC_GAUGE' in MODULES):
+    objs += Glob('gauge/*.c')
+    objs += Glob('gauge/swc.py')
+
+if('RTE_SWC_LINAPP' in MODULES):
+    objs += Glob('linapp/*.c')
+    objs += Glob('linapp/swc.py')
+
+Return('objs')

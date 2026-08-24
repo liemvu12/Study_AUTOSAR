@@ -1,0 +1,11 @@
+if !IS_ASTOOL
+source "$ASROOT/com/as.infrastructure/arch/Kconfig"
+source "$ASROOT/com/as.infrastructure/communication/Kconfig"
+source "$ASROOT/com/as.infrastructure/diagnostic/Kconfig"
+source "$ASROOT/com/as.infrastructure/memory/Kconfig"
+source "$ASROOT/com/as.infrastructure/system/Kconfig"
+source "$ASROOT/com/as.infrastructure/clib/Kconfig"
+source "$ASROOT/com/as.infrastructure/libraries/Kconfig"
+source "$ASROOT/com/as.infrastructure/libraries/nn/Kconfig"
+source "$ASROOT/com/as.infrastructure/boot/Kconfig"
+endif

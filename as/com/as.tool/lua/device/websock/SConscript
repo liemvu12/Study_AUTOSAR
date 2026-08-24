@@ -1,0 +1,31 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+
+Import('asenv')
+ASROOT=asenv['ASROOT']
+
+assert(asenv['BOARD'] == 'posix')
+
+objs = []
+
+if(IsPlatformWindows()):
+    cmd = 'mkdir build && cd build && cmake -G "Unix Makefiles" ..' \
+          ' && cp include/config.h ../config.h && cp include/json_config.h ../json_config.h'
+    cmd += ' && cd .. && sed -i "11c #include <windows.h>" json_util.c'
+else:
+    cmd = 'sh ./autogen.sh && ./configure'
+
+jsonc = Package('https://github.com/json-c/json-c.git', cmd=cmd, version='5ea6a05bfa43c9ba438fbc0eaea600edd6d72b88')
+
+MKSymlink(jsonc,'%s/json-c'%(cwd))
+
+objs +=  Glob('*.c')
+
+asenv.Append(CPPPATH=['%s'%(cwd)])
+
+objs +=  Glob('json-c/*.c')
+asenv.Append(CPPPATH=['%s/json-c'%(cwd)])
+
+Return('objs')

@@ -1,0 +1,19 @@
+menu "libraries"
+
+config IFX
+	bool "Interpolation Fixed point"
+	default y
+
+config FDT
+	bool "flat device tree library"
+	default n
+
+config TRACE
+	bool "enable the trace library"
+	default n
+
+config LIBFIXMATH
+	bool "Cross Platform Fixed Point Maths Library"
+	default y
+
+endmenu

@@ -1,0 +1,48 @@
+import os,sys
+from building import *
+
+cwd = GetCurrentDir()
+
+Import('asenv')
+MODULES=asenv['MODULES']
+bdir = asenv['BDIR']
+
+objs = []
+
+if('PYAS' in MODULES):
+    src = '%s/pyas/pyas.sip'%(cwd)
+    python = sys.executable
+    if(not IsPlatformWindows()):
+        python = 'python3'
+    if('PYBIND11' in MODULES):
+        objs += Glob('pyas/interface.cpp')
+    else:
+        cmd = '%s %s/pyas/configure.py %s %s'%(python, cwd, src, bdir)
+        tgt = '%s/sipAScmodule.cpp'%(bdir)
+        MKObject([src], tgt, cmd)
+        objs += Glob('%s/*.cpp'%(bdir))
+    asenv.Append(CPPPATH=['%s/pyas'%(cwd)])
+
+if('LUA' in MODULES):
+    asenv.Append(CPPPATH=['%s/src'%(cwd)])
+    objs += Glob('src/*.c')
+    objs += Glob('main.c')
+
+if('LUA_ASLIB' in MODULES):
+    objs += Glob('laslib.c')
+
+if('LUA_DEV' in MODULES):
+    objs +=  SConscript('device/SConscript')
+
+if('LUA_CAN' in MODULES):
+    objs +=  SConscript('can/SConscript')
+
+if(('LUA_DEV_RS232' in MODULES) or 
+   ('LUA_SERIAL_CAN' in MODULES)):
+    asenv.Append(CPPPATH=['%s/can/rs232'%(cwd)])
+    objs +=  Glob('can/rs232/*.c')
+
+if('AWS' in MODULES):
+    objs +=  SConscript('device/websock/SConscript')
+
+Return('objs')

@@ -1,0 +1,55 @@
+import os
+from building import *
+
+Import('asenv')
+MODULES=asenv['MODULES']
+ASROOT=asenv['ASROOT']
+
+cwd = GetCurrentDir()
+
+objs = []
+
+objs += Glob('bsp/serial.c')
+objs += Glob('bsp/timer.c')
+objs += Glob('bsp/interrupt.c')
+objs += Glob('../common/arm/*.c')
+asenv.Append(CPPPATH=[os.path.abspath('%s/../common/arm'%(cwd))])
+
+if('SMP' in MODULES):
+    objs += Glob('bsp/smp.c')
+
+if('PCI' in MODULES):
+    objs += Glob('bsp/pci-virt.c')
+
+if('CAN' in MODULES):
+    asenv.Append(CPPDEFINES=['CAN_LL_DL=64'])
+
+if('MCU' in MODULES):
+    objs += Glob('../common/mcal/Mcu.c')
+
+if('EEP' in MODULES):
+    objs += Glob('../posix/mcal/Eep.c')
+
+if('FLS' in MODULES):
+    objs += Glob('../posix/mcal/Fls.c')
+
+if(('LWIP' in MODULES) or ('UIP' in MODULES)):
+    if(IsPlatformWindows()):
+        asenv.Append(CPPDEFINES='USE_PCAPIF')
+        print('INFO: set PACKET_LIB_ADAPTER_NR=0/1/2/3... to choose the right oracle virtual adapter')
+        if(os.getenv('PACKET_LIB_ADAPTER_NR')):
+            asenv.Append(CPPDEFINES=['PACKET_LIB_ADAPTER_NR=%s'%(os.getenv('PACKET_LIB_ADAPTER_NR'))])
+
+asenv.Append(CPPDEFINES='__AARCH64__')
+asenv.Append(CCFLAGS=['-O0','-g'])
+asenv.Append(ASFLAGS=['-g'])
+asenv.Append(ASFLAGS=['-I%s/bsp'%(cwd)])
+
+asenv.Append(CPPPATH=['%s/bsp'%(cwd),'%s/mcal'%(cwd)])
+
+asenv.Append(CCFLAGS=['-ffunction-sections','-fdata-sections'])
+asenv.Append(LINKFLAGS='--gc-sections')
+
+SelectCompilerArm64()
+
+Return('objs')
