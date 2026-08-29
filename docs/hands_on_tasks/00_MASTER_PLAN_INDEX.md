@@ -13,12 +13,18 @@
 ```
 docs/hands_on_tasks/
 ├── 00_MASTER_PLAN_INDEX.md          ← File này (Roadmap tổng thể)
-├── 01_Architecture_VFB_Tasks.md     ← Chuyên đề 01: Layered Arch & VFB (4 tasks)
+├── 01_Architecture_VFB_Tasks.md     ← Chuyên đề 01: Layered Arch & VFB (5 tasks)
 ├── 02_OS_MCAL_Tasks.md              ← Chuyên đề 02: AUTOSAR OS & MCAL (5+1 tasks)
-├── 03_ComStack_CAN_Tasks.md         ← Chuyên đề 03: ComStack & CAN Protocol (5+1 tasks)
+├── 03_ComStack_CAN_Tasks.md         ← Chuyên đề 03: ComStack & CAN Protocol (7 tasks)
 ├── 04_Diagnostic_Memory_Tasks.md    ← Chuyên đề 04: UDS Diagnostic & Memory (5+1 tasks)
 ├── 05_Toolchain_ARXML_Tasks.md      ← Chuyên đề 05: Toolchain & ARXML (4+1 tasks)
-└── 06_RealWorld_BMS_VCU_Tasks.md    ← Chuyên đề 06: BMS / VCU / Body ECU (3+1 tasks)
+├── 06_RealWorld_BMS_VCU_Tasks.md    ← Chuyên đề 06: BMS / VCU / Body ECU (3+1 tasks)
+├── 07_LIN_Stack_Tasks.md            ← Chuyên đề 07: LIN Protocol & LinStack (4 tasks)
+├── 08_Ethernet_SOMEIP_DoIP_Tasks.md ← Chuyên đề 08: Automotive Ethernet & SOME/IP/DoIP (4 tasks)
+└── solutions/
+    ├── 01_Architecture_VFB_Solutions.md     ← Đáp án Chuyên Đề 01 (Boot, Hooks, Linker, BSW Order, Ports)
+    ├── 02_ComStack_CAN_Solutions.md         ← Đáp án Chuyên Đề 03 (End-to-End CAN 6 Tầng, Timing, CanTp, COM)
+    └── 03_LIN_Ethernet_Solutions.md         ← Đáp án Chuyên Đề 07 & 08 (LIN Stack & Automotive Ethernet/DoIP)
 ```
 
 ---
@@ -27,13 +33,15 @@ docs/hands_on_tasks/
 
 | # | File Task | Chuyên Đề | Số Tasks | Giờ Ước Tính | Tuần |
 |:---:|---|---|:---:|:---:|:---:|
-| 01 | [Architecture & VFB](./01_Architecture_VFB_Tasks.md) | Layered Architecture, RTE, VFB | 4 tasks | ~10 giờ | Tuần 1 |
+| 01 | [Architecture & VFB](./01_Architecture_VFB_Tasks.md) | Layered Architecture, RTE, Memory, OS Hooks | 5 tasks | ~12 giờ | Tuần 1 |
 | 02 | [OS & MCAL](./02_OS_MCAL_Tasks.md) | OSEK OS, Task, ISR, MCAL Drivers | 5+1 tasks | ~15 giờ | Tuần 1–2 |
-| 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, ComStack E2E | 5+1 tasks | ~14 giờ | Tuần 2 |
+| 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, 6-Layer ComStack E2E, CanTp, COM | 7 tasks | ~17 giờ | Tuần 2 |
 | 04 | [Diagnostic & Memory](./04_Diagnostic_Memory_Tasks.md) | UDS, DCM, DEM, NvM, Fee | 5+1 tasks | ~18 giờ | Tuần 3 |
 | 05 | [Toolchain & ARXML](./05_Toolchain_ARXML_Tasks.md) | ARXML, EcuM, BswM, Code Gen | 4+1 tasks | ~12 giờ | Tuần 3–4 |
 | 06 | [Real-World BMS/VCU/Body](./06_RealWorld_BMS_VCU_Tasks.md) | Mini BMS, VCU Torque, BCM Sleep | 3+1 tasks | ~30 giờ | Tuần 4 |
-| | **TỔNG** | | **27 tasks** | **~99 giờ** | **4 Tuần** |
+| 07 | [LIN Stack](./07_LIN_Stack_Tasks.md) | LIN Protocol, LinIf Schedule, Wiper Control | 4 tasks | ~8 giờ | Tuần 4 |
+| 08 | [Automotive Ethernet](./08_Ethernet_SOMEIP_DoIP_Tasks.md) | 100BASE-T1, SOME/IP, DoIP, SoAd | 4 tasks | ~8 giờ | Tuần 4 |
+| | **TỔNG** | | **35 tasks** | **~115 giờ** | **4–5 Tuần** |
 
 ---
 
@@ -46,7 +54,13 @@ cd Study_AUTOSAR-main/as
 # Build trên POSIX simulator (không cần phần cứng, chạy trên Windows/Linux)
 scons --board=posix
 
-# Build cho STM32F107VC (cần GCC ARM toolchain)
+# Build cho QEMU ARM Target lm3s6965evb (Khuyên dùng - Cortex-M3 thật)
+$env:BOARD="lm3s6965evb"; $env:RELEASE="ascore"; scons
+
+# Build cho POSIX Simulator
+scons --board=posix
+
+# Build cho STM32F107VC Chip Thật (Tùy chọn)
 scons --board=stm32f107vc
 
 # Chạy POSIX simulator

@@ -26,9 +26,20 @@
 ---
 
 ## Mục Lục
-1. [Tổng Quan Kiến Trúc Nhân AUTOSAR OS (Dựa Trên OSEK/VDX)](#1-tổng-quan-kiến-trúc-nhân-autosar-os-dựa-trên-osekvdx)
-2. [Mô Hình Quản Trị Tác Vụ: Basic Task vs Extended Task](#2-mô-hình-quản-trị-tác-vụ-basic-task-vs-extended-task)
-3. [Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)](#3-hiện-tượng-đảo-ngược-độ-ưu-tiên--giao-thức-priority-ceiling-protocol-pcp)
+0. [Bức Tranh Toàn Cảnh: Mạng Lưới 100+ ECU & Hệ Sinh Thái Linh Kiện Điện Tử Trên Xe Hơi](#0-bức-tranh-toàn-cảnh-mạng-lưới-100-ecu--hệ-sinh-thái-linh-kiện-điện-tử-trên-xe-hơi)
+1. [Mô Hình Hai Loại Tác Vụ Cốt Lõi: Basic Task vs Extended Task (Kèm Mã Nguồn Gốc)](#1-mô-hình-hai-loại-tác-vụ-cốt-lõi-basic-task-vs-extended-task-kèm-mã-nguồn-gốc)
+2. [Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C](#2-bản-chất-4-cấp-độ-tuân-thủ-conformance-classes-bcc1-bcc2-ecc1-ecc2-qua-mã-nguồn-c)
+3. [Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU](#3-phân-tích-task-autostart-schm_startup--chuỗi-function-call-function-khởi-tạo-task-khi-boot-ecu)
+4. [Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)](#4-hiện-tượng-đảo-ngược-độ-ưu-tiên--giao-thức-priority-ceiling-protocol-pcp)
+5. [Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2](#5-phân-cấp-ngắt-phần-cứng-isr-category-1-vs-isr-category-2)
+6. [Cơ Chế Định Thời: Counter, Alarm & Schedule Table](#6-cơ-chế-định-thời-counter-alarm--schedule-table)
+7. [Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)](#7-hệ-thống-hàm-hook-quản-trị-trạng-thái-hook-routines)
+8. [Tầng Trừu Tượng Vi Điều Khiển (MCAL Layer Architecture & SWS Patterns)](#8-tầng-trừu-tượng-vi-điều-khiển-mcal-layer-architecture--sws-patterns)
+9. [Phân Tích Chi Tiết 7 Module MCAL Cốt Lõi (Kèm API & Struct Trong parai/as)](#9-phân-tích-chi-tiết-7-module-mcal-cốt-lõi-kèm-api--struct-trong-paraias)
+10. [Cơ Chế Bắt Lỗi Phát Triển (Default Error Tracer - DET) & Common Pitfalls](#10-cơ-chế-bắt-lỗi-phát-triển-default-error-tracer---det--common-pitfalls)
+11. [Bảng So Sánh AUTOSAR OS vs FreeRTOS Chi Tiết](#11-bảng-so-sánh-autosar-os-vs-freertos-chi-tiết)
+12. [🛠️ Hands-On Exercises Thực Chiến](#12-️-hands-on-exercises-thực-chiến)
+13. [Bộ Câu Hỏi Phỏng Vấn (Q&A 3 Levels)](#13-bộ-câu-hỏi-phỏng-vấn-qa-3-levels)
 4. [Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2](#4-phân-cấp-ngắt-phần-cứng-isr-category-1-vs-isr-category-2)
 5. [Cơ Chế Định Thời: Counter, Alarm & Schedule Table](#5-cơ-chế-định-thời-counter-alarm--schedule-table)
 6. [Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)](#6-hệ-thống-hàm-hook-quản-trị-trạng-thái-hook-routines)
@@ -41,148 +52,719 @@
 
 ---
 
-## 1. Tổng Quan Kiến Trúc Nhân AUTOSAR OS (Dựa Trên OSEK/VDX)
+## 0. Bức Tranh Toàn Cảnh: Mạng Lưới 100+ ECU & Hệ Sinh Thái Linh Kiện Điện Tử Trên Xe Hơi
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **OSEK** (*Offene Systeme und deren Schnittstellen für die Elektronik in Kraftfahrzeugen*): Tiêu chuẩn hệ điều hành mở cho điện tử ô tô.
-📖 **VDX** (*Vehicle Distributed eXecutive*): Tiêu chuẩn thực thi phân tán trên xe.
-
-💡 **Ẩn dụ thực tế:** 
-Hãy tưởng tượng AUTOSAR OS như một **Cảnh sát giao thông (Traffic Cop)** tại một ngã tư rất đông đúc. Các xe cộ là các **Task (Tác vụ)**. Cảnh sát này cực kỳ nguyên tắc: 
-- Xe ưu tiên (như xe cứu thương, xe cứu hỏa) luôn được đi trước.
-- Mọi luồng giao thông đều được quy định từ trước (không có xe nào tự dưng xuất hiện mà không đăng ký biển số). Nếu một xe chưa đăng ký mà chạy ra đường, cảnh sát sẽ chặn lại ngay (Lỗi OS).
-
-### 🟡 LEVEL 2: INTERMEDIATE
-**AUTOSAR OS** là hệ điều hành thời gian thực cứng (*Hard Real-Time RTOS*) được xây dựng dựa trên tiêu chuẩn công nghiệp **OSEK/VDX OS 2.2.3** và mở rộng các tính năng bảo vệ an toàn theo chuẩn **ISO 26262**.
-
-**Đặc tính kỹ thuật cốt lõi:**
-1. **Cấu hình Tĩnh 100% (Static Configuration):** Mọi Task, Stack, Priority, Resource, Alarm, ISR đều được định nghĩa tĩnh trong file cấu hình `.oil` hoặc `.arxml` lúc compile. Tuyệt đối **không có API tạo Task động lúc runtime** (không có `osThreadNew` hay `pthread_create`). Điều này đảm bảo tính Determinism (tính tất định).
-2. **Kích thước siêu nhỏ (Small Footprint):** Chiếm dung lượng Flash/RAM tối thiểu (~2KB - 10KB), tối ưu cho các vi điều khiển MCU ô tô tài nguyên hạn chế.
-3. **Lập lịch ưu tiên có quyền ưu tiên ngắt trước (Priority-Based Preemptive Scheduling):** Tác vụ có mức ưu tiên số cao hơn luôn giành quyền chiếm CPU ngay lập tức.
-4. **4 Cấp Độ Tuân Thủ (Conformance Classes):**
-   * **BCC1 (Basic Conformance Class 1):** Chỉ hỗ trợ Basic Tasks, 1 task/priority, không chia sẻ priority.
-   * **BCC2 (Basic Conformance Class 2):** Hỗ trợ Basic Tasks, nhiều task cùng chung 1 priority, nhiều yêu cầu kích hoạt (*Multiple Task Activations*).
-   * **ECC1 (Extended Conformance Class 1):** Hỗ trợ cả Basic và Extended Tasks (có cơ chế Events), 1 task/priority.
-   * **ECC2 (Extended Conformance Class 2):** Hỗ trợ đầy đủ Basic + Extended Tasks, nhiều task chung priority, multiple activations.
-
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
-🌟 **Pro Tip:** Lớp bảo vệ nâng cao (Protection Features) trong AUTOSAR OS.
-AUTOSAR OS không chỉ đơn giản là OSEK, nó bổ sung **Memory Protection** và **Timing Protection**.
-- **Timing Protection** giúp ngăn chặn lỗi *Babbling Idiot* (khi một task bị treo vòng lặp vô hạn hoặc ISR phần cứng bị hỏng và kích hoạt quá nhanh, ngốn CPU). Khi Execution Budget bị vi phạm, OS sẽ gọi `ProtectionHook()`. 
-- **Memory Protection** dựa trên Memory Protection Unit (MPU) của vi điều khiển, đảm bảo một OS-Application lỗi (Ví dụ: Ứng dụng giải trí) không thể ghi đè RAM của OS-Application quan trọng (Ví dụ: Phanh ABS).
+Trong một chiếc ô tô hiện đại, hệ thống điều khiển không vận hành trên một bộ vi xử lý duy nhất mà là một **"xã hội phân cấp" đa tầng vi điều khiển** — từ những con chip 8-bit/16-bit siêu nhỏ (chỉ có 512 Bytes đến 1KB RAM) cho đến những siêu chip 32-bit/64-bit đa lõi xử lý hàng tỷ phép tính mỗi giây.
 
 ---
 
-## 2. Mô Hình Quản Trị Tác Vụ: Basic Task vs Extended Task
+### 0.1 📊 Quy Mô ECU & Số Lượng Linh Kiện Điều Khiển Trên Một Chiếc Xe:
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-💡 **Ẩn dụ thực tế:** 
-- **Basic Task (Tác Vụ Cơ Sở):** Bạn đang nấu ăn. Bạn phải làm liên tục từ đầu đến cuối (Kết thúc bằng `TerminateTask`). Nếu có ai gọi điện thoại nhờ việc khẩn cấp (Priority cao hơn), bạn tạm dừng nấu, làm việc đó xong rồi quay lại bếp nấu tiếp. Bạn KHÔNG thể "đứng chờ" giữa chừng.
-- **Extended Task (Tác Vụ Mở Rộng):** Bạn đang chờ tin nhắn xác nhận chuyển tiền. Bạn **đặt điện thoại xuống bàn (WaitEvent)**, đi nhường thời gian làm việc khác. Khi tin nhắn đến báo ting ting (`SetEvent`), bạn được đánh thức và tiếp tục làm việc. Không phải cắm mặt vào điện thoại chờ mãi mãi.
+* **Số lượng ECU theo từng phân khúc xe:**
+  * 🚗 **Xe Phổ Thông / Giá Rẻ (Hạng A/B):** `20 – 40 ECUs` (Toyota Vios, Hyundai Grand i10).
+  * 🚙 **Xe Tầm Trung & Xe Điện EV Phổ Thông (Hạng C/D):** `50 – 80 ECUs` (Mazda CX-5, VinFast VF8, Tesla Model 3).
+  * 🚘 **Xe Hạng Sang / Xe Công Nghệ Cao (Hạng E/F):** `100 – 150+ ECUs` (Mercedes-Benz S-Class, BMW 7-Series, Audi A8).
+* **Số lượng linh kiện điện - điện tử mà mạng lưới ECU trực tiếp "care" (giám sát & điều khiển):**
+  * **300 – 600+ Cảm Biến (Sensors):** Cảm biến nhiệt độ cell pin BMS, cảm biến dòng Shunt, áp suất lốp TPMS, tốc độ bánh xe ABS, góc đánh lái EPS, vị trí chân ga/phanh, cảm biến mưa/ánh sáng, Radar sóng milimet, Camera ADAS, Siêu âm lùi.
+  * **200 – 500+ Cơ Cấu Chấp Hành (Actuators):** Động cơ kéo Inverter, Van phanh thủy lực ESP, Trợ lực lái điện, Rơ-le cao áp Contactor, Động cơ nâng kính, Động cơ chỉnh ghế, Motor gạt mưa, Cốp điện, Đèn LED ma trận pha tự động.
 
-### 🟡 LEVEL 2: INTERMEDIATE
-Trong AUTOSAR OS, tác vụ được chia thành 2 loại hình kiến trúc hoàn toàn khác nhau. Việc lựa chọn sai loại Task sẽ dẫn tới hệ thống không ổn định hoặc quá tải bộ nhớ.
+---
+
+### 0.2 🗺️ Bản Đồ Phân Bổ 5 Vùng Chức Năng (Domain Architecture) & Cấu Hình Phần Cứng:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                         BẢN ĐỒ PHÂN BỔ ECU THEO VÙNG CHỨC NĂNG TRÊN XE                         │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. NHÓM THÔNG MINH CẤP THẤP (Smart Sensors / LIN Slaves)                                       │
+│    • TPMS (Lốp), Nút cửa kính, Cảm biến gạt mưa, Chỉnh gương                                   │
+│    • Chip: 8/16-bit MCU (STM8, PIC, Cypress)  │ RAM: 512 B - 4 KB   │ OS: OSEK BCC1 / Bare-metal│
+│                                                                                                │
+│ 2. NHÓM THÂN XE & TIỆN NGHI (Body & Comfort)                                                   │
+│    • BCM, Điều hòa (HVAC), Cửa điện, Cửa sổ trời, Ghế điện                                     │
+│    • Chip: 16/32-bit Cortex-M0+/M4            │ RAM: 8 KB - 64 KB   │ OS: AUTOSAR BCC2 / ECC1   │
+│                                                                                                │
+│ 3. NHÓM ĐỘNG LỰC & AN TOÀN CAO NHẤT (Powertrain & Chassis - ASIL D)                            │
+│    • BMS (Pin), VCU (Điều khiển xe), Inverter Motor, ABS/ESP (Phanh), EPS (Lái)                │
+│    • Chip: 32-bit TriCore (AURIX), Renesas    │ RAM: 256 KB - 2 MB  │ OS: AUTOSAR Classic ECC2  │
+│                                                                                                │
+│ 4. NHÓM HỖ TRỢ LÁI TỰ HÀNH (ADAS & Autonomous Driving - ASIL B/D)                              │
+│    • Forward Camera, Imaging Radar, ADAS Domain Controller                                     │
+│    • Chip: Multi-core SoC (NVIDIA, Mobileye)  │ RAM: 8 GB - 32 GB   │ OS: Adaptive AUTOSAR/Linux│
+│                                                                                                │
+│ 5. NHÓM GIẢI TRÍ & KẾT NỐI TỪ XA (Infotainment & Telematics - QM)                              │
+│    • Màn hình giải trí trung tâm (IVI), Hộp đen 4G/5G GPS (T-Box)                              │
+│    • Chip: 64-bit ARM Cortex-A76 (Qualcomm)   │ RAM: 4 GB - 16 GB   │ OS: Android Automotive/QNX│
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 0.3 🔬 Bảng Đối Chiếu Các Dòng Chip ECU Thực Tế Ngoài Đời Thật:
+
+| Tên ECU Trên Xe | Nhiệm Vụ Cụ Thể | Dòng Vi Điều Khiển Thực Tế | Dung Lượng RAM | Dung Lượng Flash/ROM | Cấp Độ OS Sử Dụng |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **TPMS Sensor** | Đo áp suất và nhiệt độ trong lốp xe | NXP FXTH87 (8-bit) | **512 Bytes** | 8 KB | **Bare-metal (Không OS)** |
+| **Door Module (DCM)** | Nâng hạ kính, khóa chốt cửa, sấy gương | ST STM8AF / Microchip PIC | **2 KB – 4 KB** | 32 KB – 64 KB | **OSEK BCC1** |
+| **BCM (Body Controller)** | Điều khiển đèn xe, xi nhan, gạt mưa, còi | NXP S32K144 (Cortex-M4F) | **64 KB** | 512 KB | **AUTOSAR Classic BCC2/ECC1** |
+| **BMS (Quản lý Pin EV)** | Giám sát 96 cell pin, cân bằng cell, tính SoC | Infineon AURIX TC397 (32-bit 6 lõi) | **1.5 MB – 2 MB** | 16 MB | **AUTOSAR Classic ECC2 (ASIL D)** |
+| **VCU / MCU (Inverter)** | Tính toán mô-men xoắn, điều khiển động cơ điện | Renesas RH850 / AURIX TC387 | **1 MB – 2 MB** | 10 MB | **AUTOSAR Classic ECC2 (ASIL D)** |
+| **ADAS Controller** | Xử lý ảnh camera AI, phanh khẩn cấp AEB | NVIDIA DRIVE Orin / TI TDA4 | **16 GB – 32 GB** | 128 GB UFS | **AUTOSAR Adaptive (QNX / Linux)** |
+
+> 🎯 **Tại sao phải có chuẩn AUTOSAR OS & Conformance Classes?**  
+> Chính vì sự chênh lệch phần cứng từ 512 Bytes RAM đến 32 GB RAM, không một hệ điều hành đơn lẻ nào có thể bao quát toàn bộ. Chuẩn **AUTOSAR OS chia thành 4 Conformance Classes (BCC1 $
+ightarrow$ ECC2)** để có thể chuẩn hóa phần mềm từ vi điều khiển cửa kính 1KB RAM nhỏ nhất cho tới ECU điều khiển động cơ mạnh nhất!
+
+---
+
+## 1. Mô Hình Hai Loại Tác Vụ Cốt Lõi: Basic Task vs Extended Task (Kèm Mã Nguồn Gốc)
+
+Trong chuẩn hệ điều hành thời gian thực ô tô OSEK/VDX và AUTOSAR OS, tác vụ (Task) được chia làm **2 loại hình kiến trúc độc lập**:
 
 ```mermaid
 stateDiagram-v2
     [*] --> Suspended
     
-    state "Basic Task State Machine" as BTSM {
-        Suspended --> Ready: ActivateTask() / ChainTask()
-        Ready --> Running: Scheduler Dispatches (Highest Priority)
-        Running --> Ready: Preempted by Higher Task
+    state "1. Basic Task (3 Trạng Thái - Non-Blocking)" as BTSM {
+        Suspended --> Ready: ActivateTask() / Alarm
+        Ready --> Running: Scheduler Dispatch
+        Running --> Ready: Preempted by Higher Prio
         Running --> Suspended: TerminateTask()
     }
     
-    state "Extended Task State Machine" as ETSM {
+    state "2. Extended Task (4 Trạng Thái - Event-Driven Blocking)" as ETSM {
         state Suspended_Ext as "Suspended"
         state Ready_Ext as "Ready"
         state Running_Ext as "Running"
-        state Waiting_Ext as "Waiting (Blocked on Event)"
+        state Waiting_Ext as "Waiting (Blocked)"
         
         Suspended_Ext --> Ready_Ext: ActivateTask()
-        Ready_Ext --> Running_Ext: Dispatched
-        Running_Ext --> Waiting_Ext: WaitEvent(EventMask)
-        Waiting_Ext --> Ready_Ext: SetEvent(TaskID, EventMask)
+        Ready_Ext --> Running_Ext: Scheduler Dispatch
+        Running_Ext --> Waiting_Ext: WaitEvent(Mask)
+        Waiting_Ext --> Ready_Ext: SetEvent(Mask) từ ISR/Task
         Running_Ext --> Suspended_Ext: TerminateTask()
     }
 ```
 
-🎯 **Use Case: Chờ Event từ CAN ISR**
+---
 
-❌ **Bad Practice (Polling sai lầm dùng Basic Task):**
+### 1.1 📊 Bảng So Sánh Chi Tiết Giữa Basic Task & Extended Task:
+
+| Tiêu Chí Kỹ Thuật | 🟢 Basic Task (Tác Vụ Cơ Sở) | 🔴 Extended Task (Tác Vụ Mở Rộng) |
+| :--- | :--- | :--- |
+| **Số lượng trạng thái** | **3 trạng thái:** `SUSPENDED`, `READY`, `RUNNING`. | **4 trạng thái:** `SUSPENDED`, `READY`, `RUNNING`, `WAITING`. |
+| **Cơ chế chờ đợi (Blocking)**| ❌ **Không thể ngủ chờ (Non-blocking)**. Chạy 1 mạch từ đầu hàm đến lệnh `TerminateTask()`. | ✅ **Có thể chủ động dừng ngủ chờ sự kiện** bằng lệnh `WaitEvent(EventMask)`. |
+| **Quản trị Stack (RAM)** | **Dùng chung 1 Stack (Single Shared Stack):** Nhiều Basic Task có thể dùng chung 1 vùng RAM Stack $= \max(	ext{Stack}_{T1..Tn})$. $
+ightarrow$ **Cực kỳ tiết kiệm RAM**. | **Bắt buộc có Stack riêng (Dedicated Stack):** Khi bị block ở `WaitEvent()`, Context phải lưu trên Stack riêng của Task đó. 10 Tasks $= \sum 	ext{Stack}$ $
+ightarrow$ **Tốn RAM**. |
+| **Mã nguồn Kernel (`kernel_internal.h`)** | `pEventVar = NULL` trong `TaskConstType`. Không tốn bộ nhớ lưu Event. | `pEventVar = &Task_EventVar` chứa 2 trường `set` và `wait`. |
+| **Ứng dụng thực tế trên xe** | Xử lý chu kỳ định kỳ: `Com_MainFunctionTx`, `Can_Write`, `Adc_Read`, `WdgM_MainFunction`. | Xử lý sự kiện ngắt bất đồng bộ: `TaskNmInd` (chờ gói tin NM), `TaskDiag` (chờ gói tin UDS). |
+
+---
+
+### 1.2 🔍 Mã Nguồn C Gốc Của Basic Task & Extended Task Trong Dự Án `as`:
+
+#### 🅰️ Mã Nguồn Gốc Basic Task: [`TASK(SchM_BswService)`](../../as/com/as.infrastructure/system/SchM/SchM.c#L491-L555) (File: `SchM.c`)
 ```c
-TASK(BasicTask_CAN_Process) {
-    // ⚠️ Lãng phí CPU cycles! Block toàn bộ các task ưu tiên thấp khác.
-    // Nếu mạng CAN rớt, MCU treo vĩnh viễn ở vòng lặp này.
-    while(Can_HasNewData() == FALSE) { 
-        // CPU bị kẹt ở đây
-    }
-    ProcessData();
-    TerminateTask();
+/* as/com/as.infrastructure/system/SchM/SchM.c: Dòng 491-555 */
+/* Đặc điểm: Không có trạng thái WAITING, chạy 1 mạch xử lý các hàm chu kỳ rồi kết thúc */
+TASK(SchM_BswService)
+{
+    OS_TASK_BEGIN();
+    
+    /* 1. Thực thi chu kỳ các module truyền thông BSW */
+    SCHM_MAINFUNCTION_COMTX();
+    SCHM_MAINFUNCTION_COMRX();
+    SCHM_MAINFUNCTION_CAN_WRITE();
+    SCHM_MAINFUNCTION_CAN_READ();
+    
+    /* 2. Kết thúc Task: Giải phóng CPU và chuyển thẳng về trạng thái SUSPENDED */
+    OsTerminateTask(SchM_BswService);
+    OS_TASK_END();
 }
 ```
 
-✅ **Best Practice (Event-Driven đúng chuẩn dùng Extended Task):**
+#### 🅱️ Mã Nguồn Gốc Extended Task: [`TASK(TaskNmInd)`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L93-L122) (File: `OsekNm_Cfg.c`)
 ```c
-TASK(ExtendedTask_CAN_Process) {
-    while(1) {
-        WaitEvent(CAN_RX_EVENT); // CPU rảnh rỗi, OS chuyển sang task khác
-        ClearEvent(CAN_RX_EVENT);
-        ProcessData();
+/* as/com/as.application/common/config/OsekNm_Cfg.c: Dòng 93-122 */
+/* Đặc điểm: Có Stack riêng, chủ động gọi WaitEvent() để dừng chờ tín hiệu Quản trị mạng */
+TASK(TaskNmInd)
+{
+    StatusType ercd;
+    EventMaskType mask;
+    OS_TASK_BEGIN();
+    
+    /* 1. Dừng chờ một trong các sự kiện NM kích hoạt từ ngắt CAN (Trạng thái WAITING) */
+    ercd = WaitEvent(EventNmNormal | EventNmLimphome | EventNmStatus | EventRingData);
+    if(E_OK == ercd)
+    {
+        /* 2. Đọc sự kiện kích hoạt và xử lý */
+        GetEvent(TASK_ID_TaskNmInd, &mask);
+        if((mask & EventNmNormal) != 0)
+        {
+            printf("In NM normal state, config changed.\n");
+        }
+        if((mask & EventNmStatus) != 0)
+        {
+            printf("NM network status changed.\n");
+        }
+        /* 3. Xóa cờ sự kiện sau khi xử lý xong */
+        ClearEvent(EventNmNormal | EventNmLimphome | EventNmStatus | EventRingData);
     }
-}
-
-// Trong ngắt CAN ISR (Cat 2):
-ISR(CAN_Rx_ISR) {
-    SetEvent(ExtendedTask_CAN_Process, CAN_RX_EVENT);
-}
-```
-
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
-📊 **Bảng So Sánh Kỹ Thuật (RAM & Performance):**
-
-| Tiêu Chí Kỹ Thuật | Basic Task (Tác Vụ Cơ Sở) | Extended Task (Tác Vụ Mở Rộng) |
-|---|---|---|
-| **Số lượng trạng thái** | 3 trạng thái: *Suspended, Ready, Running*. | 4 trạng thái: *Suspended, Ready, Running, Waiting*. |
-| **Cơ chế chờ đợi (Wait/Block)** | ❌ **Không thể rơi vào trạng thái chờ (Non-blocking)**. Chạy một mạch từ đầu đến lệnh `TerminateTask()`. | ✅ **Có thể chủ động dừng chờ sự kiện** bằng lệnh `WaitEvent()`. |
-| **Quản trị bộ nhớ Stack (RAM)** | **Dùng chung Stack (Single Stack Sharing)**: Giả sử có 10 Basic Tasks không thể pre-empt lẫn nhau, OS có thể cấp phát 1 vùng Stack duy nhất = Max(Stack T1..T10). $\rightarrow$ Cực kỳ tiết kiệm RAM. | **Bắt buộc có Stack riêng (Dedicated Stack)**: Vì khi bị block ở `WaitEvent()`, Context phải lưu trên Stack riêng của Task đó. 10 Tasks = Sum(Stack T1..T10) $\rightarrow$ Rất tốn RAM. |
-| **Context Switch Overhead** | Cực thấp (Chỉ cần swap vài registers cơ bản). | Cao hơn do phải lưu/đẩy Full Context Stack (CPU Register File) vào Dedicated Stack vùng nhớ tĩnh. |
-
-🔧 **Pseudo-code của OS_WaitEvent() Internals (Giả lập tầng Kernel):**
-```c
-StatusType OS_WaitEvent(EventMaskType Mask) {
-    OS_ENTER_CRITICAL(); // Tắt ngắt để bảo vệ cấu trúc dữ liệu OS
-    TaskControlBlock *currentTask = OS_GetCurrentTask();
-    
-    if (currentTask->SetEvents & Mask) {
-        // Event đã xảy ra trước đó (Được ISR set sẵn), không cần block
-        OS_EXIT_CRITICAL();
-        return E_OK;
-    }
-    
-    // Đổi trạng thái sang WAITING
-    currentTask->State = WAITING;
-    currentTask->WaitMask = Mask;
-    
-    // Save Context của Task hiện tại vào Stack riêng của nó
-    OS_SaveContext(currentTask);
-    
-    // Gọi Scheduler để chạy Task tiếp theo có Ready Priority cao nhất
-    OS_Dispatch(); 
-    
-    // --- (CPU CHUYỂN SANG TASK KHÁC CHẠY Ở ĐÂY) ---
-    
-    // Khi Task này được đánh thức bởi ISR hoặc Task khác thông qua SetEvent
-    // Scheduler sẽ khôi phục ngữ cảnh (Restore Context) và tiếp tục tại dòng bên dưới:
-    OS_EXIT_CRITICAL();
-    return E_OK;
+    OsTerminateTask(TaskNmInd);
+    OS_TASK_END();
 }
 ```
 
 ---
 
-## 3. Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)
+### 1.3 🔄 Vòng Đời Siêu Tốc Của 1 Basic Task & Cơ Chế Kích Hoạt (Trigger Without WAITING):
+
+> ❓ **Câu hỏi kinh điển:** *Basic Task không có trạng thái WAITING thì nó nhận Trigger kiểu gì? Vòng đời của nó có phải rất ngắn?*
+
+#### 1. Bản Chất Vòng Đời Basic Task: "Vào Việc ──► Làm Thần Tốc ──► Tự Sát (Terminate)"
+Khác với Thread trong FreeRTOS (sống vĩnh viễn trong vòng lặp `while(1)` và ngủ ở `BLOCKED/WAITING`), một **Basic Task trong AUTOSAR/OSEK** được thiết kế để sống chớp nhoáng:
+* Khi không có việc: Nằm "chết lâm sàng" ở trạng thái `SUSPENDED` (**0 bytes RAM Stack, 0% CPU**).
+* Khi có sự kiện kích hoạt: Bật dậy chuyển sang `READY` $
+ightarrow$ `RUNNING` $
+ightarrow$ Thực thi logic trong khoảng **vài Micro-giây ($\mu s$)** $
+ightarrow$ Gọi `TerminateTask()` tự sát về lại `SUSPENDED`!
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Timer as Phần Cứng SysTick Counter (portable.c / Mcu.c)
+    participant Counter as Kernel SignalCounter() (counter.c)
+    participant AlarmAction as Alarm_BswService_Action() (Os_Cfg.c)
+    participant Scheduler as Kernel Sched_GetReady() (sched-bubble.c)
+    participant Task as TASK(SchM_BswService) (SchM.c)
+
+    Note over Task: [t = 0.00ms] Trạng Thái: SUSPENDED (0 bytes Stack RAM)
+    Timer->>Counter: SysTick ngắt mỗi 1ms -> Gọi SignalCounter(COUNTER_ID_OsClock)
+    Note over Counter: [t = 10.00ms] Counter đếm đủ 10ms -> Alarm hết hạn (Expired)
+    Counter->>AlarmAction: Thực thi Action callback AlarmConstArray[ALARM_ID_Alarm_BswService].Action()
+    AlarmAction->>Scheduler: Gọi ActivateTask(TASK_ID_SchM_BswService)
+    Note over Task: [t = 10.00ms] Trạng Thái: READY (Đưa vào Binary Heap)
+    Scheduler->>Task: Dispatch cấp CPU thực thi (Trạng Thái: RUNNING)
+    Note over Task: [t = 10.01ms - 10.05ms] Thực thi hàm ComTx, ComRx, CanWrite
+    Task->>Scheduler: Gọi OsTerminateTask(SchM_BswService)
+    Note over Task: [t = 10.05ms] Trạng Thái: SUSPENDED (Giải phóng 100% Stack RAM)
+    Note over Task: [t = 10.05ms -> 20.00ms] Ngủ sâu với 0% tài nguyên CPU/RAM
+```
+
+---
+
+#### 2. Minh Chứng Vòng Đời Thực Tế Của `SchM_BswService` Qua Mã Nguồn Dự Án `as`:
+
+##### 1️⃣ Bước 1: Khởi động bộ đếm chu kỳ 10ms trong [`SchM.c: L410-L485`](../../as/com/as.infrastructure/system/SchM/SchM.c#L410-L485)
+```c
+/* as/com/as.infrastructure/system/SchM/SchM.c */
+TASK(SchM_Startup)
+{
+    OS_TASK_BEGIN();
+    EcuM_StartupTwo();
+    
+    /* Cài đặt Alarm chu kỳ: Bắt đầu sau 10 tick và lặp lại mỗi 10 tick (10ms) */
+    SetRelAlarm(ALARM_ID_Alarm_BswService, 10, 10);
+    
+    OsTerminateTask(SchM_Startup);
+    OS_TASK_END();
+}
+```
+
+##### 2️⃣ Bước 2: Ngắt SysTick gọi `SignalCounter()` & kích hoạt Action trong [`counter.c`](../../as/com/as.infrastructure/system/kernel/askar/kernel/counter.c#L24-L65) và [`Os_Cfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L267-L270)
+* Ngắt phần cứng Timer (như SysTick trong [`portable.c: L136`](../../as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c#L136) hoặc Mcu Timer trong [`Mcu.c: L135`](../../as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c#L135)) gọi:
+  ```c
+  SignalCounter(0); /* hoặc SignalCounter(COUNTER_ID_OsClock) */
+  ```
+* Trong kernel [`as/com/as.infrastructure/system/kernel/askar/kernel/counter.c: L24-L65`](../../as/com/as.infrastructure/system/kernel/askar/kernel/counter.c#L24-L65):
+  ```c
+  /* as/com/as.infrastructure/system/kernel/askar/kernel/counter.c */
+  StatusType SignalCounter(CounterType CounterID)
+  {
+      /* 1. Tăng giá trị thời gian thực tế của Counter */
+      CounterVarArray[CounterID].value++;
+      curValue = CounterVarArray[CounterID].value;
+
+      #if (ALARM_NUM > 0)
+      /* 2. Quét danh sách Alarm đang chờ trên Counter */
+      while(NULL != (pVar = TAILQ_FIRST(&CounterVarArray[CounterID].head)))
+      {
+          if (pVar->value == curValue) /* Alarm đã đến hạn (Expired) */
+          {
+              AlarmID = pVar - AlarmVarArray;
+              TAILQ_REMOVE(&CounterVarArray[CounterID].head, &AlarmVarArray[AlarmID], entry);
+              OS_STOP_ALARM(&AlarmVarArray[AlarmID]);
+              
+              /* 3. Tự động nạp lại chu kỳ 10ms tiếp theo (Periodic Reload) */
+              if(AlarmVarArray[AlarmID].period != 0)
+              {
+                  Os_StartAlarm(AlarmID, (TickType)(curValue + AlarmVarArray[AlarmID].period),
+                                AlarmVarArray[AlarmID].period);
+              }
+
+              /* 4. Thực thi Action Callback của Alarm */
+              AlarmConstArray[AlarmID].Action();
+          }
+          else { break; }
+      }
+      #endif
+  }
+  ```
+* Hàm Action Callback được sinh mã tự động trong [`as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c: L267-L270`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L267-L270):
+  ```c
+  /* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c */
+  static void Alarm_BswService_Action(void)
+  {
+      /* Đánh thức Basic Task SchM_BswService từ SUSPENDED -> READY */
+      (void)ActivateTask(TASK_ID_SchM_BswService);
+  }
+  ```
+
+##### 3️⃣ Bước 3: Basic Task thực thi trong $50\mu s$ rồi tự sát trong [`SchM.c: L491-L555`](../../as/com/as.infrastructure/system/SchM/SchM.c#L491-L555)
+```c
+/* as/com/as.infrastructure/system/SchM/SchM.c */
+TASK(SchM_BswService)
+{
+    OS_TASK_BEGIN();
+    
+    /* 1. Xử lý các gói tin truyền thông BSW */
+    SCHM_MAINFUNCTION_COMTX();
+    SCHM_MAINFUNCTION_COMRX();
+    SCHM_MAINFUNCTION_CAN_WRITE();
+    SCHM_MAINFUNCTION_CAN_READ();
+    
+    /* 2. Tự sát: Giải phóng CPU và quay về SUSPENDED */
+    OsTerminateTask(SchM_BswService);
+    OS_TASK_END();
+}
+```
+
+---
+
+### 1.4 🏎️ ECU Đơn Nhân vs. Đa Nhân & Cơ Chế Thực Thi Đa Tác Vụ (Single-Core vs. Multi-Core):
+
+> ❓ **Câu hỏi:** *ECU là đơn nhân hay đa nhân? Khi có nhiều Basic Task thì chúng chạy đồng thời hay tuần tự?*
+
+#### 1. Phân Loại Phần Cứng ECU Trên Xe Hơi:
+* **ECU Đơn Nhân (Single-Core MCU):** Cửa điện, gạt mưa, đèn xe BCM, điều hòa HVAC — sử dụng các chip nhỏ 16/32-bit như ARM Cortex-M0+/M4 (NXP S32K144, STM32F1).
+* **ECU Đa Nhân (Multi-Core MCU - 2 đến 6 Cores):** Quản lý Pin BMS, Điều khiển xe điện VCU, Động cơ Inverter, Hộp đen Gateway, ADAS — sử dụng các chip cao cấp như **Infineon AURIX TC397 (6 lõi TriCore 300MHz)** hoặc **Renesas RH850 (Multi-core)**.
+
+---
+
+#### 2. Cơ Chế Thực Thi Đa Tác Vụ Trên 1 Lõi Đơn (Single-Core Execution):
+Trên một lõi CPU đơn, tại một chu kỳ xung nhịp vật lý **CHỈ CÓ DUY NHẤT 1 TASK ĐƯỢC CHẠY**. Cách các Task kết thúc phụ thuộc vào cơ chế lập lịch:
+
+##### 🅰️ Chế Độ Không Tiếm Quyền (Non-Preemptive — Chạy Tuần Tự Tuyệt Đối):
+Task A đang chạy thì Task B (ưu tiên cao hơn) xuất hiện $
+ightarrow$ Task B **buộc phải chờ xếp hàng**. Task A chạy xong đến `TerminateTask()` thì Task B mới được chạy.
+```
+CPU Core 0: [──── Task A chạy từ đầu đến cuối ────] ──► [──── Task B mới được chạy ────]
+```
+
+##### 🅱️ Chế Độ Có Tiếm Quyền (Preemptive — Chạy Lồng Nhau Kiểu Ngăn Xếp LIFO):
+Task A (Priority 2) đang chạy dở dang thì Task B (Priority 8) xuất hiện $
+ightarrow$ Kernel **tạm dừng Task A**, lưu ngữ cảnh vào Stack và trao CPU cho Task B chạy ngay lập tức. Sau khi Task B kết thúc (`TerminateTask`), CPU **quay lại chạy nốt phần còn lại của Task A**.
+```
+Task B (Prio 8):                       [── Chạy B ──] (Terminate)
+                                             ▲              │
+                                   Preempt   │              │ Return
+                                             │              ▼
+Task A (Prio 2): [── Chạy A dở dang ─────────┘              └────── Chạy nốt A ──] (Terminate)
+```
+
+---
+
+### 1.5 ⚖️ So Sánh Toàn Diện: AUTOSAR / OSEK Task vs. FreeRTOS / POSIX Thread:
+
+| Tiêu Chí Kỹ Thuật | 🚗 AUTOSAR / OSEK OS Task | 💻 FreeRTOS Task / POSIX Thread / Linux |
+| :--- | :--- | :--- |
+| **1. Triết lý Vòng Đời (Lifecycle)** | **Chạy một mạch rồi Kết Thúc (`TerminateTask`)**. Khi cần thì Kích hoạt lại (`ActivateTask`). Hầu như không dùng `while(1)`. | **Chạy Vòng Lặp Vô Hạn (`while(1)`)**. Khi không có việc thì tự `vTaskDelay()` hoặc Block chờ Queue/Semaphore. |
+| **2. Cơ Chế Cấp Phát Bộ Nhớ** | **Tĩnh 100% lúc Compile-time (Static Allocation)**. Khai báo sẵn trong ARXML. Tuyệt đối **cấm dùng `malloc()`** hoặc tạo Task động lúc chạy. | **Động lúc Runtime (Dynamic Creation)**. Có các hàm tạo luồng động như `xTaskCreate()`, `pthread_create()`, `osThreadNew()`. |
+| **3. Cơ Chế Ngăn Xếp (Stack Memory)** | **Single Shared Stack (Dùng chung Stack)**: Toàn bộ Basic Task có thể dùng chung 1 vùng RAM duy nhất $= \max(	ext{Stack})$. Tiết kiệm RAM khủng khiếp cho MCU nhỏ. | **Dedicated Stack (Mỗi Thread 1 Stack riêng)**: Bắt buộc cấp phát RAM Stack riêng cho từng Thread. 10 Threads tốn gấp 10 lần RAM. |
+| **4. Cơ Chế Đồng Bộ & Tránh Deadlock** | **Giao thức Trần Ưu Tiên Tĩnh (Priority Ceiling Protocol - PCP)**: Mọi quyền truy cập Resource được tính toán sẵn từ file cấu hình. **Triệt tiêu Deadlock 100% từ thiết kế**. | Dùng **Mutex / Semaphore động** với cơ chế Thừa kế ưu tiên (Priority Inheritance). Vẫn có nguy cơ Deadlock nếu lập trình viên lock sai thứ tự. |
+| **5. Tính Tất Định & Chuẩn An Toàn** | **Hard Real-Time Cực Khắt Khe**. Đạt chứng chỉ an toàn chức năng cao nhất của ô tô **ISO 26262 ASIL-D**. | Phù hợp thiết bị IoT / Embedded thông thường. Bản gốc FreeRTOS chỉ là Soft Real-Time (cần bản SafeRTOS thương mại để đạt an toàn). |
+
+---
+
+## 2. Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C
+
+### 2.1 ❓ Bản Chất Kỹ Nghệ: Thứ Gì Tuân Thủ Và Tại Sao Phải Phân Chia?
+* **Thứ gì tuân thủ?**
+  1. **Nhân hệ điều hành RTOS (`askar`, `trampoline`):** Mã nguồn C của Kernel phải cài đặt chính xác các thuật toán lập lịch, cấu trúc dữ liệu theo đúng đặc tả chuẩn ISO 17356-3.
+  2. **File Cấu hình sinh ra (`Os_Cfg.h`, `Os_Cfg.c`):** Toolchain đọc file ARXML và sinh ra các cờ tiền xử lý (`#define`) phù hợp với cấp độ được chọn.
+* **Tại sao phân chia 4 cấp độ?** Nhằm tối ưu hóa triệt để phần cứng (**Hardware Scalability**):
+  * Một chip vi điều khiển nhỏ 8-bit/16-bit chỉ có **1 KB RAM** (cảm biến lốp TPMS, công tắc cửa) $
+ightarrow$ Dùng **BCC1** để toàn bộ OS chỉ chiếm $<500	ext{ Bytes RAM}$.
+  * Một ECU 32-bit cao cấp (BMS, VCU, ADAS) có **512 KB - vài MB RAM** $
+ightarrow$ Dùng **ECC2** để tận dụng tối đa cơ chế đa nhiệm Event-Driven và hàng đợi Task FIFO.
+
+---
+
+### 2.2 🔬 So Sánh Cấu Trúc Mã Nguồn C Của 4 Cấp Độ Trong Kernel `askar`:
+
+Bảng dưới đây chỉ ra chính xác cách 4 cấp độ được cấu hình trong `Os_Cfg.h` và cách mã nguồn C của Kernel thay đổi tương ứng:
+
+| Cấp Độ Tuân Thủ | Cờ Cấu Hình Trong `Os_Cfg.h` | Cấu Trúc Dữ Liệu Task (`TaskConstType` / `TaskVarType`) | Thuật Toán Scheduler (`sched-bubble.c`) | Quản Lý Bộ Nhớ Stack |
+| :--- | :--- | :--- | :--- | :--- |
+| 🟢 **BCC1** *(Basic Class 1)* | `/* Không define EXTENDED_TASK */`<br>`/* Không define MULTIPLY_TASK_PER_PRIORITY */`<br>`/* Không define MULTIPLY_TASK_ACTIVATION */` | • `pEventVar` **không tồn tại** (tiết kiệm ROM/RAM).<br>• `activation` **không tồn tại**.<br>• `event.c` **bị loại bỏ 100% khi biên dịch**. | • Hàng đợi Ready là mảng Bitmap đơn giản $O(1)$.<br>• Mỗi Priority có đúng 1 Task duy nhất. | • Cho phép **1 Stack dùng chung** (`Task_SharedStack`) cho tất cả các Task. |
+| 🟡 **BCC2** *(Basic Class 2)* | `/* Không define EXTENDED_TASK */`<br>`#define MULTIPLY_TASK_PER_PRIORITY`<br>`#define MULTIPLY_TASK_ACTIVATION` | • `pEventVar` **không tồn tại**.<br>• Bật biến đếm `uint8 activation` trong `TaskVarType`.<br>• Bật biến `uint8 maxActivation` trong `TaskConstType`. | • Hàng đợi Ready dùng cơ chế FIFO Heap / Ring Buffer.<br>• Priority được mã hóa kèm số thứ tự kích hoạt: `(((prio)<<3) | (--PrioSeqVal[prio]))`. | • Dùng chung Stack cho các Basic Task không ngắt lẫn nhau. |
+| 🟠 **ECC1** *(Extended Class 1)* | `#define EXTENDED_TASK`<br>`/* Không define MULTIPLY_TASK_PER_PRIORITY */`<br>`/* Không define MULTIPLY_TASK_ACTIVATION */` | • Bật con trỏ `EventVarType* pEventVar`.<br>• Bật đầy đủ `event.c` (`WaitEvent`, `SetEvent`, `ClearEvent`). | • Lập lịch ưu tiên tĩnh, mỗi mức Priority chỉ có đúng 1 Task. | • Basic Task có thể chung Stack, nhưng Extended Task **bắt buộc có Dedicated Stack riêng**. |
+| 🔴 **ECC2** *(Extended Class 2)* | `#define EXTENDED_TASK`<br>`#define MULTIPLY_TASK_PER_PRIORITY`<br>`#define MULTIPLY_TASK_ACTIVATION` | • Bật đầy đủ `pEventVar` cho Extended Tasks.<br>• Bật đầy đủ `maxActivation` và `activation` cho Basic Tasks. | • Đầy đủ hàng đợi FIFO đa mức ưu tiên kết hợp máy trạng thái 4 trạng thái. | • Toàn bộ các Extended Task có Dedicated Stack riêng. |
+
+---
+
+### 2.3 📂 Trích Dẫn Mã C Của 4 Cấp Độ Từ Mã Nguồn Gốc:
+
+#### 1. Cấu trúc Task thay đổi theo Cờ Cấu hình ([`kernel_internal.h: L280-L345`](../../as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L280-L345)):
+```c
+/* as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h */
+
+typedef struct
+{
+    void* pStack;
+    uint32_t stackSize;
+    TaskMainEntryType entry;
+    
+    #ifdef EXTENDED_TASK
+    /* CHỈ CÓ TRONG ECC1 VÀ ECC2: Quản lý con trỏ sự kiện Set/Wait */
+    EventVarType* pEventVar;
+    #endif
+    
+    PriorityType initPriority;
+    PriorityType runPriority;
+    
+    #ifdef MULTIPLY_TASK_ACTIVATION
+    /* CHỈ CÓ TRONG BCC2 VÀ ECC2: Giới hạn số lần kích hoạt gối đầu */
+    uint8 maxActivation;
+    #endif
+} TaskConstType;
+
+typedef struct TaskVar
+{
+    TaskContextType context;
+    PriorityType priority;
+    const TaskConstType* pConst;
+    
+    #ifdef MULTIPLY_TASK_ACTIVATION
+    /* CHỈ CÓ TRONG BCC2 VÀ ECC2: Đếm số yêu cầu kích hoạt đang xếp hàng */
+    uint8 activation;
+    #endif
+    
+    volatile StatusType state; /* SUSPENDED, READY, RUNNING, WAITING */
+    ResourceType currentResource;
+} TaskVarType;
+```
+
+#### 2. Mã Nguồn Cấu Hình Thực Tế Của Dự Án `ascore` Đang Chạy Ở Chuẩn **ECC2** ([`Os_Cfg.h: L40-L72`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h#L40-L72)):
+```c
+/* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h */
+
+#define OS_STATUS EXTENDED
+#define EXTENDED_TASK               /* Bật tính năng Extended Task -> Nhóm ECC */
+#define MULTIPLY_TASK_PER_PRIORITY  /* Cho phép nhiều Task chung 1 Priority -> Cấp 2 */
+#define MULTIPLY_TASK_ACTIVATION    /* Cho phép kích hoạt lặp gối đầu -> Cấp 2 */
+```
+
+---
+
+### 2.4 🔬 Giải Thích Chi Tiết Thuật Toán Scheduler & Quản Trị Bộ Nhớ Stack Trong Mã Nguồn C:
+
+Trong mã nguồn của nhân hệ điều hành `askar`, sự khác nhau giữa 4 cấp độ tuân thủ được cài đặt ở mức vi kiến trúc mã nguồn C như sau:
+
+---
+
+#### 🅰️ 1. Thuật Toán Lập Lịch (Scheduler Algorithm — File: [`sched-bubble.c: L37-L120`](../../as/com/as.infrastructure/system/kernel/askar/kernel/sched-bubble.c#L37-L120)):
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                     THUẬT TOÁN ĐIỀU PHỐI HÀNG ĐỢI READY (BINARY HEAP SCHEDULER)                 │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. CẤP ĐỘ 1 (BCC1 / ECC1 — 1 Task/Priority):                                                   │
+│    • NEW_PRIORITY(prio) = prio  ──► So sánh trực tiếp giá trị Priority (O(1)).                │
+│                                                                                                │
+│ 2. CẤP ĐỘ 2 (BCC2 / ECC2 — Nhiều Task chung Priority):                                         │
+│    • NEW_PRIORITY(prio) = (prio << SEQUENCE_SHIFT) | (--PrioSeqVal[prio] & SEQUENCE_MASK)     │
+│    • Nhúng bộ đếm thứ tự kích hoạt giảm dần vào các bits thấp nhất.                            │
+│    • Task nào gọi ActivateTask() trước ──► Sequence cao hơn ──► Nằm ở đỉnh Heap ──► Chạy trước!│
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+* **Mã nguồn thực tế thuật toán phân xử thứ tự FIFO (`sched-bubble.c: L37-L73`):**
+  ```c
+  /* as/com/as.infrastructure/system/kernel/askar/kernel/sched-bubble.c */
+
+  #ifdef MULTIPLY_TASK_PER_PRIORITY
+  /* Dịch trái độ ưu tiên 3 bits và nhúng số thứ tự kích hoạt PrioSeqVal vào 3 bits cuối */
+  #define NEW_PRIORITY(prio) (((uint16)(prio)<<SEQUENCE_SHIFT)|((--PrioSeqVal[prio])&SEQUENCE_MASK))
+  #define REAL_PRIORITY(prio) Sched_RealPriority(prio)
+  #else
+  #define NEW_PRIORITY(prio) (prio)
+  #define REAL_PRIORITY(prio) (prio)
+  #endif
+  ```
+* **Cách thức vận hành Binary Heap (`Sched_BubbleUp` & `Sched_BubbleDown`):**  
+  Khi `ActivateTask(TaskNmInd)` và `ActivateTask(SchM_Startup)` cùng có Priority 7 được kích hoạt:
+  * Task kích hoạt trước nhận giá trị `NEW_PRIORITY = (7 << 3) | 7 = 63`.
+  * Task kích hoạt sau nhận giá trị `NEW_PRIORITY = (7 << 3) | 6 = 62`.
+  * Hàm `Sched_BubbleUp()` đẩy phần tử có giá trị 63 lên đỉnh mảng `ReadyQueue.heap[0]`. Khi Scheduler gọi `Sched_GetReady()`, Task kích hoạt trước được nhả ra chạy trước, đảm bảo **100% nguyên tắc hàng đợi FIFO** của chuẩn OSEK!
+
+---
+
+#### 🅱️ 2. Cơ Chế Quản Trị Bộ Nhớ Stack (RAM Management — File: [`Os_Cfg.c: L30-L37`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L30-L37)):
+
+* **Nhóm BCC (BCC1 / BCC2) — Cơ Chế Dùng Chung Một Ngăn Xếp (Single Shared Stack):**
+  * *Tại sao Basic Task có thể dùng chung Stack?*  
+    Vì Basic Task không có lệnh `WaitEvent()` (không bao giờ ngủ giữa chừng). Khi một Basic Task chạy, nó thực thi từ đầu đến cuối rồi gọi `TerminateTask()` $
+ightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải phóng hoàn toàn. Con trỏ Stack Pointer (SP) quay trở về đáy ngăn xếp.
+  * *Hiệu quả tiết kiệm RAM:* Hệ thống 10 Basic Tasks không cần 10 mảng RAM mà chỉ cần **1 mảng Stack duy nhất** bằng kích thước của Task lớn nhất ($pprox 512	ext{ Bytes}$).
+* **Nhóm ECC (ECC1 / ECC2) — Cơ Chế Ngăn Xếp Riêng Biệt (Dedicated Stacks):**
+  * *Tại sao Extended Task bắt buộc phải có Stack riêng?*  
+    Khi Extended Task gọi `WaitEvent()`, nó chuyển sang trạng thái `WAITING` và nhường CPU cho Task khác. Toàn bộ các biến cục bộ (Local Variables) và thanh ghi CPU của nó **phải được bảo lưu nguyên vẹn trên Stack**. Nếu dùng chung Stack, Task khác chạy xen vào sẽ ghi đè và làm hỏng (corrupt) bộ nhớ của Task đang ngủ!
+  * *Minh chứng trong mã C sinh ra ([`Os_Cfg.c: L30-L37`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L30-L37)):*
+    ```c
+    /* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c */
+    
+    /* Mỗi Extended Task được cấp phát riêng một mảng RAM độc lập */
+    static uint32_t TaskApp_Stack[(2048*OS_STK_SIZE_SCALER+sizeof(uint32_t)-1)/sizeof(uint32_t)];
+    static EventVarType TaskApp_EventVar;
+    
+    static uint32_t TaskNmInd_Stack[(2048*OS_STK_SIZE_SCALER+sizeof(uint32_t)-1)/sizeof(uint32_t)];
+    static EventVarType TaskNmInd_EventVar;
+    ```
+
+---
+
+### 2.5 📂 Thư Mục Chứng Minh Thực Chiến & Hướng Dẫn Cấu Hình 4 Cấp Độ Trong Mã Nguồn:
+
+Để xem toàn bộ mã nguồn cấu hình mẫu XML, các file `.h`/`.c` sinh ra và phân tích sâu thuật toán lập lịch cho từng cấp độ, xem bộ tài liệu chuyên biệt tại:
+* 📑 [**`00_CONFORMANCE_CLASSES_MASTER_PROOF.md`**](02_conformance_classes_proof/00_CONFORMANCE_CLASSES_MASTER_PROOF.md): Tổng quan cơ chế tính toán cấp độ của Toolchain `GenOS.py`.
+* 🟢 [**`01_BCC1_Proof_And_Config.md`**](02_conformance_classes_proof/01_BCC1_Proof_And_Config.md): Cấu hình ARXML, Single Shared Stack, loại bỏ 100% `event.c` cho vi điều khiển < 1KB RAM.
+* 🟡 [**`02_BCC2_Proof_And_Config.md`**](02_conformance_classes_proof/02_BCC2_Proof_And_Config.md): Cấu hình nhiều Task trùng Priority, Hàng đợi kích hoạt `activation`, thuật toán FIFO Sequence Shift trong `sched-bubble.c`.
+* 🟠 [**`03_ECC1_Proof_And_Config.md`**](02_conformance_classes_proof/03_ECC1_Proof_And_Config.md): Cấu hình Extended Task với `WaitEvent()`, Dedicated Stack.
+* 🔴 [**`04_ECC2_Proof_And_Config.md`**](02_conformance_classes_proof/04_ECC2_Proof_And_Config.md): Bằng chứng mã nguồn cấu hình thực tế của dự án `ascore` (6 Tasks thỏa mãn trọn vẹn chuẩn ECC2).
+
+---
+## 3. Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU
+
+> ❓ **Câu hỏi:** *Task bình thường với Task Autostart `SchM_Startup` có gì khác nhau? Các Task này được khởi tạo và kích hoạt bằng code như thế nào khi ECU khởi động?*
+
+---
+
+### 3.1 📊 So Sánh 4 Loại Task Thực Tế Trong Dự Án `as`:
+
+Trong file cấu hình sinh ra [`as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c), có 4 loại Task với vai trò và cơ chế kích hoạt hoàn toàn khác nhau:
+
+| Tên Task Trong `Os_Cfg.c` | Loại Task | Thuộc Tính Autostart (`appModeMask`) | Độ Ưu Tiên (`initPriority`) | Cơ Chế Kích Hoạt (Trigger Mechanism) |
+| :--- | :---: | :---: | :---: | :--- |
+| **`SchM_Startup`** | **Basic Task** | ✅ `OSDEFAULTAPPMODE` | **Priority = 7** | **Tự động chạy ngay khi gọi `StartOS()`** để khởi tạo BSW Phase 2 rồi `TerminateTask`. |
+| **`TaskIdle`** | **Basic Task** | ✅ `OSDEFAULTAPPMODE` | **Priority = 0 (Thấp nhất)** | **Tự động chạy khi hệ thống rảnh rỗi** (không có Task nào khác cần CPU). |
+| **`SchM_BswService`** | **Basic Task** | ❌ `0 (Không Autostart)` | **Priority = 8** | **Kích hoạt định kỳ chu kỳ 10ms bởi `Alarm_BswService`**. |
+| **`TaskNmInd`** | **Extended Task** | ✅ `OSDEFAULTAPPMODE` | **Priority = 7** | **Autostart vào chạy trước rồi rơi vào trạng thái `WAITING`** chờ Event từ ngắt CAN. |
+
+---
+
+### 3.2 🌳 Chuỗi Gọi Hàm Function-Call-Function Khởi Tạo Và Thực Thi Task Khi Boot ECU:
+
+Dưới đây là chuỗi thực thi thực tế 100% trong mã nguồn C từ khi gọi `StartOS()` đến khi CPU nhảy vào thực thi `TASK(SchM_Startup)`:
+
+```
+[Điểm Vào Bootloader / main.c]
+   │
+   ▼
+1. StartOS(OSDEFAULTAPPMODE)  (as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c: L183)
+   │  ├── Irq_Disable()
+   │  ├── Os_PortInit()
+   │  │
+   │  ▼
+2. Os_TaskInit(OSDEFAULTAPPMODE)  (as/com/as.infrastructure/system/kernel/askar/kernel/task.c: L606-L628)
+   │  │  [Vòng lặp quét mảng TaskConstArray từ id = 0 đến TASK_NUM - 1]
+   │  │  ├── id = 0 (TaskApp):          appModeMask = 0              ──► Bỏ qua (Trạng thái SUSPENDED)
+   │  │  ├── id = 1 (TaskCanIf):        appModeMask = 0              ──► Bỏ qua (Trạng thái SUSPENDED)
+   │  │  ├── id = 2 (TaskNmInd):        appModeMask = DEFAULTMODE    ──► Gọi ActivateTask(TaskNmInd)
+   │  │  ├── id = 3 (TaskIdle):         appModeMask = DEFAULTMODE    ──► Gọi ActivateTask(TaskIdle)
+   │  │  ├── id = 4 (SchM_Startup):     appModeMask = DEFAULTMODE    ──► Gọi ActivateTask(SchM_Startup)
+   │  │  └── id = 5 (SchM_BswService):  appModeMask = 0              ──► Bỏ qua (Trạng thái SUSPENDED)
+   │  │
+   │  ▼
+3. ActivateTask(TASK_ID_SchM_Startup)  (task.c: L143-L167)
+   │  ├── InitContext(&TaskVarArray[SchM_Startup]) (task.c: L33)
+   │  │     ├── pTaskVar->state = READY;
+   │  │     ├── pTaskVar->priority = 7;
+   │  │     └── Os_PortInitContext(pTaskVar)  (Nạp con trỏ hàm TaskMainSchM_Startup vào Stack)
+   │  └── Sched_AddReady(TASK_ID_SchM_Startup) (sched-bubble.c: L85) (Đưa vào hàng đợi Ready)
+   │
+   ▼
+4. Sched_GetReady()  (kernel.c: L206)
+   │  └── Quét hàng đợi Ready: Thấy SchM_Startup có Priority = 7 (Cao nhất trong số các Task Ready)
+   │      ──► Gán RunningVar = &TaskVarArray[SchM_Startup]
+   │
+   ▼
+5. Os_PortStartFirstDispatch()  (kernel.c: L207 & portable/cortex-m/arch.c)
+   │  └── Nạp thanh ghi CPU từ Stack của SchM_Startup ──► CPU nhảy vào hàm thực thi!
+   │
+   ▼
+6. TASK(SchM_Startup)  (as/com/as.infrastructure/system/SchM/SchM.c: L410-L485)
+   │  ├── EcuM_StartupTwo()  ──► Khởi tạo BSW Phase 2: PduR_Init(), Can_Init(), Com_Init(), Rte_Start()
+   │  ├── SetRelAlarm(ALARM_ID_Alarm_BswService, 10, 10)  ──► Kích hoạt Timer 10ms cho SchM_BswService
+   │  ├── Com_IpduGroupStart(COM_DEFAULT_IPDU_GROUP, TRUE) ──► Cho phép truyền phát CAN định kỳ
+   │  └── OsTerminateTask(SchM_Startup)  ──► Hoàn tất nhiệm vụ, chuyển về SUSPENDED nhường CPU cho Task khác!
+```
+
+---
+
+### 3.3 🔬 Case Study Thực Chiến: Vòng Đời & Chuỗi Gọi Hàm Của `TaskIdle` (Mã Nguồn Gốc 100%)
+
+> ❓ **Câu hỏi kỹ nghệ:** *Khi `SchM_Startup` hoàn thành nhiệm vụ và gọi `TerminateTask()`, hệ điều hành sẽ chuyển sang chạy cái gì? `TaskIdle` được cấu hình, khởi tạo, nhận CPU và bị ngắt quyền (preempt) như thế nào theo mã nguồn C gốc?*
+
+---
+
+#### 1. Khai Báo Cấu Hình Gốc (Single Source of Truth):
+Trong file cấu hình kiến trúc [`as/com/as.application/common/infrastructure.xml: L59`](../../as/com/as.application/common/infrastructure.xml#L59) (hoặc `autosar.arxml`), `TaskIdle` được định nghĩa là một **Basic Task** có cờ `Autostart="True"`, độ ưu tiên thấp nhất hệ thống (`Priority="0"`) và chiếm 1 quyền kích hoạt:
+```xml
+<!-- as/com/as.application/common/infrastructure.xml -->
+<Task Name="TaskIdle" Priority="0" Activation="1" Autostart="True" StackSize="512" Schedule="FULL" />
+```
+
+---
+
+#### 2. Dữ Liệu Cấu Hình Sinh Tự Động Trong `Os_Cfg.h` & `Os_Cfg.c`:
+Bộ sinh mã `GenOS.py` tự động xuất thông số cấu hình tĩnh của `TaskIdle` ra thư mục build:
+* **Định danh ID (`Os_Cfg.h: L54`):**
+  ```c
+  #define TASK_ID_TaskIdle    3   /* priority = 0 (Thấp nhất trong 6 Tasks) */
+  ```
+* **Bản ghi cấu hình tĩnh trong `TaskConstArray` ([`Os_Cfg.c: L187-L203`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L187-L203)):**
+  ```c
+  /* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c */
+  const TaskConstType TaskConstArray[TASK_NUM] = {
+      /* ... [0]: TaskApp, [1]: TaskCanIf, [2]: TaskNmInd ... */
+      [TASK_ID_TaskIdle] = {
+          /*.pStack =*/         TaskIdle_Stack,
+          /*.stackSize =*/      sizeof(TaskIdle_Stack),
+          /*.entry =*/          TaskMainTaskIdle,
+          #ifdef EXTENDED_TASK
+          /*.pEventVar =*/      NULL,                     /* Basic Task -> Không có Event */
+          #endif
+          /*.appModeMask =*/    (0 | (OSDEFAULTAPPMODE)), /* Cờ Autostart khi khởi động */
+          /*.name =*/           "TaskIdle",
+          /*.initPriority =*/   OS_PTHREAD_PRIORITY + 0,  /* Độ ưu tiên khởi tạo = 0 */
+          /*.runPriority =*/    OS_PTHREAD_PRIORITY + 0,
+          #ifdef MULTIPLY_TASK_ACTIVATION
+          /*.maxActivation =*/  1,
+          #endif
+      },
+      /* ... [4]: SchM_Startup, [5]: SchM_BswService ... */
+  };
+  ```
+
+---
+
+#### 3. Chuỗi Gọi Hàm Function-Call-Function Của `TaskIdle` Từ Boot Đến Thực Thi:
+
+```
+[GIAI ĐOẠN 1: KHỞI TẠO TẠI BOOT ECU]
+1. StartOS(OSDEFAULTAPPMODE)  (kernel.c: L183)
+   │
+   ▼
+2. Os_TaskInit(OSDEFAULTAPPMODE)  (task.c: L606-L628)
+   │  └── Quét tới id = 3 (TaskIdle): Có cờ appModeMask == OSDEFAULTAPPMODE
+   │      ──► Gọi ActivateTask(TASK_ID_TaskIdle) (task.c: L143)
+   │
+   ▼
+3. ActivateTask(TASK_ID_TaskIdle)  (task.c: L143-L167)
+   ├── InitContext(&TaskVarArray[TASK_ID_TaskIdle]) (task.c: L33)
+   │     ├── pTaskVar->state = READY;
+   │     ├── pTaskVar->priority = 0;
+   │     └── Os_PortInitContext(pTaskVar)  (Nạp con trỏ hàm TaskMainTaskIdle vào Stack)
+   └── Sched_AddReady(TASK_ID_TaskIdle) (sched-bubble.c: L85)
+         └── Đưa TaskIdle vào hàng đợi ReadyQueue.heap[] với Priority = 0.
+             (Lúc này SchM_Startup và TaskNmInd có Priority = 7 cao hơn nên chiếm CPU chạy trước,
+              TaskIdle tạm thời nằm chờ ở trạng thái READY).
+
+─────────────────────────────────────────────────────────────────────────────────────────────────
+
+[GIAI ĐOẠN 2: CHUYỂN GIAO QUYỀN VÀ THỰC THI TASKIDLE]
+4. TASK(SchM_Startup) hoàn thành Phase 2 -> Gọi OsTerminateTask(SchM_Startup) (task.c: L261)
+   │  ├── Chuyển SchM_Startup sang trạng thái SUSPENDED.
+   │  └── TaskNmInd (Priority 7) gọi WaitEvent() -> Chuyển sang trạng thái WAITING.
+   │  └── Gọi hàm lập lịch Sched_GetReady() (kernel.c: L206).
+   │
+   ▼
+5. Sched_GetReady()
+   │  └── Quét hàng đợi Ready: Hàng đợi không còn Task nào ưu tiên cao hơn
+   │      ──► Task duy nhất ở trạng thái READY là TaskIdle (Priority = 0)!
+   │      ──► Gán RunningVar = &TaskVarArray[TASK_ID_TaskIdle]
+   │
+   ▼
+6. Os_PortDispatch()  (portable/cortex-m/arch.c)
+   │  └── Nạp thanh ghi CPU từ TaskIdle_Stack ──► CPU nhảy vào hàm thực thi TASK(TaskIdle)!
+   │
+   ▼
+7. TASK(TaskIdle)  (as/com/as.infrastructure/system/kernel/Os.c: L100-L124)
+   ├── ASLOG(STDOUT, ("TaskIdle is running\n"))  ──► Xuất chuỗi log: "STDOUT :TaskIdle is running"
+   └── for(;;)  [VÒNG LẶP NỀN VÔ TẬN]
+         ├── Irq_Enable();        ──► Luôn mở ngắt để sẵn sàng nhận ngắt CAN / Timer ngoại vi
+         ├── KSM_EXECUTE();       ──► Thực thi các máy trạng thái phi thời gian thực (KSM)
+         ├── (void)Schedule();    ──► Điểm nhường CPU tự nguyện nếu có Task khác vừa được kích hoạt
+         └── TaskIdleHook();      ──► Điểm móc nối hook MCU (ngủ tiết kiệm điện WFI / xóa Watchdog)
+```
+
+---
+
+#### 4. Mã Nguồn Thực Thi Gốc `TASK(TaskIdle)` Trong [`Os.c: L96-L124`](../../as/com/as.infrastructure/system/kernel/Os.c#L96-L124):
+
+```c
+/* as/com/as.infrastructure/system/kernel/Os.c */
+
+#ifndef __POSIX_OSAL__
+#if !defined(__HIWARE__)
+/* Hook mặc định kiểu weak, cho phép MCAL override để đưa CPU vào chế độ Sleep */
+void __weak TaskIdleHook(void)
+{
+}
+#endif
+
+TASK(TaskIdle)
+{
+#if !defined(USE_TINYOS) && !defined(USE_CONTIKI)
+    /* 1. In thông báo hệ thống đã vào chế độ hoạt động bình thường */
+    ASLOG(STDOUT, ("TaskIdle is running\n"));
+    for(;;)
+    {
+#endif
+        /* 2. Đảm bảo cờ ngắt toàn cục luôn được mở để không treo vi điều khiển */
+        Irq_Enable(); /* for robustness */
+
+        /* 3. Thực thi bộ máy trạng thái nền của hệ thống */
+        KSM_EXECUTE();
+
+#if defined(__FREEOSEK__) || defined(__UCOSII_OS__) || defined(__RTTHREAD_OS__) || defined(__ASKAR_OS__)
+        /* 4. Điểm kiểm tra lập lịch: Nếu có Task ưu tiên cao hơn sẵn sàng, lập tức nhường CPU */
+        (void)Schedule();
+#endif
+
+        /* 5. Gọi Hook tiết kiệm điện (Ví dụ gọi __WFI() trong arch/stm32f1/mcal/Mcu.c: L566) */
+        TaskIdleHook();
+
+#if !defined(USE_TINYOS) && !defined(USE_CONTIKI)
+    }
+#endif
+}
+#endif /* __POSIX_OSAL__ */
+```
+
+---
+
+#### 5. Cơ Chế Bị Cướp Quyền (Preemption) & Khôi Phục Ngữ Cảnh:
+* **Khi có ngắt phần cứng (Ví dụ: SysTick Timer 1ms hết hạn):**
+  1. Ngắt gọi chuỗi `knl_system_tick_handler()` $\rightarrow$ `SignalCounter(SysTimer)`.
+  2. `Alarm_BswService` đạt chu kỳ 10ms $\rightarrow$ Kích hoạt `ActivateTask(SchM_BswService)` (**Priority = 8**).
+  3. Nhân OS phát hiện `Priority(SchM_BswService) = 8 > Priority(TaskIdle) = 0` $\rightarrow$ Thực hiện **Ngắt quyền (Preemption)**: Đẩy toàn bộ thanh ghi CPU của `TaskIdle` vào `TaskIdle_Stack`, chuyển CPU sang chạy `TASK(SchM_BswService)`.
+* **Khi `SchM_BswService` kết thúc (`TerminateTask`):**
+  * Nhân OS gọi `Sched_GetReady()`, lấy lại `TaskIdle` từ hàng đợi Ready, khôi phục thanh ghi CPU từ `TaskIdle_Stack` và tiếp tục vòng lặp `for(;;)` của `TaskIdle` ngay tại vị trí bị ngắt trước đó!
+
+---
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 📖 **PCP** (*Priority Ceiling Protocol*): Giao thức trần ưu tiên hệ điều hành.
@@ -200,20 +782,17 @@ Giải pháp AUTOSAR OS - OSEK PCP quy định:
 3. Không một Task nào khác có thể ngắt giữa chừng nếu ưu tiên <= Ceiling.
 
 ```c
-/* Ví dụ sử dụng Resource bảo vệ Critical Section trong AUTOSAR OS */
-TASK(Task_MotorControl)
-{
-    // 1. Chiếm quyền truy cập tài nguyên (Độ ưu tiên được nâng lên Ceiling Priority)
-    GetResource(RES_GLOBAL_MOTOR_DATA);
+/* MÃ NGUỒN GỐC SỬ DỤNG RESOURCE TRONG DỰ ÁN as */
+/* (Trích xuất từ as/com/as.infrastructure/system/EcuM/EcuM_Main.c: L315-L325 & sys_arch.c: L120) */
 
-    // 2. Critical Section: Đọc / ghi biến dữ liệu nhạy cảm an toàn
-    Global_MotorCurrent = Read_Hardware_Current();
+/* 1. Chiếm quyền truy cập Resource RES_SCHEDULER (Độ ưu tiên được nâng tức thì lên Ceiling Priority = 31) */
+GetResource(RES_SCHEDULER);
 
-    // 3. Giải phóng tài nguyên (Độ ưu tiên trở về mức ban đầu)
-    ReleaseResource(RES_GLOBAL_MOTOR_DATA);
+/* 2. Critical Section: Bảo vệ dữ liệu hàng đợi sự kiện / danh sách Task khỏi bị ngắt ngắt quãng */
+EcuM_ProcessScheduledEvents();
 
-    TerminateTask();
-}
+/* 3. Giải phóng tài nguyên (Độ ưu tiên được hạ trở lại mức ưu tiên ban đầu của Task) */
+ReleaseResource(RES_SCHEDULER);
 ```
 
 ### 🔴 LEVEL 3: EXPERT (Deep Dive)
@@ -235,7 +814,7 @@ Nếu sử dụng Multiple Resources mà không cẩn thận, hệ thống có t
 
 ---
 
-## 4. Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2
+## 5. Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 📖 **ISR** (*Interrupt Service Routine*): Hàm phục vụ sự kiện ngắt phần cứng.
@@ -269,27 +848,141 @@ sequenceDiagram
 | **Độ trễ (Latency)** | **Cực nhỏ (Zero OS Overhead)**. Dùng cho ngắt khẩn (Over-current Inverter). | Trễ cao hơn do OS push toàn bộ thanh ghi. |
 | **Quyền gọi OS API** | ❌ **Tuyệt đối cấm** gọi bất kỳ API nào của OS (không `SetEvent`, không `ActivateTask`). | ✅ **Được phép** gọi các API hệ điều hành cho phép. |
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
-📊 **Latency Numbers (Ví dụ trên lõi Infineon TriCore TC39x @ 300MHz):**
-- **ISR Cat 1 Latency:** ~20-30 cycles (< 100 ns). Hardware Trap nhảy thẳng vào C Function.
-- **ISR Cat 2 Latency:** ~200-300 cycles (~1 us). OS phải push toàn bộ thanh ghi vào Interrupt Stack, kiểm tra MPU (Memory Protection Unit).
+### 🔴 LEVEL 3: EXPERT (Deep Dive & Function-Call-Function Trace Thực Chiến)
 
-🔧 **Bên trong OS Wrapper của ISR Cat 2 (Assembly Context):**
-```assembly
-; Pseudo-assembly của ISR Cat 2 Entry point
-ISR_Cat2_Wrapper:
-    PUSH_ALL_REGS           ; Lưu ngữ cảnh CPU vào Interrupt Stack
-    SET_OS_INT_STATE 1      ; Đánh dấu trạng thái hệ thống: IN_ISR2
-    CALL User_ISR_Handler   ; Gọi hàm C của người dùng thực thi
-    CLEAR_OS_INT_STATE      ; Thoát trạng thái ISR
-    CALL OS_Scheduler       ; Lập lịch lại: Kiểm tra xem User_ISR có đánh thức Task Prio cao không
-    POP_ALL_REGS            ; Khôi phục ngữ cảnh (Của Task bị ngắt ban đầu, hoặc Task mới)
-    RETI                    ; Lệnh Return từ Ngắt phần cứng (Hardware Return)
+Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu kích hoạt vật lý (Hardware Trigger)**, qua các tầng phần mềm và nhân hệ điều hành, đến điểm thực thi hàm logic trong mã nguồn gốc của dự án `as`.
+
+---
+
+#### 🅰️ CASE STUDY 1: DÒNG CHẢY ISR CATEGORY 1 (NGẮT PHẦN CỨNG TRỰC TIẾP KHÔNG QUA OS)
+
+> 💡 **Đặc tính kỹ nghệ:** Dành cho các ngắt yêu cầu phản ứng tức thời ở tần số cao (ví dụ: ngắt Fault bảo vệ ngắn mạch cầu H Inverter, ngắt lấy mẫu ADC dòng điện động cơ, hoặc ngoại lệ vi điều khiển như `hard_fault_handler`).
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  ⚡ DÒNG CHẢY ISR CATEGORY 1 NGUYÊN BẢN (DIRECT HARDWARE INTERRUPT — ZERO OS OVERHEAD):       │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+1. [PHẦN CỨNG NGOẠI VI PHÁT TÍN HIỆU NGẮT]
+   Cảm biến / Timer / Chân ngoại vi kéo mức điện áp ──► Kích hoạt đường ngắt phần cứng vào NVIC.
+        │
+        ▼ (Khối NVIC của ARM Cortex-M tự động push {R0-R3, R12, LR, PC, xPSR} trong 12 clock cycles)
+2. [BẢNG VECTOR NGẮT PHẦN CỨNG (VECTOR TABLE)]
+   __vector_table (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L52)
+        │
+        └── [DÒNG 52]: Con trỏ ngắt trỏ TRỰC TIẾP vào hàm C của Driver
+            ──► KHÔNG qua hàm bọc (Wrapper), KHÔNG gọi EnterISR(), KHÔNG đổi CallLevel.
+                │
+                ▼
+3. [DRIVER / MCAL C-HANDLER THỰC THI TRỰC TIẾP]
+   Fast_Cat1_ISR_Handler()  (Mã nguồn C tầng MCAL)
+        │
+        ├── 1. Đọc thanh ghi phần cứng (Hardware Registers)
+        ├── 2. Thực thi xử lý khẩn cấp (Ví dụ: Set chân GPIO ngắt dòng Inverter < 100ns)
+        ├── 3. Xóa cờ ngắt phần cứng trong thanh ghi ngoại vi (Clear Interrupt Pending Flag)
+        └── 4. ❌ TUYỆT ĐỐI KHÔNG GỌI OS API (Không SetEvent, Không ActivateTask, Không Schedule)
+                │
+                ▼
+4. [LỆNH THOÁT NGẮT PHẦN CỨNG]
+   Thực thi lệnh Assembly: BX LR (EXC_RETURN = 0xFFFFFFF9)
+        │
+        └── Phần cứng NVIC tự động POP {R0-R3, R12, LR, PC, xPSR} khỏi Stack
+            ──► CPU quay lại ngay dòng lệnh của Task đang chạy trước đó với 0 chu kỳ trễ từ OS!
 ```
 
 ---
 
-## 5. Cơ Chế Định Thời: Counter, Alarm & Schedule Table
+#### 🅱️ CASE STUDY 2: DÒNG CHẢY ISR CATEGORY 2 (NGẮT CÓ OS WRAPPER — VÍ DỤ `Can_RxIsr` KÍCH HOẠT `TaskNmInd`)
+
+> 💡 **Đặc tính kỹ nghệ:** Đây là cơ chế ngắt chuẩn mực nhất trong AUTOSAR BSW. Ngắt phần cứng được bọc bởi lớp vỏ OS Wrapper để bảo toàn ngữ cảnh CPU, cho phép gọi an toàn các API của OS (`SetEvent`, `ActivateTask`) và thực hiện **Lập lịch cướp quyền (Preemption Context Switch)** ngay tại thời điểm kết thúc ngắt.
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  🚗 DÒNG CHẢY ISR CATEGORY 2 TOÀN DIỆN: TỪ DÂY CAN VẬT LÝ ──► OS WRAPPER ──► PREEMPTION DISPATCH│
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+1. [TÍN HIỆU VẬT LÝ TRÊN DÂY MẠNG CAN]
+   Bản tin CAN (ví dụ CAN ID 0x401) truyền đến chân vi điều khiển ──► CAN Transceiver nhận tín hiệu vi sai
+   ──► Khối CAN Controller phần cứng giải mã, khớp bộ lọc (Hardware Filter) và lưu vào FIFO Rx Mailbox
+   ──► Kéo đường ngắt CAN_RX lên mức tích cực gửi vào khối NVIC.
+        │
+        ▼ (NVIC Stacking tự động {R0-R3, R12, LR, PC, xPSR} vào Stack)
+2. [VECTOR TABLE NHẢY VÀO OS WRAPPER]
+   __vector_table (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L67)
+        │
+        └── Vector 16..N trỏ tới hàm bọc hệ điều hành: knl_isr_process
+                │
+                ▼
+3. [TẦNG OS WRAPPER — BẢO TOÀN NGỮ CẢNH & THIẾT LẬP INTERRUPT STACK]
+   knl_isr_process (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S: L235-L240)
+        │
+        ├── 1. Gọi EnterISR() (portableS.S: L126):
+        │     ├── ISR2Counter++ (Tăng bộ đếm lồng ngắt ISR Cat 2)
+        │     ├── push {r4-r11} (Lưu các thanh ghi còn lại của Task đang chạy - RunningVar)
+        │     ├── ldr sp, =knl_system_stack_top (Chuyển con trỏ SP sang Ngăn xếp Ngắt riêng biệt)
+        │     └── CallLevel = TCL_ISR2 (Ghi nhận hệ thống đang ở mức ngắt ISR Category 2)
+        ├── 2. mrs r0, ipsr (Đọc số hiệu ngắt từ thanh ghi phần cứng IPSR)
+        └── 3. Gọi knl_isr_handler(intno) (portable.c: L118)
+                │
+                ▼
+4. [TẦNG MCAL DRIVER — ĐỌC DỮ LIỆU PHẦN CỨNG & XÓA CỜ NGẮT]
+   Can_RxIsr(CAN_CTRL_1) (as/com/as.infrastructure/arch/stm32f1/mcal/Can.c: L308)
+        │
+        ├── 1. Đọc thanh ghi Mailbox phần cứng: CAN ID, DLC, và 8 Data Bytes
+        ├── 2. Ghi thanh ghi CAN_RFR_RFOM0 để giải phóng Mailbox và xóa cờ ngắt phần cứng
+        └── 3. Đóng gói PduInfoType và gọi tiếp lên tầng giao diện BSW:
+            └──► CanIf_RxIndication(Hrh, CanId, &PduInfo) (CanIf.c: L831)
+                    │
+                    ▼
+5. [TẦNG BSW COM & GỌI OS API SETEVENT]
+   OsekNm_RxIndication() (OsekNm.c)
+        │
+        └── Gọi OS API: SetEvent(TASK_ID_TaskNmInd, EVENT_MASK_TaskNmInd_RxInd)
+            (as/com/as.infrastructure/system/kernel/askar/kernel/event.c: L53-L96)
+                │
+                ├── TaskConstArray[TaskNmInd].pEventVar->set |= Mask
+                ├── Phát hiện TaskNmInd đang ở trạng thái WAITING chờ Mask này
+                ├── Chuyển trạng thái TaskNmInd: WAITING ──► READY
+                └── Sched_AddReady(TASK_ID_TaskNmInd) (sched-bubble.c: L85)
+                    ──► Đưa TaskNmInd vào ReadyQueue với Độ ưu tiên Priority = 7!
+                    ──► Gán ReadyVar = &TaskVarArray[TaskNmInd]
+                    (Lúc này vì CallLevel == TCL_ISR2, OS chưa đổi Task ngay mà chờ đến khi thoát ISR).
+                        │
+                        ▼
+6. [TẦNG THOÁT NGẮT OS WRAPPER & LẬP LỊCH PREEMPTION]
+   ExitISR() (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S: L173-L218)
+        │
+        ├── 1. Khôi phục CallLevel cũ và giảm ISR2Counter--
+        ├── 2. Đánh giá độ ưu tiên lập lịch:
+        │     ├── Priority(ReadyVar)   = 7 (TaskNmInd vừa được đánh thức)
+        │     └── Priority(RunningVar) = 0 (TaskIdle đang chạy trước khi có ngắt)
+        ├── 3. Phát hiện Priority(ReadyVar) > Priority(RunningVar) (7 > 0):
+        │     └──► Gọi Sched_Preempt()
+        │     └──► Nhảy thẳng vào knl_start_dispatch (portableS.S: L73)
+        │
+        ▼ (CPU KHÔNG quay lại TaskIdle mà chuyển ngữ cảnh ngay lập tức)
+7. [TASK ƯU TIÊN CAO ĐƯỢC THỰC THI NGAY SAU KHI THOÁT NGẮT]
+   TASK(TaskNmInd) (as/com/as.infrastructure/diagnostic/OsekNm/OsekNm_Cfg.c: L110)
+        └── Bắt đầu chạy xử lý gói tin mạng CAN với độ trễ tối thiểu!
+```
+
+---
+
+#### 📊 Bảng So Sánh Chi Tiết Cơ Chế Thực Thi Mã Nguồn:
+
+| Tiêu Chí Kỹ Thuật | ISR Category 1 (`Fast_Cat1_ISR`) | ISR Category 2 (`knl_isr_process` $\rightarrow$ `Can_RxIsr`) |
+| :--- | :--- | :--- |
+| **Bảng Vector Ngắt (`startup.S`)** | Trỏ trực tiếp đến địa chỉ hàm C MCAL. | Trỏ vào nhãn OS Wrapper `knl_isr_process`. |
+| **Thao Tác Stack** | Tận dụng Stack hiện tại của CPU. | Tự động đổi con trỏ SP sang `knl_system_stack_top`. |
+| **Lưu Trữ Ngữ Cảnh (Context Save)** | Chỉ 8 thanh ghi do phần cứng Cortex-M tự lưu. | Lưu bổ sung `{r4-r11}` vào `RunningVar` qua `EnterISR`. |
+| **Trạng Thái `CallLevel`** | Giữ nguyên mức trước đó (Không đổi). | Thiết lập `CallLevel = TCL_ISR2` (2). |
+| **Khả Năng Gọi OS API** | ❌ **Bị cấm 100%** (Gây hỏng trạng thái nhân OS). | ✅ **Được phép gọi**: `SetEvent()`, `ActivateTask()`. |
+| **Điểm Preemption (Cướp Quyền)** | Không có. Luôn quay lại lệnh bị ngắt ban đầu. | Thực hiện ngay trong `ExitISR` nếu `ReadyVar > RunningVar`. |
+| **Độ Trễ Phản Hồi (Latency)** | Cực nhỏ ($< 100\text{ ns}$ / 12 chu kỳ lệnh). | $\approx 1\ \mu\text{s}$ (Do chi phí push/pop thanh ghi và scheduler). |
+
+---
+
+## 6. Cơ Chế Định Thời: Counter, Alarm & Schedule Table
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 💡 **Ẩn dụ:**
@@ -331,7 +1024,7 @@ Trong các hệ thống phức tạp (Vd: Engine Control Unit), có hàng trăm 
 
 ---
 
-## 6. Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)
+## 7. Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 💡 Hook giống như các **camera an ninh** được đặt tại các cửa ra vào của hệ điều hành. Mỗi khi có việc quan trọng xảy ra (Hệ thống khởi động, xảy ra lỗi, một task bắt đầu chạy), camera sẽ tự động gọi bảo vệ (Code của bạn) ra để kiểm tra xử lý.
@@ -368,7 +1061,7 @@ void PostTaskHook(void) {
 
 ---
 
-## 7. Tầng Trừu Tượng Vi Điều Khiển (MCAL Layer Architecture & SWS Patterns)
+## 8. Tầng Trừu Tượng Vi Điều Khiển (MCAL Layer Architecture & SWS Patterns)
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 📖 **MCAL** (*Microcontroller Abstraction Layer*): Tầng phần mềm nằm thấp nhất, giao tiếp sát sườn với phần cứng.
@@ -393,7 +1086,7 @@ Thực tế kỹ sư không tự gõ tay các file cấu hình `Port_PBcfg.c`. H
 
 ---
 
-## 8. Phân Tích Chi Tiết 7 Module MCAL Cốt Lõi (Kèm API & Struct Trong parai/as)
+## 9. Phân Tích Chi Tiết 7 Module MCAL Cốt Lõi (Kèm API & Struct Trong parai/as)
 
 ### 8.1 Port Driver (`Port.h`)
 * **Trách nhiệm:** Cấu hình gốc rễ của mọi chân IC. Hướng chân (*Input/Output*), chức năng thay thế (*GPIO, UART, CAN, SPI*), điện trở kéo (*Pull-up/Pull-down*), và tốc độ quét xung (Slew Rate).
@@ -497,7 +1190,7 @@ Hàm `Can_Write` không hề chặn (Block) chương trình để chờ Frame đ
 
 ---
 
-## 9. Cơ Chế Bắt Lỗi Phát Triển (Default Error Tracer - DET) & Common Pitfalls
+## 10. Cơ Chế Bắt Lỗi Phát Triển (Default Error Tracer - DET) & Common Pitfalls
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 📖 **DET** (*Default Error Tracer*): Sổ ghi lỗi trong quá trình phát triển. Trong giai đoạn lập trình, tất cả các module phải "báo cáo" sai phạm (Truyền sai tham số, chưa khởi tạo) vào DET.
@@ -524,7 +1217,7 @@ Std_ReturnType Det_ReportError(
 
 ---
 
-## 10. Bảng So Sánh AUTOSAR OS vs FreeRTOS Chi Tiết
+## 11. Bảng So Sánh AUTOSAR OS vs FreeRTOS Chi Tiết
 
 | Đặc tính | AUTOSAR OS (Automotive) | FreeRTOS (General IoT) | Nhận xét Chuyên Gia |
 |:---|:---|:---|:---|
@@ -536,7 +1229,7 @@ Std_ReturnType Det_ReportError(
 
 ---
 
-## 11. 🛠️ Hands-On Exercises Thực Chiến
+## 12. 🛠️ Hands-On Exercises Thực Chiến
 
 **🛠️ Bài Tập 1: Tạo Basic Task Chớp Tắt Đèn**
 - **Mục tiêu:** Hiểu chu trình Lifecycle của một Basic Task.
@@ -563,7 +1256,7 @@ TASK(Task_BlinkLED) {
 
 ---
 
-## 12. Bộ Câu Hỏi Phỏng Vấn (Q&A 3 Levels)
+## 13. Bộ Câu Hỏi Phỏng Vấn (Q&A 3 Levels)
 
 **🟢 Level 1: Newbie Interview**
 * **Câu hỏi:** Tại sao các chuyên gia khuyên không được viết vòng lặp vô tận `while(1)` bên trong một Basic Task?

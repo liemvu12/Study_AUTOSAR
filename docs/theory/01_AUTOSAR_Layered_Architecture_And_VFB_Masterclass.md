@@ -274,6 +274,130 @@ Một hộp ECU (*Electronic Control Unit*) trên ô tô là một bo mạch đi
 
 ---
 
+#### 3.4 Cơ Chế Khởi Tạo Ngoại Vi: Vi Điều Khiển (MCU) vs Máy Tính (PC) & Bản Chất Của Bootloader
+
+> 💡 **Câu hỏi kỹ nghệ kinh điển:**  
+> *"Nếu nạp trực tiếp file `ascore` vào vi điều khiển mà không có Bootloader, làm sao các ngoại vi (CAN, GPIO, Clock, ADC) chạy được? Chẳng lẽ chỉ có CPU chạy?"*
+
+##### 1. Khác biệt cốt lõi: Máy Tính (PC) vs Vi Điều Khiển Nhúng (MCU)
+* **Trên máy tính cá nhân (PC):** Bắt buộc phải có **BIOS / UEFI** (firmware của bo mạch chủ) khởi tạo phần cứng (RAM, PCIe, Chipset), sau đó mới nạp hệ điều hành Windows/Linux vào RAM để chạy.
+* **Trên vi điều khiển nhúng (MCU như STM32, NXP, AURIX):** **HOÀN TOÀN KHÔNG CÓ BIOS!** 
+  Sau khi cấp nguồn (Power-On Reset), phần cứng CPU tự động đọc 2 giá trị đầu tiên tại địa chỉ `0x00000000`:
+  1. `SP (Stack Pointer)`: Địa chỉ đỉnh RAM để làm ngăn xếp.
+  2. `PC (Program Counter)`: Địa chỉ của hàm `reset_handler` trong mã nguồn C của bạn.
+  => Toàn bộ mã nguồn cấu hình phần cứng sau đó đều do chính chương trình C của bạn tự thực hiện từ con số 0.
+
+##### 2. Tầng MCAL là "BIOS Tự Viết" Nằm Trọn Trong `ascore`
+Trong kiến trúc AUTOSAR, file ứng dụng `ascore` **tự chứa đầy đủ 100% mã nguồn khởi tạo phần cứng từ con số 0** thông qua tầng MCAL và module `EcuM`:
+
+```c
+/* ========================================================================= */
+/* CHU TRÌNH TỰ KHỞI TẠO NGOẠI VI TỪ CON SỐ 0 TRONG ascore (EcuM_Init)       */
+/* ========================================================================= */
+void EcuM_Init(void) {
+    /* 1. Tự kích hoạt thạch anh ngoài (HSE) và nhân xung nhịp CPU lên 72MHz */
+    Mcu_Init(&Mcu_Config);
+    Mcu_InitClock(McuClockSettingConfig_0);
+    while(Mcu_GetPllStatus() != MCU_PLL_LOCKED); // Chờ thạch anh khóa tần số
+    Mcu_DistributePllClock();
+
+    /* 2. Cấp nguồn xung clock và cấu hình từng chân GPIO (Chân đèn, cảm biến) */
+    Port_Init(&Port_Config);
+
+    /* 3. Tự cấu hình bộ điều khiển mạng CAN (Baudrate 500kbps, Mailbox, Filter) */
+    Can_Init(&Can_Config);
+
+    /* 4. Cấu hình bộ đọc tương tự ADC (điện áp pin) và điều tốc xung PWM */
+    Adc_Init(&Adc_Config);
+    Pwm_Init(&Pwm_Config);
+
+    /* 5. Cấu hình chip nhớ Flash / EEPROM Driver */
+    Fee_Init();
+    Fls_Init(&Fls_Config);
+
+    /* 6. Khởi tạo xong 100% phần cứng ngoại vi -> Mới bật Hệ điều hành OS */
+    StartOS(OSDEFAULTAPPMODE);
+}
+```
+👉 `ascore` tự nuôi sống và cấu hình 100% ngoại vi mà không cần dựa dẫm vào Bootloader!
+
+##### 3. Bản Chất Thực Sự Của Bootloader (`asboot`) Trong Ngành Ô Tô
+Bootloader sinh ra **không phải để làm nền tảng nuôi ngoại vi cho Application**, mà chỉ có duy nhất 1 nhiệm vụ: **Cứu hộ và Nạp phần mềm qua cổng CAN (UDS Reprogramming Services 0x34/0x36)**.
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│  KHI XE ĐANG VẬN HÀNH TRÊN ĐƯỜNG:                                      │
+│  • asboot chỉ chạy 5ms đầu để kiểm tra mã lỗi CRC.                     │
+│  • Sau đó nó TẮT HẾT ngoại vi nó từng dùng (De-initialize) và trao     │
+│    100% quyền điều khiển cho ascore tự khởi tạo từ đầu!                │
+│                                                                        │
+│  KHI XE VÀO GARA CẦN NÂNG CẤP FIRMWARE:                                │
+│  • Thợ cắm máy chẩn đoán gửi lệnh UDS -> asboot giữ quyền điều khiển,  │
+│    nhận dữ liệu hex từ cổng CAN và ghi đè vào Flash của ascore.        │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+##### 4. Hai Chế Độ Nạp Trong Kỹ Nghệ Ô Tô:
+* **Chế độ 1: Production Mode (Chuẩn xe thật - Dual Binary):**
+  * `asboot` đặt tại `0x00000000` (64KB đầu) $
+ightarrow$ `ascore` đặt tại `0x00010000` (192KB sau).
+  * Hỗ trợ cập nhật phần mềm không dây OTA / qua cổng CAN.
+* **Chế độ 2: Standalone / Development Mode (Chế độ phát triển & debug nhanh):**
+  * Đặt `ascore` ngay tại gốc `0x00000000` (sửa `linker-app.lds`).
+  * Nạp trực tiếp qua mạch nạp ST-Link/J-Link hoặc chạy trong QEMU: Board thật và máy ảo vẫn chạy đủ 100% ngoại vi (CAN, GPIO, ADC, Timer), giúp kỹ sư tập trung kiểm thử logic thuật toán mà không tốn thời gian kiểm tra CRC của Bootloader.
+
+---
+
+#### 3.5 Cơ Chế Hook & Callout Trong Kiến Trúc AUTOSAR (Sự Phân Tách Giữa Mã Lõi BSW Và Tùy Biến Ứng Dụng)
+
+> 📖 **Định nghĩa Callout & Hook:**  
+> Trong tiêu chuẩn AUTOSAR, để đảm bảo mã lõi **BSW tĩnh (Static BSW Code)** có thể tái sử dụng 100% trên mọi dòng vi điều khiển (NXP, Infineon, ST, TI) mà không bị lập trình viên sửa đổi lung tung, AUTOSAR thiết kế sẵn các **"Điểm Neo Tùy Biến" (Hook & Callout Stubs)**.
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          KIẾN TRÚC CALLOUTS & HOOKS TRONG AUTOSAR                           │
+│                                                                                             │
+│  ┌────────────────────── TẦNG BSW LÕI CHUẨN (STATIC BSW - KHÔNG ĐƯỢC SỬA) ────────────────┐  │
+│  │                                                                                        │  │
+│  │  1. EcuM_Init() ──────► Gọi hàm Hook: EcuM_AL_DriverInitZero()                         │  │
+│  │  2. StartOS() ────────► Gọi hàm Hook: StartupHook()                                    │  │
+│  │  3. EcuM_StartupTwo() ► Gọi hàm Hook: EcuM_AL_DriverInitOne()                          │  │
+│  │  4. OS Crash/Fault ───► Gọi hàm Hook: ErrorHook(StatusType Error)                      │  │
+│  │  5. ShutdownOS() ─────► Gọi hàm Hook: ShutdownHook(StatusType Error)                   │  │
+│  └───────────────────────────────────┬────────────────────────────────────────────────────┘  │
+│                                      │ Điểm cắm mở rộng (Hook / Callout Interface)           │
+│                                      ▼                                                       │
+│  ┌────────────────────── FILE STUBS DO KỸ SƯ TỰ VIẾT (TÙY BIẾN HỢP LỆ) ───────────────────┐  │
+│  │                                                                                        │  │
+│  │  📄 File: EcuM_Callout_Stubs.c                                                         │  │
+│  │     void EcuM_AL_DriverInitZero(void) {                                                │  │
+│  │         printf("[Boot Phase 1] Initializing MCU PLL & Clock...\n");                    │  │
+│  │         Mcu_Init(&Mcu_Config);                                                         │  │
+│  │         Port_Init(&Port_Config);                                                       │  │
+│  │     }                                                                                  │  │
+│  │                                                                                        │  │
+│  │  📄 File: app.c / Os_Hooks.c                                                           │  │
+│  │     void StartupHook(void) {                                                           │  │
+│  │         printf("[Boot Phase 2] OS Scheduler Active! All Tasks Ready.\n");              │  │
+│  │     }                                                                                  │  │
+│  │     void ErrorHook(StatusType Error) {                                                 │  │
+│  │         printf("[OS Panic] Error Code = %d! Entering Safe State...\n", Error);         │  │
+│  │     }                                                                                  │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+##### 1. Phân Biệt 3 Khái Niệm Cốt Lõi: Callout vs Hook vs Callback
+* **Callout (Lệnh gọi ngoại vi từ BSW):** Do BSW chủ động gọi ra ngoài file `EcuM_Callout_Stubs.c` để thực thi logic phần cứng hoặc thuật toán đặc thù mà chuẩn AUTOSAR không bao quát hết.
+* **Hook (Hàm Xử Lý Sự Kiện Vòng Đời OS / OS Lifecycle Event Handler):** Về bản chất, **Hook chính là một dạng Handler** do nhân hệ điều hành OSEK/AUTOSAR OS tự động kích hoạt khi có các sự kiện vòng đời hệ thống (Khởi động `StartupHook`, Tắt nguồn `ShutdownHook`, Xử lý lỗi Runtime `ErrorHook`, hoặc Giám sát chuyển ngữ cảnh Task `PreTaskHook`/`PostTaskHook`).
+* **Callback (Báo hiệu bất đồng bộ):** Do tầng thấp (MCAL / CanIf) gọi ngược lên tầng cao (PduR, CanTp, Dem) khi hoàn tất một công việc I/O (`CanIf_TxConfirmation`, `CanIf_RxIndication`).
+
+##### 2. Hai Cơ Chế Tracing & Logging Phổ Biến Trong Dự Án AUTOSAR:
+1. **Cơ Chế 1 - Hệ Thống Macro Tracing BSW (`asdebug.h`):** Tác giả BSW đặt sẵn các macro `ASLOG(level, msg)`. Ở bản Production, macro biến thành `((void)0)` để đạt **Zero-Cost CPU**. Ở bản Debug, bật cờ `USE_ASLOG` để in chi tiết từng bước.
+2. **Cơ Chế 2 - Khai Thác EcuM Callouts & OS Hooks:** Kỹ sư viết code log/đo thời gian boot vào thân các hàm `EcuM_AL_DriverInitZero()`, `StartupHook()`, `EcuM_AL_DriverInitOne()`. Đây là cách làm chuẩn mực của các hãng Tier-1 vì nó tuân thủ quy tắc **không chạm vào mã nguồn gốc của BSW**.
+
+---
+
 <a id="4"></a>
 ## 4. TẦNG 2: Phần Mềm Cơ Bản (Basic Software - BSW)
 

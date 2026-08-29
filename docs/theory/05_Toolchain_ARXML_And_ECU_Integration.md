@@ -1,8 +1,4 @@
-import os
-
-output_file = r'C:\Users\liem.vu\Liem.vuOD\Study_AUTOSAR-main\docs\05_Toolchain_ARXML_And_ECU_Integration.md'
-
-content = r"""# Chuyên Đề 05: ARXML Meta-Model, Toolchain Engineering, ECU Integration & Mock Interview
+# Chuyên Đề 05: ARXML Meta-Model, Toolchain Engineering, ECU Integration & Mock Interview
 ## Masterclass Phân Tích Cấu Trúc ARXML, Quy Trình Toolchain Vector DaVinci/Tresos, Chu Trình Khởi Động EcuM/BswM và Bộ 60 Câu Hỏi Phỏng Vấn Thực Chiến
 
 > **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
@@ -43,6 +39,13 @@ graph TD
 ✅ **Best Practice**: Luôn validate file ARXML với AUTOSAR Schema (.xsd) tương ứng trước khi import vào project.
 
 ### 🔴 LEVEL 3: EXPERT (Deep Dive)
+
+**Phân Định Khởi Tạo Ngoại Vi: Standalone Mode vs Bootloader Integration**:
+- **Không có BIOS trên MCU:** Tầng MCAL (`Mcu_Init`, `Port_Init`, `Can_Init`) chính là lớp khởi tạo phần cứng từ con số 0 trong Application.
+- **Production Mode (Dual-Binary):** Flash chia 2 vùng: Bootloader tại `0x00000000` (64KB) và App tại `0x00010000`. Khi chuyển giao, Bootloader de-init ngoại vi, nạp `SCB->VTOR = 0x00010000`, nạp `MSP = *(uint32*)0x00010000` và nhảy vào `Reset_Handler` của App.
+- **Standalone Development Mode:** `FLASH.ORIGIN = 0x00000000` trong linker script, cho phép nạp trực tiếp qua J-Link hoặc giả lập QEMU mà không cần tầng Bootloader trung gian.
+
+
 Dưới đây là một ví dụ 💡 **ARXML snippet thực tế** khai báo một **Software Component (SWC)** với một **Sender/Receiver Port (S/R Port)**:
 
 ```xml
@@ -184,6 +187,54 @@ Quá trình map tín hiệu từ System.arxml xuống EcuExtract đòi hỏi s�
 
 ---
 
+
+
+---
+
+### 3.4 🧩 Bản Chất Kỹ Nghệ: File ARXML Sinh Ra Những Gì? (BSW Static Core vs. Generated Code)
+
+> ❓ **Câu hỏi kinh điển:** *File ARXML chỉ sinh ra RTE hay sinh ra cả BSW? BSW có dùng chung cho mọi ECU không?*
+
+#### 1. Công Thức Lắp Ráp Phần Mềm 1 ECU Trong Thực Tế:
+Để tạo ra file nhị phân (`.hex` / `.bin`) nạp vào bất kỳ ECU nào (BMS, VCU, BCM), hệ thống lắp ráp **4 khối mô-đun**:
+
+$$\mathbf{ECU\_Binary} = \underbrace{\mathbf{BSW\_Static\_Core}}_{\text{Mã BSW dùng chung 100\%}} + \underbrace{\mathbf{MCAL\_Drivers}}_{\text{Trình điều khiển theo Chip}} + \underbrace{\mathbf{Generated\_Code}}_{\text{Sinh tự động từ ARXML (RTE + BSW Cfg)}} + \underbrace{\mathbf{SWC\_Runnables}}_{\text{Thuật toán ứng dụng riêng}}$$
+
+```
+                              FILE CẤU HÌNH ECU (autosar.arxml)
+                                              │
+                                              ▼ (Toolchain Generator)
+                      ┌───────────────────────┴───────────────────────┐
+                      │                                               │
+                      ▼                                               ▼
+         1. SINH RA TẦNG RTE                            2. SINH RA CẤU HÌNH BSW
+      (Glue Code giữa SWC & BSW)                       (Mã cấu hình riêng của ECU)
+   ─────────────────────────────────              ───────────────────────────────────
+   • Rte.c, Rte.h, Rte_Type.h                     • Com_PbCfg.c, Com_PbCfg.h (Bảng Signal/PDU)
+   • Rte_Telltale.h, Rte_Bms.h                    • CanIf_Cfg.c, CanIf_Cfg.h (Bảng Filter CAN)
+   • Nối Rte_Write() ──► Com_SendSignal()         • Os_Cfg.c, Os_Cfg.h       (Bảng Task/Alarm)
+                                                  • Dcm_Lcfg.c, Dem_Cfg.c    (Bảng UDS/DTC)
+                                                  • EcuM_PbCfg.c             (Bảng Driver Init)
+```
+
+#### 2. Phân Định Rạch Ròi 2 Nửa Của Module BSW:
+Một module BSW (như COM hay CANIF) luôn bao gồm **2 nửa tách biệt**:
+* **Nửa thứ nhất — Mã Logic Tĩnh (`Com.c`, `CanIf.c`, `PduR.c`, `EcuM.c`):**  
+  Chứa toàn bộ thuật toán máy trạng thái, xử lý bit, bộ định tuyến. **DÙNG CHUNG 100% cho mọi ECU**, do nhà cung cấp BSW (Vector, EB, ArcCore) viết sẵn, không bao giờ sửa tay.
+* **Nửa thứ hai — Bảng Cấu Hình Tham Số (`Com_PbCfg.c`, `CanIf_Cfg.c`, `Os_Cfg.c`):**  
+  Chứa các mảng hằng số cấu hình riêng của ECU đó (danh sách CAN ID, chu kỳ gửi ms, danh sách Task). **Được sinh tự động 100% từ file ARXML của ECU đó**.
+
+#### 3. ⚠️ "Nguyên Tắc Vàng": CẤM SỬA TAY VÀO GENERATED CODE (Do Not Edit Generated Code)
+* Tất cả các file sinh ra (`Rte.c`, `*_Cfg.c`) đều có comment cảnh báo:  
+  `/* WARNING: THIS FILE IS AUTO-GENERATED. DO NOT EDIT MANUALLY! */`
+* **Hậu quả:** Nếu sửa tay vào các file này, mỗi khi chạy lại Tool Generate hoặc chạy CI/CD pipeline, **toàn bộ mã sửa tay sẽ bị xóa sạch và ghi đè 100%!**
+
+#### 4. 🛠️ 3 Vùng Kỹ Sư Được Phép Viết Code Trong Dự Án:
+1. **Sửa cấu hình hệ thống:** Sửa trên file ARXML / Tool GUI (DaVinci/Tresos) $\rightarrow$ Bấm Generate Code.
+2. **Viết thuật toán ứng dụng:** Viết trong thân hàm Runnable của SWC (`Swc_*.c`), đọc ghi qua cổng RTE (`Rte_Read()`, `Rte_Write()`).
+3. **Viết mã điều khiển phần cứng đặc thù:** Viết trong các hàm BSW Callouts (`EcuM_AL_DriverInitOne()`) và OS Hooks (`StartupHook()`, `ErrorHook()`).
+
+---
 ## 4. Chu Trình Khởi Động & Vòng Đời Tích Hợp ECU (ECU Integration & Lifecycle)
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
@@ -535,504 +586,4 @@ Dưới đây là bộ 60 câu hỏi cốt lõi được chọn lọc từ quy t
 Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
 
 Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-### Phụ lục 1: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 1 */
-void Extended_Init_Config_1(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 2: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 2 */
-void Extended_Init_Config_2(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 3: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 3 */
-void Extended_Init_Config_3(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 4: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 4 */
-void Extended_Init_Config_4(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 5: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 5 */
-void Extended_Init_Config_5(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 6: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 6 */
-void Extended_Init_Config_6(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 7: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 7 */
-void Extended_Init_Config_7(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 8: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 8 */
-void Extended_Init_Config_8(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 9: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 9 */
-void Extended_Init_Config_9(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 10: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 10 */
-void Extended_Init_Config_10(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 11: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 11 */
-void Extended_Init_Config_11(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 12: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 12 */
-void Extended_Init_Config_12(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 13: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 13 */
-void Extended_Init_Config_13(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 14: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 14 */
-void Extended_Init_Config_14(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 15: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 15 */
-void Extended_Init_Config_15(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 16: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 16 */
-void Extended_Init_Config_16(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 17: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 17 */
-void Extended_Init_Config_17(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 18: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 18 */
-void Extended_Init_Config_18(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 19: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 19 */
-void Extended_Init_Config_19(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 20: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 20 */
-void Extended_Init_Config_20(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 21: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 21 */
-void Extended_Init_Config_21(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 22: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 22 */
-void Extended_Init_Config_22(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 23: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 23 */
-void Extended_Init_Config_23(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 24: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 24 */
-void Extended_Init_Config_24(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 25: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 25 */
-void Extended_Init_Config_25(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 26: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 26 */
-void Extended_Init_Config_26(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 27: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 27 */
-void Extended_Init_Config_27(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 28: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 28 */
-void Extended_Init_Config_28(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 29: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 29 */
-void Extended_Init_Config_29(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 30: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 30 */
-void Extended_Init_Config_30(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 31: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 31 */
-void Extended_Init_Config_31(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 32: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 32 */
-void Extended_Init_Config_32(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 33: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 33 */
-void Extended_Init_Config_33(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 34: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 34 */
-void Extended_Init_Config_34(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 35: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 35 */
-void Extended_Init_Config_35(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 36: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 36 */
-void Extended_Init_Config_36(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 37: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 37 */
-void Extended_Init_Config_37(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 38: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 38 */
-void Extended_Init_Config_38(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 39: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 39 */
-void Extended_Init_Config_39(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 40: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 40 */
-void Extended_Init_Config_40(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 41: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 41 */
-void Extended_Init_Config_41(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 42: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 42 */
-void Extended_Init_Config_42(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 43: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 43 */
-void Extended_Init_Config_43(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 44: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 44 */
-void Extended_Init_Config_44(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 45: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 45 */
-void Extended_Init_Config_45(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 46: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 46 */
-void Extended_Init_Config_46(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 47: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 47 */
-void Extended_Init_Config_47(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 48: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 48 */
-void Extended_Init_Config_48(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 49: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 49 */
-void Extended_Init_Config_49(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
-
-### Phụ lục 50: Chi tiết cấu hình BSW Module nâng cao
-Trong quá trình cấu hình BSW, các kỹ sư thường phải đối mặt với các tham số phức tạp của module này. Ví dụ, thiết lập Timeout, MainFunction period, Priority và các hàm Callout từ Integration Code.
-`c
-/* Ví dụ mã nguồn mở rộng 50 */
-void Extended_Init_Config_50(void) {
-    /* Cấu hình nâng cao */
-    System_Init_Phase2();
-}
-`
 

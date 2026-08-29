@@ -18,6 +18,8 @@ Trong các dự án phần mềm nhúng thông thường, việc biên dịch (b
 | **GCC ARM Toolchain** | `10.x` hoặc `12.x` | Trình biên dịch C/C++ cho các vi điều khiển họ ARM Cortex (như STM32). |
 | **MinGW / MSYS2** | Bản mới nhất | Cung cấp môi trường POSIX và các build tools cơ bản trên Windows (như `make`, `gcc` cho Windows). |
 | **WSL2 (Ubuntu)** | `22.04 LTS` | Cung cấp môi trường Linux native trên Windows để mô phỏng và chạy các ứng dụng POSIX, hỗ trợ build tốt hơn cho các board POSIX. |
+| **QEMU ARM** | `8.x` hoặc `9.x` (`SoftwareFreedomConservancy.QEMU`) | Trình giả lập phần cứng vi điều khiển ARM Cortex-M trên Windows (chạy trực tiếp file firmware nhị phân `.exe`/`.s19` của chip thật). |
+| **SavvyCAN** | `v220` (64-bit) | Phần mềm phân tích mạng CAN bus, giải mã file DBC và vẽ đồ thị tín hiệu thời gian thực. |
 | **Git** | `2.3x` trở lên | Quản lý phiên bản mã nguồn. |
 
 ---
@@ -110,6 +112,57 @@ Python là xương sống của hệ thống build dựa trên SCons và các sc
   cd /mnt/c/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main
   ```
 - **Tại sao nên dùng WSL2 cho POSIX board?** AUTOSAR OS mô phỏng trên POSIX tận dụng các API hệ thống (signals, pthreads, timers) của Linux. Windows không có các khái niệm này một cách tự nhiên. WSL2 cung cấp một Kernel Linux thực sự, do đó OS chạy ổn định, chính xác về thời gian và dễ debug bằng GDB trên Linux hơn.
+
+---
+
+### 2.6 QEMU ARM Emulator (Giả Lập Vi Điều Khiển ARM Cortex-M Trên Windows)
+
+QEMU (*Quick Emulator*) là phần mềm máy ảo / giả lập phần cứng mã nguồn mở tiêu chuẩn công nghiệp. `qemu-system-arm` cho phép bạn giả lập hoàn chỉnh một con chip vi điều khiển ARM Cortex-M3/M4 (CPU, Flash, RAM, NVIC Interrupts, Timers, UART) ngay trên Windows mà không cần bo mạch vật lý.
+
+- **Tại sao QEMU ARM sát với máy thật nhất?**
+  1. Chạy trực tiếp mã nhị phân máy ARM Thumb-2 do `arm-none-eabi-gcc` biên dịch.
+  2. Mô phỏng đúng cơ chế chuyển ngữ cảnh của AUTOSAR OS (`PendSV`, `SVC`, cất thanh ghi `R0-R15`).
+  3. Bắt đúng lỗi tràn Stack (HardFault) và giới hạn bộ nhớ vật lý của chip.
+- **Cài đặt qua Windows Package Manager (winget):**
+  Mở PowerShell và chạy lệnh:
+  ```powershell
+  winget install SoftwareFreedomConservancy.QEMU --accept-source-agreements --accept-package-agreements
+  ```
+- **Kiểm tra cài đặt (Verify):**
+  ```powershell
+  qemu-system-arm --version
+  # Output mong đợi: QEMU emulator version 8.x / 9.x
+  ```
+- **Lệnh chạy Firmware ECU AUTOSAR trong QEMU:**
+  ```powershell
+  # Chạy firmware STM32/Cortex-M và chuyển hướng UART log ra màn hình console:
+  qemu-system-arm -M lm3s6965evb -kernel as/build/nt/stm32f107vc/ascore/stm32f107vc.exe -serial stdio
+  ```
+- **Gỡ lỗi từng bước với GDB (Step-by-Step Hardware Debugging):**
+  ```powershell
+  # Terminal 1: Khởi động QEMU ở chế độ debug chờ GDB (cổng 1234):
+  qemu-system-arm -M lm3s6965evb -kernel as/build/nt/stm32f107vc/ascore/stm32f107vc.exe -s -S -serial stdio
+
+  # Terminal 2: Kết nối GDB để đặt breakpoint tại EcuM_Init() hoặc Com_SendSignal():
+  arm-none-eabi-gdb as/build/nt/stm32f107vc/ascore/stm32f107vc.exe -ex "target remote localhost:1234"
+  ```
+
+### 2.7 SavvyCAN & Virtual Serial Ports (Cổng CAN Ảo Phục Vụ Kiểm Thử SIL)
+
+Để kiểm thử truyền nhận mạng CAN, chẩn đoán UDS và nạp file DBC mà không cần phần cứng CAN Analyzer đắt tiền (như Vector VN1630 / PCAN):
+
+- **Tải và Cài đặt SavvyCAN:**
+  1. Tải bản Portable cho Windows từ GitHub: [SavvyCAN Releases](https://github.com/collin80/SavvyCAN/releases).
+  2. Giải nén vào thư mục `C:\Users\liem.vu\tools\SavvyCAN\` và chạy `SavvyCAN.exe`.
+- **Tạo Cặp Cổng Nối Tiếp Ảo (Virtual Serial Pair):**
+  Sử dụng công cụ **com0com** hoặc **VSPE** để tạo 1 cặp cổng:
+  * `COM1`: Dành cho ECU Simulator / Python test script bắn frame qua giao thức SLCAN.
+  * `COM2`: Dành cho SavvyCAN kết nối đón bắt frame.
+- **Cấu hình SavvyCAN:**
+  * Menu `Connection` $\rightarrow$ `Open Connection Window` $\rightarrow$ `Add New Device Connection`.
+  * Chọn kiểu: `SLCAN (Serial CAN)` | Cổng: `COM2` | Baudrate: `115200` | CAN Speed: `500000 bps`.
+  * Gán file DBC: Vào `DBC File` $\rightarrow$ `DBC Manager` $\rightarrow$ Nạp file `Vehicle_Network.dbc` $\rightarrow$ Gán vào `Bus 0`.
+  * Tích chọn `[x] Interpret Frames` để tự động giải mã các tín hiệu (*SoC, Điện áp, Tốc độ*).
 
 ---
 
@@ -231,6 +284,21 @@ scons --board=posix
   pip install scons
   scons
   ```
+
+### Lỗi 7: "This app can't run on your PC" khi chạy file `.exe` trong thư mục `build/`
+- **Triệu chứng:** Khi nhấp đúp hoặc chạy `as/build/nt/stm32f107vc/ascore/stm32f107vc.exe`, Windows hiện hộp thoại: *"This app can't run on your PC"*.
+- **Nguyên nhân:** File `stm32f107vc.exe` là **Mã nhị phân máy ARM Cortex-M3 (ELF Firmware)** do `arm-none-eabi-gcc` biên dịch cho vi điều khiển nhúng, KHÔNG PHẢI là file thực thi Windows x86/x64. CPU máy tính (Intel/AMD) không thể chạy trực tiếp tập lệnh này mà không có trình giả lập.
+- **Fix (Cách khắc phục):**
+  1. Dùng trình giả lập **QEMU ARM** để chạy: `qemu-system-arm -M lm3s6965evb -kernel as/build/nt/stm32f107vc/ascore/stm32f107vc.exe -serial stdio`.
+  2. Hoặc nạp file `stm32f107vc.exe.s19` vào bo mạch thật qua ST-Link / J-Link.
+  3. Hoặc kiểm thử mạng qua kịch bản Software-in-the-Loop (`send_virtual_can.py`) kết nối với SavvyCAN.
+
+### Lỗi 8: `OSError: 'pkg-config --cflags gtk+-3.0' exited 1` khi build target `posix` trên Windows
+- **Triệu chứng:** Chạy `$env:BOARD="posix"; scons` trên Windows PowerShell bị văng lỗi thiếu `which`, `uname` và `pkg-config gtk+-3.0`.
+- **Nguyên nhân:** Target `BOARD="posix"` được thiết kế riêng cho môi trường Linux/POSIX (yêu cầu thư viện đồ họa GTK3 và SocketCAN).
+- **Fix:**
+  - Trên Windows native: Dùng target vi điều khiển thực tế **`$env:BOARD="stm32f107vc"`** (sử dụng GCC ARM đã cài sẵn, build sạch 100%).
+  - Nếu muốn chạy POSIX simulator: Mở **WSL2 (Ubuntu 22.04)** và chạy `export BOARD=posix && scons`.
 
 ### Lỗi 6: Long path issue trên Windows
 - **Vấn đề:** Quá trình giải nén hoặc build báo lỗi không tìm thấy đường dẫn (Path too long).

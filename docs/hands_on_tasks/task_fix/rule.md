@@ -78,28 +78,180 @@
 
 ---
 
-## 3. 🧩 CƠ CHẾ TÙY BIẾN HỢP LỆ: CALLOUTS & HOOKS
+## 3. 🧩 CƠ CHẾ LOG & TÙY BIẾN HỢP LỆ: MACRO TRACING (CƠ CHẾ 1) & CALLOUTS/HOOKS (CƠ CHẾ 2)
 
-Khi một module BSW cần sự can thiệp từ người phát triển (ví dụ: khởi tạo ngoại vi trước khi OS chạy, hoặc xử lý khi hệ thống crash), AUTOSAR không yêu cầu bạn sửa mã lõi BSW mà cung cấp sẵn các **Callout Stubs**:
-
-### Ví dụ 1: EcuM Callout Hooks (`EcuM_Callout_Stubs.c`)
-* BSW sinh ra lời gọi hàm: `EcuM_AL_DriverInitZero()` và `EcuM_AL_DriverInitOne()`.
-* Kỹ sư cài đặt phần cứng cụ thể trong file ngoài:
-  ```c
-  /* File: EcuM_Callout_Stubs.c (Do kỹ sư viết - KHÔNG BỊ GHI ĐÈ) */
-  void EcuM_AL_DriverInitZero(void) {
-      Mcu_Init(&Mcu_Config);
-      Port_Init(&Port_Config);
-  }
-  ```
-
-### Ví dụ 2: OS Error Hooks (`Os_Hooks.c`)
-* Khi OS gặp lỗi (Task quá tải, Stack Overflow), nhân OS gọi hàm `ErrorHook(StatusType Error)`.
-* Kỹ sư implement việc log lỗi hoặc reset ECU an toàn trong file này.
+Trong kỹ nghệ phần mềm ô tô tiêu chuẩn (Tier-1 / OEM), việc theo dõi chu trình boot, debug lỗi và tích hợp phần cứng **tuyệt đối không được can thiệp vào mã nguồn lõi BSW**. Thay vào đó, hai cơ chế chuẩn mực sau đây được áp dụng:
 
 ---
 
-## 4. 📁 HƯỚNG DẪN QUẢN LÝ FILE DIFF TẠI `task_fix/`
+### ⚙️ CƠ CHẾ 1: HỆ THỐNG MACRO TRACING NỘI BỘ BSW (`asdebug.h`)
+
+Trong các dự án BSW mã nguồn mở hoặc thương mại (Vector MICROSAR, Elektrobit Tresos), tác giả tích hợp sẵn các macro log đặt tại các điểm rẽ nhánh quan trọng của BSW. Trong dự án `as`, cơ chế này được định nghĩa tại [`as/com/as.infrastructure/include/asdebug.h`](../../as/com/as.infrastructure/include/asdebug.h):
+
+#### 1.1 Cấu Trúc Macro `ASLOG`:
+```c
+#if defined(USE_DET) || defined(USE_ASLOG)
+#define ASLOG(level, msg)                                   \
+    do {                                                    \
+        if((AS_LOG_##level) >= AS_LOG_DEFAULT) {            \
+            printf("%-8s:", #level);                        \
+            printf msg ;                                    \
+        }                                                   \
+    } while(0)
+#else
+#define ASLOG(level, msg) ((void)0)
+#endif
+```
+
+#### 1.2 Các Cấp Độ Log & Tối Ưu Hóa Chi Phí Thực Thi (Zero-Cost Optimization):
+* **`AS_LOG_OFF` (Mức 0):** Macro biến thành `((void)0)`. Trình biên dịch GCC tự động loại bỏ hoàn toàn chuỗi ký tự và lệnh gọi hàm khỏi file nhị phân Flash $\rightarrow$ **Chi phí CPU = 0 chu kỳ lệnh**.
+* **`AS_LOG_INFO`, `AS_LOG_DEBUG`, `AS_LOG_ERROR`:** Xuất thông tin định danh module và nội dung log khi bật cờ `USE_ASLOG`.
+
+---
+
+### 🏛️ CƠ CHẾ 2: KIẾN TRÚC CALLOUTS & HOOKS CHUẨN TIÊU CHUẨN AUTOSAR
+
+**Bản chất kiến trúc:** Để module BSW hoàn toàn độc lập với phần cứng vi điều khiển (đảm bảo tính di động - Portability trên chip NXP, Infineon Aurix, ST, TI), AUTOSAR thiết kế sẵn các **"Điểm Neo" (Hook / Callout)** để kỹ sư điền mã nguồn tùy biến tại tầng ứng dụng mà không làm hỏng cấu trúc BSW:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                          KIẾN TRÚC CALLOUTS & HOOKS TRONG AUTOSAR                           │
+│                                                                                             │
+│  ┌────────────────────── TẦNG BSW LÕI CHUẨN (STATIC BSW - KHÔNG SỬA) ────────────────────┐  │
+│  │                                                                                        │  │
+│  │  1. EcuM_Init() ──────► Gọi hàm Hook: EcuM_AL_DriverInitZero()                         │  │
+│  │  2. StartOS() ────────► Gọi hàm Hook: StartupHook()                                    │  │
+│  │  3. EcuM_StartupTwo() ► Gọi hàm Hook: EcuM_AL_DriverInitOne()                          │  │
+│  │  4. OS Crash/Fault ───► Gọi hàm Hook: ErrorHook(StatusType Error)                      │  │
+│  │  5. ShutdownOS() ─────► Gọi hàm Hook: ShutdownHook(StatusType Error)                   │  │
+│  └───────────────────────────────────┬────────────────────────────────────────────────────┘  │
+│                                      │ Điểm cắm (Hook / Callout Interface)                   │
+│                                      ▼                                                       │
+│  ┌────────────────────── FILE STUBS DO KỸ SƯ VIẾT (TÙY BIẾN HỢP LỆ) ──────────────────────┐  │
+│  │                                                                                        │  │
+│  │  📄 File: EcuM_Callout_Stubs.c                                                         │  │
+│  │     void EcuM_AL_DriverInitZero(void) {                                                │  │
+│  │         printf("[Boot Step 1] Initializing MCU PLL & Clock...\n");                     │  │
+│  │         Mcu_Init(&Mcu_Config);                                                         │  │
+│  │         Port_Init(&Port_Config);                                                       │  │
+│  │     }                                                                                  │  │
+│  │                                                                                        │  │
+│  │  📄 File: app.c / Os_Hooks.c                                                           │  │
+│  │     void StartupHook(void) {                                                           │  │
+│  │         printf("[Boot Step 2] OS Scheduler is active! Launching Tasks...\n");          │  │
+│  │     }                                                                                  │  │
+│  │     void ErrorHook(StatusType Error) {                                                 │  │
+│  │         printf("[OS Panic] Error Code = %d! Entering Safe State...\n", Error);         │  │
+│  │     }                                                                                  │  │
+│  └────────────────────────────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 2.1 Bảng Ma Trận Phân Biệt: Callout vs Callback vs Hook
+
+| Khái Niệm | Nơi Gọi (Caller) | Nơi Định Nghĩa (Implement) | Mục Đích Chính Trong AUTOSAR |
+| :--- | :--- | :--- | :--- |
+| **Callout** | Tầng BSW (EcuM, Com, Dcm) | Kỹ sư tích hợp hệ thống (`EcuM_Callout_Stubs.c`) | Cho phép can thiệp vào thuật toán hoặc khởi tạo phần cứng đặc thù mà chuẩn không bao quát hết. |
+| **Hook** | Nhân Hệ Điều Hành (OS Kernel) | Kỹ sư ứng dụng / An toàn (`app.c`, `Os_Hooks.c`) | **Hàm Xử Lý Sự Kiện Vòng Đời OS (OS Lifecycle Event Handler)**: Xử lý khi có sự kiện hệ thống (Khởi động `StartupHook`, Tắt nguồn `ShutdownHook`, Bắt lỗi Runtime `ErrorHook`, Đổi ngữ cảnh Task `PreTaskHook`/`PostTaskHook`). |
+| **Callback** | Driver cấp thấp (MCAL / CanIf) | Module tầng trên (PduR, CanTp, Dem) | Báo hiệu bất đồng bộ khi hoàn thành truyền/nhận (RxIndication, TxConfirmation). |
+
+#### 2.2 Danh Mục 4 Nhóm Callout & Hook Quan Trọng Nhất:
+
+1. **Nhóm EcuM Callouts (Khởi động & Quản lý Nguồn):**
+   * `EcuM_AL_DriverInitZero()`: Khởi tạo phần cứng Pre-OS (Mcu, Port, Watchdog).
+   * `EcuM_AL_DriverInitOne()`: Khởi tạo ngoại vi Post-OS (Can, Lin, Flash).
+   * `EcuM_CheckWakeup()`: Kiểm tra nguồn đánh thức khi vi điều khiển thoát khỏi Low-Power Sleep.
+2. **Nhóm OS Standard Hooks (OSEK/VDX & AUTOSAR OS Specification):**
+   * `StartupHook()`: Được kích hoạt ngay sau khi OS Scheduler sẵn sàng, trước khi Task đầu tiên chạy.
+   * `ShutdownHook()`: Được kích hoạt khi gọi `ShutdownOS()`, chuẩn bị tắt nguồn an toàn.
+   * `ErrorHook(StatusType Error)`: Được kích hoạt khi xảy ra lỗi nghiêm trọng (Stack Overflow, Quá hạn Task Deadline).
+   * `PreTaskHook()` / `PostTaskHook()`: Dùng cho các công cụ đo kiểm hiệu năng CPU Load (Vector MICROSAR Profiler, Lauterbach).
+3. **Nhóm Com / CanIf Callouts:**
+   * `Com_RxIndicationCallout()`: Kiểm tra tính toàn vẹn (E2E / Plausibility) của gói tin CAN trước khi cho phép vào bộ đệm Com.
+4. **Nhóm Diagnostic Callouts (Dcm / Dem):**
+   * `Dcm_ReadDataByIdentifier()`: Hàm do kỹ sư viết để đọc giá trị cảm biến thực tế trả về cho lệnh UDS `0x22 ReadDataByIdentifier`.
+
+---
+
+## 4. 📂 PHÂN ĐỊNH VAI TRÒ CÁC THƯ MỤC TRONG DỰ ÁN AUTOSAR
+
+Để không bao giờ bị nhầm lẫn giữa **Mã nguồn do Tool sinh ra** và **Mã nguồn do Kỹ sư tự viết tay**, toàn bộ cấu trúc dự án tuân thủ nghiêm ngặt 3 phân vùng sau:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                        CẤU TRÚC PHÂN VÙNG DỰ ÁN AUTOSAR TRONG REPO                     │
+│                                                                                        │
+│  1. VÙNG MÃ LÕI BSW TIÊU CHUẨN (Generic BSW Stack - CẤM SỬA TRỰC TIẾP):                │
+│     📁 as/com/as.infrastructure/                                                       │
+│        ├── system/ (kernel/askar, EcuM, BswM, SchM)                                    │
+│        ├── communication/ (CanIf, CanTp, PduR, Com, Nm)                                │
+│        ├── diagnostic/ (Dcm, Dem, Det)                                                 │
+│        ├── memory/ (NvM, Fee, Ea, MemIf)                                               │
+│        └── arch/ (MCAL drivers cho lm3s, stm32f1, posix)                               │
+│                                                                                        │
+│  2. VÙNG MÃ SINH TỰ ĐỘNG TỪ ARXML (Auto-Generated Code - CẤM SỬA TAY):                 │
+│     📁 as/build/nt/<board>/<release>/config/  (Ví dụ: build/.../ascore/config/)        │
+│        ├── 📄 Os_Cfg.h, Os_Cfg.c       (Sinh từ cấu hình Task/Alarm/Hook trong ARXML)  │
+│        ├── 📄 Com_Cfg.h, Com_PbCfg.c   (Sinh từ cấu hình I-PDU/Signal trong ARXML)     │
+│        ├── 📄 CanIf_Cfg.h, CanIf_Cfg.c (Sinh từ cấu hình HTH/HRH/Mailbox trong ARXML) │
+│        └── 📄 Rte.c, Rte_Type.h        (Sinh từ cấu hình Ports/Runnables trong ARXML)  │
+│                                                                                        │
+│  3. VÙNG MÃ ỨNG DỤNG DO KỸ SƯ TỰ VIẾT TAY (User Hand-Written Code - TỰ DO LẬP TRÌNH):   │
+│     📁 as/release/<profile>/app/  (Ví dụ: as/release/ascore/app/)                      │
+│        ├── 📄 main.c     (Điểm vào C: chứa hàm main() gọi EcuM_Init())                 │
+│        ├── 📄 app.c      (Chứa code ứng dụng: StartupHook, ShutdownHook, TaskApp)      │
+│        └── 📄 diag_app.c (Chứa logic xử lý dịch vụ chẩn đoán UDS của ứng dụng)         │
+│     📁 as/com/as.application/swc/                                                      │
+│        └── 📄 Swc_Telltale.c, Swc_Gauge.c (Chứa thuật toán của các Runnable entities)  │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 5. 🔁 QUY TRÌNH 3 BƯỚC: TỪ KHAI BÁO ARXML ĐẾN THỰC THI CODE C (VÍ DỤ `StartupHook`)
+
+Kỹ sư phát triển AUTOSAR cần nắm rõ mối quan hệ cộng tác giữa **ARXML $\rightarrow$ Toolchain sinh mã $\rightarrow$ Cài đặt thân hàm C**:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│             CHU TRÌNH 3 BƯỚC TỪ KHAI BÁO THIẾT KẾ ĐẾN THỰC THI THÂN HÀM                 │
+│                                                                                        │
+│  [BƯỚC 1: KHAI BÁO KIẾN TRÚC TRONG ARXML]                                              │
+│  Kỹ sư kiến trúc mở file autosar.arxml và khai báo:                                    │
+│  <General StartupHook="StartupHook" ShutdownHook="ShutdownHook" ... />                 │
+│                                │                                                       │
+│                                ▼ (Toolchain ArGen / DaVinci sinh mã tự động)           │
+│  [BƯỚC 2: SINH MÃ MACRO & NGUYÊN MẪU TRONG *_Cfg.h]                                    │
+│  Tool đọc ARXML và sinh ra file build/.../config/Os_Cfg.h:                             │
+│  #define OS_USE_STARTUP_HOOK                                                           │
+│  extern void StartupHook(void);                                                        │
+│                                │                                                       │
+│                                ▼ (Kỹ sư ứng dụng lập trình logic)                      │
+│  [BƯỚC 3: CÀI ĐẶT THÂN HÀM TRONG TẦNG ỨNG DỤNG]                                       │
+│  Kỹ sư mở file as/release/ascore/app/app.c và tự tay viết code:                        │
+│  void StartupHook(void) {                                                              │
+│      printf(" start application BUILD @ %s %s\n", __DATE__, __TIME__);                 │
+│      /* Khởi tạo các biến toàn cục của ứng dụng */                                     │
+│  }                                                                                     │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 6. 📋 BẢNG TRA CỨU NHANH NƠI ĐẶT MÃ NGUỒN THEO TỪNG TÌNH HUỐNG
+
+| Bạn Muốn Làm Gì? | Nơi Bạn Phải Chỉnh Sửa | Quy Trình Chuẩn Cần Thực Hiện |
+| :--- | :--- | :--- |
+| **Thêm 1 Task OS mới (ví dụ Task 50ms)** | `autosar.arxml` (hoặc `os.xml`) | Thêm thẻ `<TASK>` trong ARXML $\rightarrow$ Chạy `scons` để sinh ra `Os_Cfg.c` $\rightarrow$ Viết thân hàm `TASK(Task_50ms)` trong `app.c`. |
+| **Bật 1 Hook OS (StartupHook / ErrorHook)** | `autosar.arxml` | Bật cờ `StartupHook="StartupHook"` trong ARXML $\rightarrow$ Viết thân hàm `void StartupHook(void)` trong `app.c`. |
+| **Thêm 1 Signal CAN mới (ví dụ BatteryVoltage)** | `autosar.arxml` (hoặc `com.xml`) | Khai báo Signal trong ARXML $\rightarrow$ Chạy `scons` để sinh `Com_PbCfg.c` $\rightarrow$ Gọi `Rte_Write` hoặc `Com_SendSignal` trong SWC. |
+| **Viết thuật toán xử lý logic xe (BMS SoC, VCU Torque)** | `as/com/as.application/swc/` hoặc `app.c` | Viết trực tiếp code C thuật toán trong thân hàm Runnable của SWC. |
+| **Khởi tạo phần cứng đặc thù khi bật nguồn** | `as/com/as.infrastructure/system/EcuM/EcuM_Callout_Stubs.c` | Viết code khởi tạo ngoại vi vào thân các hàm Callout `EcuM_AL_DriverInitZero()` hoặc `EcuM_AL_DriverInitOne()`. |
+| **Bật/Tắt log debug nội bộ của BSW** | `as/com/as.infrastructure/include/asdebug.h` | Bật cờ `#define USE_ASLOG` và đặt các mức `AS_LOG_*` lên `1`. |
+
+---
+
+## 7. 📁 HƯỚNG DẪN QUẢN LÝ FILE DIFF TẠI `task_fix/`
 
 Thư mục `docs/hands_on_tasks/task_fix/` được dùng làm nơi lưu trữ các bản vá (patch/diff), ghi chú sửa đổi và bằng chứng hoàn thành cho từng task trong lộ trình 27 tasks:
 
@@ -123,11 +275,12 @@ git diff as/ > docs/hands_on_tasks/task_fix/task_02_os_mcal.diff
 
 ---
 
-## 5. 🎯 CHECKLIST KIỂM TRA TRƯỚC KHI COMMIT CODE
+## 8. 🎯 CHECKLIST KIỂM TRA TRƯỚC KHI COMMIT CODE
 
 Mỗi khi hoàn thành một task, hãy tự kiểm tra 4 câu hỏi sau:
 
-- [ ] 1. Tôi có vô tình chỉnh sửa trực tiếp vào file nào trong thư mục `build/.../config/` không? (Nếu có $\rightarrow$ Phải revert và sửa lại qua file XML/ARXML).
+- [ ] 1. Tôi có vô tình chỉnh sửa trực tiếp vào file nào trong thư mục `build/.../config/` không? (Nếu có $
+ightarrow$ Phải revert và sửa lại qua file XML/ARXML).
 - [ ] 2. Thuật toán mới của tôi đã nằm đúng trong file ứng dụng SWC (`.c`) hoặc Callout stub chưa?
 - [ ] 3. Nếu chạy lệnh clean build (`scons -c && scons`), dự án có tự động sinh mã và biên dịch thành công mà không cần sửa tay bất kỳ dòng nào không?
 - [ ] 4. Tôi đã trích xuất `git diff` lưu vào `docs/hands_on_tasks/task_fix/` để theo dõi tiến độ chưa?

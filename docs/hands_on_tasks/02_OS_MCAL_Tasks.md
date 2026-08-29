@@ -1,12 +1,15 @@
 # TASK PLAN Chuyên Đề 02: AUTOSAR OS & MCAL
 
 ## Cấu trúc Repository Thực Tế
-- **OS (Trampoline):** `as/com/as.infrastructure/system/kernel/trampoline/`
-- **OS alternatives:** `as/com/as.infrastructure/system/kernel/` (askar, freertos, toppers_osek...)
-- **POSIX board simulator:** `as/com/as.application/board.posix/simulator/simulator.c`
-- **STM32F1 MCAL:** `as/com/as.infrastructure/arch/stm32f1/mcal/` (Can.c, Dio.c, Port.c, Mcu.c, Flash.c)
-- **Board STM32F1 app:** `as/com/as.application/board.stm32f107vc/`
-- **Lệnh Build:** `scons --board=posix` hoặc `scons --board=stm32f107vc`
+- **Hệ điều hành AUTOSAR OS chính:** `as/com/as.infrastructure/system/kernel/askar/` (Chuẩn OSEK/AUTOSAR OS)
+- **Các OS thay thế (Alternatives):** `as/com/as.infrastructure/system/kernel/` (trampoline, freertos, toppers_osek...)
+- **Mục tiêu mô phỏng chính 1 (QEMU ARM Cortex-M3):** `as/com/as.application/board.lm3s6965evb/` (Target `lm3s6965evb`)
+  - **MCAL Driver:** `as/com/as.infrastructure/arch/lm3s/mcal/` (`Mcu.c`, `Can.c`) & `as/com/as.infrastructure/arch/common/mcal/SCan.c`
+  - **Lệnh Build:** `$env:BOARD="lm3s6965evb"; $env:RELEASE="ascore"; scons`
+- **Mục tiêu mô phỏng chính 2 (PC POSIX Simulator):** `as/com/as.application/board.posix/simulator/simulator.c`
+  - **MCAL Driver:** `as/com/as.infrastructure/arch/posix/mcal/` (`Dio.c`, `Port.c`, `Can.c`, `Mcu.c`, `Flash.c`)
+  - **Lệnh Build:** `scons --board=posix`
+- **Mục tiêu phần cứng mở rộng (Physical STM32 Board):** `as/com/as.application/board.stm32f107vc/` (`arch/stm32f1/mcal/`)
 
 ---
 
@@ -195,7 +198,7 @@ TASK(Task_High)
 ---
 
 ## TASK 2.5: MCAL Port/Dio — Read GPIO Input (~2h, Intermediate)
-**Mục tiêu (Objective):** Phân tích mã nguồn lớp MCAL bằng cách đọc hiểu file `as/com/as.infrastructure/arch/stm32f1/mcal/Dio.c` và `Port.c`.
+**Mục tiêu (Objective):** Phân tích mã nguồn lớp MCAL bằng cách đọc hiểu file `as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c` (hoặc `arch/posix/mcal/Dio.c`, `arch/stm32f1/mcal/Dio.c`).
 **Nhiệm vụ:**
 - Tìm hiểu đặc tả các API tiêu chuẩn của AUTOSAR MCAL: `Port_Init()`, `Dio_ReadChannel()`, `Dio_WriteChannel()`.
 - Phân tích sự phân tách trách nhiệm (separation of concerns): `Port` đảm nhận khởi tạo chức năng của chân (I/O, alternate function, pull-up/down, tốc độ), trong khi `Dio` chịu trách nhiệm đọc/ghi mức logic (High/Low) tại thời gian chạy (runtime). Do đó hàm `Port_Init()` buộc phải chạy trước hàm của module `Dio`.

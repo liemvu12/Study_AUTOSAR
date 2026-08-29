@@ -310,3 +310,123 @@ VAL_ 513 Contactor_State 0 "Open" 1 "Precharge" 2 "Closed" 3 "Error";
     *Đáp:* Cả hai đều là plain text, không có mã hóa bản thân định dạng. Bảo mật (SecOC, mã hóa payload) nằm ở tầng phần mềm thực thi, không nằm ở bản thân file DBC/ARXML. Tuy nhiên ARXML chứa full architecture nên nếu lộ sẽ rủi ro lộ IP cao hơn.
 15. **Câu 15: Bạn có gặp lỗi khi Decode file DBC bằng Python không và nguyên nhân thường là gì?**
     *Đáp:* Có. Thường là do Key Error (Msg ID nhận được không có trong database), hoặc lỗi do tín hiệu Multiplexing (tín hiệu lồng nhau - MUX), hoặc do file DBC chưa cập nhật đúng phiên bản với firmware đang chạy trên ECU.
+
+
+---
+
+## 10. Phân Tích Ma Trận Gói Tin CAN Trong Dự Án Mã Nguồn Gốc `as` (Case Study Thực Tế)
+
+Trong dự án mã nguồn AUTOSAR mở `as` (target `ascore` chạy trên vi điều khiển `lm3s6965evb`), toàn bộ mạng truyền thông CAN được định nghĩa trong file cấu hình [`as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c#L125-L310), [`Com_PbCfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/Com_PbCfg.c#L335-L395) và [`autosar.arxml`](../../as/build/nt/lm3s6965evb/ascore/config/autosar.arxml).
+
+Dưới đây là ma trận phân tích các gói tin CAN gốc có mặt trong hệ thống và lý do kỹ thuật vì sao có gói tự động phát ra bus, có gói lại ở trạng thái chờ kích hoạt:
+
+---
+
+### 10.1 Bảng Ma Trận Tổng Hợp Toàn Bộ Gói Tin CAN Trong Mã Nguồn Gốc
+
+| Tên Gói Tin (PDU Name) | CAN ID (Hex) | CAN ID (Dec) | DLC | Chiều | Module Sở Hữu | Trạng Thái Trên Bus | Cơ Chế Kích Hoạt (Trigger Condition) |
+| :--- | :--- | :--- | :---: | :---: | :--- | :--- | :--- |
+| **`TxMsgTime`** | `0x101` | `257` | 8 | **TX** | COM / PduR | 🟢 **Tự động phát gốc** | Chu kỳ định thời `COM_PERIODIC` (100ms) của BSW COM |
+| **`OSEK_NM_TX`** | `0x401` | `1025` | 8 | **TX** | OSEK NM | 🟢 **Tự động phát gốc** | Chu kỳ duy trì vòng logic OSEK Ring (Node ID 1) |
+| **`LS_NM_TX`** | `0x502` | `1282` | 8 | **TX** | AUTOSAR CanNm | 🟢 **Tự động phát gốc** | Chu kỳ quản trị mạng AUTOSAR Network Management |
+| **`RxMsgAbsInfo`** | `0x102` | `258` | 8 | **RX** | COM / PduR | 🟡 **Chờ nhận từ bus** | Chiều nhận: Táp-lô lắng nghe tốc độ xe từ ECU Động cơ |
+| **`XCP_RX`** | `0x554` | `1364` | 1-8 | **RX** | XCP on CAN | 🟡 **Chờ nhận từ bus** | Chờ lệnh hiệu chỉnh CTO từ Master (CANape/INCA) |
+| **`XCP_TX`** | `0x555` | `1365` | 8 | **TX** | XCP on CAN | 🔴 **Chưa phát** | Master-Slave: Chỉ phát khi nhận lệnh `CONNECT` (0x554) |
+| **`RxDiagP2P`** | `0x731` | `1841` | 8 | **RX** | CanTp / DCM | 🟡 **Chờ nhận từ bus** | Nhận yêu cầu chẩn đoán Physical 1:1 từ Tester |
+| **`TxDiagP2P`** | `0x732` | `1842` | 8 | **TX** | CanTp / DCM | 🔴 **Chưa phát** | Request-Response: Chỉ phát khi có UDS Request (0x731) |
+| **`RxDiagP2A`** | `0x743` | `1859` | 8 | **RX** | CanTp / DCM | 🟡 **Chờ nhận từ bus** | Nhận yêu cầu chẩn đoán Functional Broadcast |
+| **`TxDiagP2A`** | `0x744` | `1860` | 8 | **TX** | CanTp / DCM | 🔴 **Chưa phát** | Request-Response: Chỉ phát khi có Functional Request (0x743) |
+
+---
+
+### 10.2 Phân Tích Chuyên Sâu Từng Nhóm Gói Tin Trong Mã Nguồn Gốc
+
+#### 🅰️ Nhóm 1: Gói Tin Ứng Dụng Tầng COM Gốc (`TxMsgTime` & `RxMsgAbsInfo`)
+1. **`TxMsgTime` (CAN ID `0x101` — TX):**
+   * **Nội dung:** Group Signal `SystemTime` gồm 6 tín hiệu con: `year` (16-bit), `month` (8-bit), `day` (8-bit), `hour` (8-bit), `minute` (8-bit), `second` (8-bit).
+   * **Lý do tự động phát trong mã nguồn gốc:** Được tác giả định nghĩa trong `autosar.arxml` (Dòng 352) với chế độ `COM_PERIODIC` chu kỳ 100ms. Khi hệ thống boot, `SchM.c: L441` gọi `Com_IpduGroupStart(COM_DEFAULT_IPDU_GROUP, True)` kích hoạt `PduGroup1`. Định kỳ mỗi 100ms, Alarm kích hoạt `TASK(SchM_BswService)` gọi `Com_MainFunctionTx()` tự động đóng gói buffer `TxMsgTime_IPduBuffer` phát ra CAN ID `0x101`.
+2. **`RxMsgAbsInfo` (CAN ID `0x102` — RX):**
+   * **Nội dung:** `VehicleSpeed` (16-bit), `TachoSpeed` (16-bit), `Led1Sts` (2-bit), `Led2Sts` (2-bit), `Led3Sts` (2-bit).
+   * **Lý do không tự phát:** Đây là **PDU Chiều Nhận (Rx PDU)**. Bản demo `ascore` đóng vai trò là **ECU Đồng Hồ Táp-Lô (Cluster ECU)**. Táp-lô không sinh ra tốc độ xe mà nó chỉ chờ ECU Động Cơ / ABS bên ngoài bắn vào qua CAN ID `0x102` để giải mã và quay kim đồng hồ hiển thị.
+
+---
+
+#### 🅱️ Nhóm 2: Quản Trị Mạng Xe Tự Động (`0x401` & `0x502` — TX NATIVE)
+1. **`OSEK_NM_TX` (CAN ID `0x401` — TX):**
+   * **Nội dung:** Token quản trị mạng dạng vòng Ring của tiêu chuẩn OSEK NM (Node ID = 1).
+   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L455` gọi `StartNM(0)`, nhân OSEK NM trong [`OsekNm_Cfg.c: L71`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L71) tự động khởi động máy trạng thái và định kỳ phát chu kỳ `0x401` (`t40180101...`) qua `CanIf_Transmit()` $
+ightarrow$ `Can_Write()` để duy trì mạng thức.
+2. **`LS_NM_TX` (CAN ID `0x502` — TX):**
+   * **Nội dung:** Gói tin quản trị mạng theo tiêu chuẩn AUTOSAR CAN NM.
+   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L448` gọi `Nm_NetworkRequest(i)`, module `CanNm` trong [`CanNm.c: L524`](../../as/com/as.infrastructure/communication/CanNm/CanNm.c#L524) tự động phát chu kỳ `0x502` (`t50280050...`).
+
+---
+
+#### 🅲 Nhóm 3: Gói Tin Chẩn Đoán UDS / Diagnostic Stack (`0x731 / 0x732` & `0x743 / 0x744`)
+1. **`TxDiagP2P` (CAN ID `0x732` — TX):**
+   * **Nội dung:** Khung phản hồi chẩn đoán UDS Response (Physical 1:1) từ module DCM (như trả lời mã lỗi DTC, đọc số VIN 0x22 F190).
+   * **Lý do chưa phát:** Giao thức UDS hoạt động theo mô hình **Hỏi - Đáp (Request - Response)**. ECU đóng vai trò là Diagnostic Server, nó sẽ giữ im lặng tuyệt đối cho đến khi Thiết bị chẩn đoán (Diagnostic Tester / CANoe) gửi gói tin Request `0x731` vào thì nó mới gửi phản hồi `0x732`.
+2. **`TxDiagP2A` (CAN ID `0x744` — TX):**
+   * **Nội dung:** Khung phản hồi chẩn đoán UDS Functional (Broadcast).
+   * **Lý do chưa phát:** Tương tự như trên, chỉ gửi khi có Functional Request từ CAN ID `0x743`.
+
+---
+
+#### 🅳 Nhóm 4: Gói Tin Hiệu Chỉnh Thông Số XCP on CAN (`0x554 / 0x555`)
+1. **`XCP_TX` (CAN ID `0x555` — TX):**
+   * **Nội dung:** Khung dữ liệu phản hồi XCP Response (CTO) và luồng đo trực tiếp biến nhớ RAM theo thời gian thực (DAQ DTO) gửi lên phần mềm hiệu chỉnh (Vector CANape / ETAS INCA).
+   * **Lý do chưa phát:** XCP là giao thức **Chủ - Tớ (Master - Slave)**. Vi điều khiển đóng vai trò là Slave. Nó không tự ý truyền dữ liệu cho đến khi Tool trên PC (Master) gửi lệnh `CONNECT` qua CAN ID `0x554` và bắt đầu kích hoạt DAQ List.
+
+---
+
+### 10.3 File DBC Mẫu Cho Mạng CAN Dự Án `as` (`as_core_network.dbc`)
+
+```dbc
+VERSION ""
+
+NS_ :
+    BA_
+    BA_DEF_
+    VAL_
+
+BS_:
+
+BU_: AS Other
+
+BO_ 0 CAN_Sync_Frame: 8 AS
+ SG_ SyncByte0 : 0|8@1+ (1,0) [0|255] "" Other
+
+BO_ 257 TxMsgTime: 8 AS
+ SG_ SystemTime_year : 7|16@0+ (1,0) [2000|2099] "Year" Other
+ SG_ SystemTime_month : 23|8@0+ (1,0) [1|12] "Month" Other
+ SG_ SystemTime_day : 31|8@0+ (1,0) [1|31] "Day" Other
+ SG_ SystemTime_hour : 39|8@0+ (1,0) [0|23] "Hour" Other
+ SG_ SystemTime_minute : 47|8@0+ (1,0) [0|59] "Min" Other
+ SG_ SystemTime_second : 55|8@0+ (1,0) [0|59] "Sec" Other
+
+BO_ 258 RxMsgAbsInfo: 8 Other
+ SG_ VehicleSpeed : 7|16@0+ (0.1,0) [0|300] "km/h" AS
+ SG_ TachoSpeed : 23|16@0+ (1,0) [0|8000] "rpm" AS
+ SG_ Led1Sts : 39|2@0+ (1,0) [0|3] "" AS
+ SG_ Led2Sts : 37|2@0+ (1,0) [0|3] "" AS
+ SG_ Led3Sts : 35|2@0+ (1,0) [0|3] "" AS
+
+BO_ 1025 OSEK_NM_TX: 8 AS
+ SG_ OsekNodeId : 0|8@1+ (1,0) [0|255] "" Other
+ SG_ OsekOpCode : 8|8@1+ (1,0) [0|255] "" Other
+
+BO_ 1282 LS_NM_TX: 8 AS
+ SG_ NmControlBitVector : 0|8@1+ (1,0) [0|255] "" Other
+ SG_ NmSourceNodeId : 8|8@1+ (1,0) [0|255] "" Other
+
+BO_ 1365 XCP_TX: 8 AS
+ SG_ XcpResponsePayload : 0|64@1+ (1,0) [0|0] "" Other
+
+BO_ 1842 TxDiagP2P: 8 AS
+ SG_ UdsResponsePayload : 0|64@1+ (1,0) [0|0] "" Other
+
+BA_DEF_ BO_ "GenMsgCycleTime" INT 0 65535;
+BA_ "GenMsgCycleTime" BO_ 257 100;
+BA_ "GenMsgCycleTime" BO_ 1025 100;
+BA_ "GenMsgCycleTime" BO_ 1282 100;
+```
