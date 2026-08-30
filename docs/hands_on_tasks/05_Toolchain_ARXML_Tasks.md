@@ -131,3 +131,4 @@
 - **Bước 3**: Viết SWC application code gọi generated `Rte.h`.
 - **Bước 4**: Compile thành công.
 - **Success**: SWC code compile với generated `Rte.h`.
+

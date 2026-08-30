@@ -1,495 +1,432 @@
-﻿# INTERRUPT VECTOR TABLE - TU JUNIOR+ DEN SENIOR EMBEDDED ENGINEER
+# 🔌 INTERRUPT VECTOR TABLE — TỪ JUNIOR+ ĐẾN SENIOR EMBEDDED ENGINEER
 
-> **Tac gia:** Senior Embedded Systems Engineer / Firmware Architect  
-> **Cap do:** Junior+ -> Senior Embedded  
-> **Huong tiep can:** Engineering thuc te: WHY -> WHAT -> HOW -> HARDWARE -> CODE -> MEMORY -> DEBUG -> PRODUCTION  
-> **Nền tang:** ARM Cortex-M + Bare-metal + FreeRTOS
+> **Tác giả:** Senior Embedded Systems Engineer / Firmware Architect  
+> **Cấp độ:** Junior+ → Senior Embedded  
+> **Hướng tiếp cận:** Engineering thực tế: WHY → WHAT → HOW → HARDWARE → CODE → MEMORY → DEBUG → PRODUCTION  
+> **Nền tảng:** ARM Cortex-M + Bare-metal + FreeRTOS
 
 ---
 
-## MUC LUC
+## 📑 MỤC LỤC
 
-1. [Chuong 1: Mental Model - Cai nhin toan canh](#ch1)
-2. [Chuong 2: Vector Table o cap Memory](#ch2)
-3. [Chuong 3: ARM Cortex-M Deep Dive](#ch3)
-4. [Chuong 4: Code thuc te - Startup + Linker + ISR](#ch4)
-5. [Chuong 5: Interrupt Flow o cap CPU](#ch5)
-6. [Chuong 6: Interrupt Priority va Preemption](#ch6)
-7. [Chuong 7: Interrupt + RTOS (FreeRTOS)](#ch7)
-8. [Chuong 8: Bootloader + Multi-Image](#ch8)
-9. [Chuong 9: Debugging Vector Table - 5 Case Thuc Te](#ch9)
-10. [Chuong 10: Debug voi GDB](#ch10)
-11. [Chuong 11: 15+ Misconceptions cua Junior](#ch11)
-12. [Chuong 12: So sanh Kien truc CPU](#ch12)
-13. [Chuong 13: Phan tich Startup Code thuc te](#ch13)
-14. [Chuong 14: Thiet ke ISR chuan Senior](#ch14)
-15. [Chuong 15: Performance va Real-Time](#ch15)
-16. [Chuong 16: 10 Bai Tap Tang Dan Do Kho](#ch16)
-17. [Chuong 17: Senior Mindset](#ch17)
-18. [Chuong 18: Master Debug Checklist](#ch18)
+1. [Chương 1: Mental Model — Cái Nhìn Toàn Cảnh Về Interrupt & Vector Table](#ch1)
+2. [Chương 2: Interrupt Vector Table Ở Cấp Memory](#ch2)
+3. [Chương 3: ARM Cortex-M Deep Dive](#ch3)
+4. [Chương 4: Code Thực Tế — Startup + Linker Script + ISR](#ch4)
+5. [Chương 5: Interrupt Flow Ở Cấp CPU Core](#ch5)
+6. [Chương 6: Interrupt Priority, Preemption & Sub-Priority](#ch6)
+7. [Chương 7: Interrupt & RTOS (FreeRTOS Architecture)](#ch7)
+8. [Chương 8: Bootloader & Multi-Image Architecture](#ch8)
+9. [Chương 9: Debugging Vector Table — 5 Case Study Thực Tế](#ch9)
+10. [Chương 10: Quy Trình Debug Chuyên Sâu Với GDB](#ch10)
+11. [Chương 11: 15+ Sai Lầm Phổ Biến (Misconceptions) Của Junior](#ch11)
+12. [Chương 12: So Sánh Kiến Trúc CPU (Cortex-M vs Cortex-A vs RISC-V vs x86)](#ch12)
+13. [Chương 13: Phân Tích Toàn Diện Startup Code Thực Tế](#ch13)
+14. [Chương 14: Thiết Kế Interrupt Handling Chuẩn Senior](#ch14)
+15. [Chương 15: Phân Tích Hiệu Năng & Hệ Thống Real-Time](#ch15)
+16. [Chương 16: 10 Bài Tập Thực Chiến Tăng Dần Độ Khó (Level 1 → 10)](#ch16)
+17. [Chương 17: Senior Mindset — Thấu Hiểu Bản Chất Thay Vì Học Thuộc](#ch17)
+18. [Chương 18: Master Debug Checklist & Tài Liệu Tham Khảo](#ch18)
 
 ---
 
 <a name="ch1"></a>
-## CHUONG 1: MENTAL MODEL - CAI NHIN TOAN CANH
+## CHƯƠNG 1: MENTAL MODEL — CÁI NHÌN TOÀN CẢNH
 
-### 1.1 Interrupt la gi o cap do Hardware?
+### 1.1 Interrupt Là Gì Ở Cấp Độ Hardware?
 
-**WHY - Tai sao Interrupt ton tai?**
+#### 🎯 WHY — Tại Sao Cơ Chế Interrupt Tồn Tại?
+CPU là một cỗ máy xử lý tuần tự (sequential machine) — nó chỉ có thể thực thi từng lệnh một tại một thời điểm. Tuy nhiên, thế giới vật lý bên ngoài (các ngoại vi peripherals, cảm biến sensors, bus truyền thông mạng) lại xảy ra hoàn toàn bất đồng bộ (asynchronously):
+- Một byte dữ liệu UART 115200 baud bay đến thanh ghi RX mỗi **86.8 micro giây**.
+- CPU đang thực hiện thuật toán tính toán ma trận hoặc giải mã tốn **1 mili giây**.
+- Nếu CPU liên tục đọc thăm dò thanh ghi UART (polling / busy-waiting), 99% tài nguyên tính toán bị lãng phí.
+- Nguy hiểm hơn: nếu CPU bận xử lý tác vụ khác quá 86.8 µs, byte dữ liệu tiếp theo sẽ ghi đè và làm mất dữ liệu (Overrun Error).
 
-CPU la may tinh tuan tu - no chi lam duoc mot viec tai mot thoi diem. Nhung the gioi ben ngoai (peripherals, sensors, mang) xay ra bat dong bo (asynchronously). Van de:
-
-- UART nhan byte moi 87 microseconds (115200 baud)
-- CPU dang tinh toan phuc tap mat 1ms
-- Neu CPU lien tuc kiem tra UART (polling), 99% thoi gian CPU lua dao ("busy-waiting")
-- Toi te hon: cac su kien co the bi miss neu CPU dang lam viec khac
-
-**Giai phap: Interrupt Mechanism**
+#### 💡 GIẢI PHÁP: CƠ CHẾ NGẮT PHẦN CỨNG (HARDWARE INTERRUPT)
+Hardware Interrupt là một đường dây vật lý (physical trace/wire) nối từ ngoại vi (Peripheral) đến bộ điều khiển ngắt (Interrupt Controller) và CPU core. Khi có sự kiện:
+1. Ngoại vi kéo đường tín hiệu ngắt (IRQ line) lên mức tích cực (Active High/Low).
+2. CPU tạm dừng luồng thực thi chính một cách an toàn.
+3. CPU chuyển ngữ cảnh sang thực thi chương trình con phục vụ ngắt (**ISR — Interrupt Service Routine**).
+4. Sau khi ISR xử lý xong, CPU khôi phục lại trạng thái ban đầu và tiếp tục chạy chương trình chính như chưa hề có sự gián đoạn.
 
 ```
 +------------------+        +------------------+        +------------------+
 |   PERIPHERAL     |        |    INTERRUPT      |        |      CPU         |
 |                  |        |   CONTROLLER      |        |                  |
-|  UART RX buffer  |------->|     (NVIC)        |------->|  Dang xu ly      |
-|  Timer overflow  |  IRQ   |                   |  nIRQ  |  main code       |
-|  ADC done        |        |  - Priority Mgmt  |        |                  |
-|  GPIO edge       |        |  - Enable/Disable |        |  Nhan tin hieu   |
-+------------------+        +------------------+        |  DUNG LAI        |
-                                                         |  Jump vao ISR    |
+|  UART RX buffer  |------->|     (NVIC)        |------->|  Đang xử lý      |
+|  Timer overflow  |  IRQ   |                   |  nIRQ  |  main thread     |
+|  ADC conversion  | (Line) |  - Priority Mgmt  | (Core) |                  |
+|  GPIO edge       |        |  - Masking/Enable |        |  TẠM DỪNG        |
++------------------+        +------------------+        |  Nhảy vào ISR    |
                                                          +------------------+
 ```
 
-**Hardware thuc su lam gi khi co IRQ?**
-
-1. Peripheral hoan thanh mot tac vu (vi du: UART nhan xong 1 byte)
-2. Peripheral SET bit IRQ len duong day tin hieu vat ly (mot wire)
-3. Interrupt Controller (NVIC tren Cortex-M) nhan tin hieu nay
-4. NVIC kiem tra: interrupt co bi mask khong? Priority co du cao khong?
-5. NVIC gui tin hieu den CPU core
-6. CPU hoan thanh lenh dang thuc hien (most cases), sau do dung lai
-7. CPU tu dong luu trang thai hien tai (registers) xuong stack
-8. CPU doc Vector Table de biet ISR nam o dau
-9. CPU nhay den ISR
-10. ISR thuc hien, xu ly su kien
-11. ISR ket thuc (BX LR / EXC_RETURN)
-12. CPU khoi phuc trang thai cu
-13. Main code tiep tuc tu dung cho
-
 ---
 
-### 1.2 Phan biet Interrupt, Exception, Trap, Fault, Reset
+### 1.2 Phân Biệt 6 Khái Niệm Cốt Lõi: Interrupt, Exception, Trap, Fault, Reset, Software Interrupt
 
-Day la diem Junior thuong nham lan nhat. Cac khai niem nay KHONG giong nhau.
+Đây là điểm mà các kỹ sư Junior và Mid-level thường xuyên nhầm lẫn trong các buổi phỏng vấn kỹ thuật:
 
-```
-+------------------+---------------------------------------------------+------------------+
-| Thuat ngu        | Mo ta                                             | Vi du            |
-+------------------+---------------------------------------------------+------------------+
-| Interrupt        | Asynchronous: den tu hardware ben ngoai CPU       | UART RX, Timer   |
-|                  | CPU dang lam viec, bi "ngat" tu ben ngoai         | ADC, GPIO        |
-+------------------+---------------------------------------------------+------------------+
-| Exception        | Tong hop: bat ky su kien nao khien CPU doi mode   | Bao gom ca       |
-|                  | Cortex-M goi tat ca la "exception"                | interrupt        |
-+------------------+---------------------------------------------------+------------------+
-| Trap             | Synchronous: phat sinh boi lenh CPU thuc hien    | SVC instruction  |
-|                  | CPU tu tao ra - co the du doan truoc              | BKPT             |
-+------------------+---------------------------------------------------+------------------+
-| Fault            | CPU gap loi trong qua trinh thuc hien lenh       | Chia cho 0       |
-|                  | Hardware phat hien vi pham                        | Bad memory       |
-+------------------+---------------------------------------------------+------------------+
-| Reset            | CPU bat dau lai tu dau                            | Power-on reset   |
-|                  | Trang thai CPU duoc khoi tao lai hoan toan        | Watchdog reset   |
-+------------------+---------------------------------------------------+------------------+
-| Software Interrupt| Interrupt gia lap bang phan mem                  | NVIC->STIR       |
-|                  | CPU tu kich hoat interrupt                        | SVC #0           |
-+------------------+---------------------------------------------------+------------------+
-```
-
-**Cortex-M goi tat ca la "Exception":**
+| Thuật Ngữ | Tính Chất | Nguồn Gốc Phát Sinh | Ví Dụ Điển Hình |
+|---|---|---|---|
+| **Interrupt (Ngắt)** | **Asynchronous** (Bất đồng bộ) | Tín hiệu phần cứng từ bên ngoài CPU core. Không thể dự đoán chính xác thời điểm xảy ra theo dòng lệnh. | UART RX, Timer Update, CAN Message RX, GPIO Exti. |
+| **Exception (Ngoại lệ)** | **Thuật ngữ bao quát (Umbrella Term)** | Mọi sự kiện khiến CPU thay đổi chế độ thực thi (Mode switch) để chạy một đoạn handler riêng biệt. | ARM Cortex-M gọi chung cả Reset, Faults, SVC, SysTick và IRQ là **Exceptions**. |
+| **Trap (Bẫy lệnh)** | **Synchronous** (Đồng bộ) | Phát sinh có chủ đích bởi chính câu lệnh mà CPU vừa thực thi. Hoàn toàn tái hiện được tại vị trí lệnh đó. | Lệnh gọi hàm hệ điều hành `SVC #0`, lệnh dừng điểm ngắt `BKPT`. |
+| **Fault (Lỗi phần cứng)** | **Synchronous / Asynchronous** | CPU phát hiện vi phạm kiến trúc, lỗi truy cập bộ nhớ hoặc giải mã lệnh không hợp lệ. | Chia cho 0 (`DIVBYZERO`), truy cập địa chỉ rác (`BusFault`), vi phạm vùng bảo vệ MPU (`MemManage`). |
+| **Reset** | **Khởi tạo lại phần cứng** | Tín hiệu phần cứng khôi phục CPU về trạng thái ban đầu. Luôn có mức ưu tiên cao nhất tuyệt đối (-3). | Bật nguồn (POR), chân NRST, Watchdog Timeout, Software Reset. |
+| **Software Interrupt** | **Kích hoạt bằng phần mềm** | Phần mềm ghi vào thanh ghi phần cứng của Interrupt Controller để giả lập tín hiệu IRQ. | Ghi vào thanh ghi `NVIC->STIR` hoặc set bit pending trong `SCB->ICSR` (PendSV). |
 
 ```
-Exception Number |  Ten                    | Loai
------------------|-------------------------|---------
-1                | Reset                   | Reset
-2                | NMI                     | Interrupt (Non-maskable)
-3                | HardFault               | Fault
-4                | MemManage               | Fault
-5                | BusFault                | Fault
-6                | UsageFault              | Fault
-7-10             | Reserved                | -
-11               | SVCall (SVC)            | Trap/Software
-12               | DebugMonitor            | Debug
-13               | Reserved                | -
-14               | PendSV                  | Software Interrupt
-15               | SysTick                 | Interrupt (Timer)
-16+              | IRQ0, IRQ1, ... IRQn    | Hardware Interrupt
+BẢNG PHÂN LOẠI EXCEPTION TRÊN ARM CORTEX-M:
+Exception # | Tên Exception           | Loại        | Mức Ưu Tiên (Priority)
+------------|-------------------------|-------------|-------------------------
+1           | Reset                   | Reset       | -3 (Cao nhất tuyệt đối)
+2           | NMI (Non-Maskable Int)  | Interrupt   | -2 (Không thể mask)
+3           | HardFault               | Fault       | -1 (Cố định)
+4           | MemManage               | Fault       | Cấu hình được (0-255)
+5           | BusFault                | Fault       | Cấu hình được
+6           | UsageFault              | Fault       | Cấu hình được
+7-10        | Reserved                | -           | -
+11          | SVCall (SVC)            | Trap        | Cấu hình được
+12          | DebugMonitor            | Debug Trap  | Cấu hình được
+13          | Reserved                | -           | -
+14          | PendSV                  | SW Interrupt| Cấu hình được (Thường thấp nhất)
+15          | SysTick                 | Interrupt   | Cấu hình được
+16+ (IRQ0+) | External Peripherals    | HW Interrupt| Cấu hình được
 ```
 
 ---
 
-### 1.3 Flow Toan Bo: Tu Peripheral den ISR den Return
+### 1.3 Chu Trình Xử Lý Ngắt Chi Tiết (Hardware Execution Flow)
+
+Dưới đây là luồng hoạt động chuẩn xác từng bước ở cấp độ vi kiến trúc phần cứng khi một ngắt xảy ra:
 
 ```
-+==========================================+
-|  FLOW CHINH XAC KHI INTERRUPT XAY RA   |
-+==========================================+
-
-1. PERIPHERAL TRIGGER
-   UART nhan xong 1 byte
-   Timer dem den 0 (underflow)
-   ADC conversion complete
-        |
-        v
-2. IRQ SIGNAL (Hardware Wire)
-   Peripheral SET bit IRQ
-   Day la tin hieu dien ap thay doi
-        |
-        v
-3. INTERRUPT CONTROLLER (NVIC)
-   Kiem tra: interrupt co enable khong?
-   Kiem tra: priority co du cao hon current?
-   Neu co -> gui nIRQ (active low) den CPU
-        |
-        v
-4. CPU CHAP NHAN INTERRUPT
-   CPU hoan thanh lenh HIEN TAI (khong dung giua chung)
-   CPU kiem tra dieu kien: PRIMASK/BASEPRI/FAULTMASK
-        |
-        v
-5. CONTEXT SAVE (Hardware Automatic - Cortex-M)
-   CPU tu dong PUSH xuong stack:
-   xPSR (Program Status Register)
-   PC   (Program Counter - dia chi se quay lai)
-   LR   (Link Register)
-   R12
-   R3, R2, R1, R0
-   Tong: 8 registers = 32 bytes tren stack
-        |
-        v
-6. EXCEPTION NUMBER XAC DINH
-   NVIC cung cap exception number cho CPU
-   Vi du: IRQ0 = exception number 16
-        |
-        v
-7. VECTOR TABLE LOOKUP
-   CPU lay Vector Table Base Address tu VTOR
-   CPU tinh: dia chi = VTOR + (exception_number * 4)
-   CPU DOC 4 bytes tai dia chi do -> lay ISR address
-        |
-        v
-8. CPU NHAY DEN ISR
-   PC = ISR address
-   LR = EXC_RETURN (gia tri dac biet, khong phai dia chi binh thuong)
-        |
-        v
-9. ISR THUC HIEN
-   Code cua lap trinh vien chay
-   Xu ly su kien, clear flag
-   KHONG nen lam viec nang
-        |
-        v
-10. EXCEPTION RETURN
-    ISR thuc hien BX LR (hoac tuong duong)
-    CPU phat hien LR = EXC_RETURN (bit[31:28] = 0xF)
-    CPU bat dau qua trinh khoi phuc
-        |
-        v
-11. CONTEXT RESTORE (Hardware Automatic)
-    CPU POP tu stack:
-    R0, R1, R2, R3, R12, LR, PC, xPSR
-    SP (Stack Pointer) tu dong tang len
-        |
-        v
-12. MAIN CODE TIEP TUC
-    PC = dia chi lenh tiep theo sau khi bi ngat
-    Moi thu nhu chua co gi xay ra
+[BƯỚC 1: NGOẠI VI TRIGGER SỰ KIỆN]
+Ngoại vi hoàn thành tác vụ (ví dụ: Timer đếm tràn ARR, UART nhận đủ 8 bit data).
+Cờ sự kiện phần cứng (Hardware Flag) được set (ví dụ: TIM2->SR bit UIF = 1).
+    │
+    ▼
+[BƯỚC 2: TÍN HIỆU IRQ TRUYỀN ĐẾN INTERRUPT CONTROLLER]
+Ngoại vi kích hoạt đường dây tín hiệu vật lý nối thẳng đến NVIC.
+    │
+    ▼
+[BƯỚC 3: NVIC KIỂM ĐỊNH ĐIỀU KIỆN (ARBITRATION & FILTERING)]
+NVIC thực hiện các bước kiểm tra phần cứng:
+1. Ngoại vi này có được bật trong NVIC không? (Kiểm tra bit trong NVIC->ISER).
+2. Priority của ngắt này có cao hơn ngắt đang thực thi (nếu có) không?
+3. Mức ưu tiên có bị chặn bởi thanh ghi BASEPRI / PRIMASK không?
+Nếu đủ điều kiện ➔ NVIC kéo đường nIRQ nối vào CPU core và chuyển trạng thái ngắt thành PENDING.
+    │
+    ▼
+[BƯỚC 4: CPU CORE CHẤP NHẬN NGẮT (INTERRUPT ACCEPTANCE)]
+CPU core kết thúc chu kỳ thực thi của câu lệnh HIỆN TẠI (hoặc hủy lệnh nếu hỗ trợ ngắt đa chu kỳ).
+CPU chuyển từ Thread Mode sang Handler Mode (Luôn chạy ở đặc quyền Privileged).
+    │
+    ▼
+[BƯỚC 5: LƯU TRỮ NGỮ CẢNH TỰ ĐỘNG (AUTO-STACKING HARDWARE)]
+Hardware CPU tự động đẩy (PUSH) 8 thanh ghi quan trọng xuống Stack (MSP hoặc PSP):
+{R0, R1, R2, R3, R12, LR, PC, xPSR} (Tổng cộng 32 bytes = 8 words).
+    │
+    ▼
+[BƯỚC 6: TRA CỨU VECTOR BẢNG NGẮT (VECTOR TABLE LOOKUP)]
+CPU đọc địa chỉ cơ sở của bảng ngắt từ thanh ghi VTOR (Vector Table Offset Register).
+CPU tính toán địa chỉ chứa con trỏ hàm ISR: Address = VTOR + (Exception_Number * 4).
+CPU đọc 4 bytes tại địa chỉ này từ Flash/RAM ➔ Lấy được địa chỉ vào của hàm ISR.
+    │
+    ▼
+[BƯỚC 7: THIẾT LẬP THANH GHI VÀ NHẢY VÀO ISR]
+1. PC được gán bằng địa chỉ ISR (bit 0 tự động nạp vào Thumb state bit của EPSR).
+2. LR (Link Register) được gán giá trị đặc biệt gọi là EXC_RETURN (ví dụ: 0xFFFFFFF9).
+3. NVIC chuyển trạng thái ngắt từ PENDING sang ACTIVE.
+    │
+    ▼
+[BƯỚC 8: THỰC THI HÀM ISR (C CODE)]
+Mã nguồn hàm ngắt do lập trình viên viết được thực thi.
+Bắt buộc phải xóa cờ ngắt của ngoại vi (Clear Peripheral Interrupt Flag).
+    │
+    ▼
+[BƯỚC 9: KẾT THÚC NGẮT VÀ TRỞ VỀ (EXCEPTION RETURN)]
+Hàm ISR thực hiện lệnh kết thúc hàm (BX LR).
+CPU nhận diện giá trị EXC_RETURN trong thanh ghi LR (bit 31:28 = 0xF).
+    │
+    ▼
+[BƯỚC 10: TỰ ĐỘNG KHÔI PHỤC NGỮ CẢNH (AUTO-UNSTACKING)]
+Hardware CPU tự động POP 8 thanh ghi {R0-R3, R12, LR, PC, xPSR} từ Stack trở lại CPU core.
+SP tự động tăng 32 bytes trở về vị trí cũ.
+    │
+    ▼
+[BƯỚC 11: CHƯƠNG TRÌNH CHÍNH TIẾP TỤC]
+CPU nạp lại Program Counter (PC) từ giá trị vừa khôi phục và tiếp tục chạy mã nguồn bình thường.
 ```
 
 ---
 
-### 1.4 Kiem tra Tu Duy - Chuong 1
+### 1.4 Câu Hỏi Kiểm Tra Tư Duy — Chương 1
 
-**Cau 1:** Timer interrupt xay ra dung luc CPU dang thuc hien lenh `MUL R0, R1, R2` chua hoan thanh. CPU se lam gi? Dung hay sai khi noi "CPU se dung ngay lenh do"?
-
-**Cau 2:** Co phai moi interrupt xay ra deu se vao ISR ngay lap tuc khong? Neu khong, hay liet ke it nhat 3 ly do khien interrupt bi tri hoan.
-
-**Cau 3:** Junior noi "toi da enable interrupt trong NVIC roi nen interrupt se hoat dong". Hay chi ra nhung gi co the van sai.
+1. **Câu 1:** Một Timer Interrupt kích hoạt đúng lúc CPU đang thực thi câu lệnh nhân đa chu kỳ `MUL R0, R1, R2`. CPU sẽ xử lý thế nào? Đúng hay sai khi cho rằng *"CPU sẽ lập tức cắt ngang câu lệnh đang chạy dở để vào ngắt ngay chu kỳ đó"*?
+2. **Câu 2:** Có phải mọi ngắt phần cứng khi được kích hoạt thì CPU đều nhảy vào ISR ngay lập tức không? Hãy phân tích ít nhất 3 rào cản phần cứng/phần mềm có thể trì hoãn việc thực thi ISR.
+3. **Câu 3:** Một kỹ sư Junior khẳng định: *"Tôi đã bật Enable Interrupt trong thanh ghi NVIC->ISER của MCU rồi, chắc chắn ngắt sẽ hoạt động"*. Hãy chỉ ra ít nhất 4 điều kiện tiên quyết khác còn thiếu khiến ngắt vẫn không thể chạy.
 
 ---
 
 <a name="ch2"></a>
-## CHUONG 2: VECTOR TABLE O CAP MEMORY
+## CHƯƠNG 2: INTERRUPT VECTOR TABLE Ở CẤP MEMORY
 
-### 2.1 Vector Table la gi chinh xac?
+### 2.1 Interrupt Vector Table Là Gì Ở Cấp Độ Byte Bộ Nhớ?
 
-**KHONG phai:** Mot danh sach ten function.  
-**KHONG phai:** Phan cua NVIC hardware.  
-**DUNG:** Mot mang (array) cac **dia chi 32-bit** nam trong **bo nho** (Flash), moi phan tu la dia chi cua mot ISR.
+* **KHÔNG PHẢI:** Một danh sách chuỗi ký tự tên hàm (Function Name Strings).
+* **KHÔNG PHẢI:** Một khối logic phần cứng nằm bên trong NVIC.
+* **BẢN CHẤT CHÍNH XÁC:** Là một **mảng tĩnh (Array) chứa các địa chỉ con trỏ 32-bit liên tiếp** nằm trong không gian nhớ (Flash hoặc RAM). Mỗi phần tử 4-byte chứa địa chỉ của hàm ISR tương ứng với Exception Vector đó.
 
 ```c
-// Day la vector table - don gian chi la mot mang dia chi
-const uint32_t vector_table[] = {
-    (uint32_t)&__StackTop,       // [0] Initial Stack Pointer
-    (uint32_t)Reset_Handler,     // [1] Reset
-    (uint32_t)NMI_Handler,       // [2] NMI
-    (uint32_t)HardFault_Handler, // [3] HardFault
-    // ...
-    (uint32_t)TIM2_IRQHandler,   // [32+16] = [48] IRQ32
+/* Bản chất của Vector Table trong bộ nhớ chỉ là một mảng hằng số 32-bit: */
+const uint32_t Vector_Table[] = {
+    0x20020000,   /* [0] Initial Main Stack Pointer (MSP) Value */
+    0x08000109,   /* [1] Reset_Handler Address (0x08000108 | Thumb bit 1) */
+    0x08000215,   /* [2] NMI_Handler Address */
+    0x08000221,   /* [3] HardFault_Handler Address */
+    /* ... các exception khác ... */
+    0x08001501,   /* [44] TIM2_IRQHandler Address (Exception #44 / IRQ28) */
 };
-// CPU DOC MANG NAY TRUC TIEP TU FLASH - KHONG QUA NVIC
 ```
 
-### 2.2 Vector Table Nam o Dau trong Memory?
+---
+
+### 2.2 Vị Trí Của Vector Table Trong Sơ Đồ Bộ Nhớ (Memory Map)
 
 ```
-MEMORY MAP - STM32F4 (Vi du dien hinh)
-+-------------------------+  <- 0xFFFFFFFF
-|                         |
-|   Peripheral Registers  |
-|   (APB1, APB2, AHB1...) |
-|                         |
-+-------------------------+  <- 0x40000000
-|                         |
-|   SRAM (128KB)          |
-|   .data, .bss, stack    |
-|   heap                  |
-|                         |
-+-------------------------+  <- 0x20000000
-|                         |
-|   FLASH (512KB)         |
-|                         |
-|  0x08000000:            |
-|  +-------------------+  |
-|  | Vector Table      |  |  <- CPU DOC DAU TIEN KHI BOOT
-|  | [0] Stack Pointer |  |  <- 4 bytes: gia tri dau cua MSP
-|  | [1] Reset_Handler |  |  <- 4 bytes: dia chi ham Reset_Handler
-|  | [2] NMI_Handler   |  |  <- 4 bytes: dia chi ham NMI_Handler
-|  | [3] HardFault     |  |  <- 4 bytes
-|  | ...               |  |
-|  | [n] IRQn_Handler  |  |
-|  +-------------------+  |
-|  .text (code)           |
-|  .rodata (const data)   |
-|  .data (init values)    |
-|                         |
-+-------------------------+  <- 0x08000000
+SƠ ĐỒ BỘ NHỚ CHI TIẾT (VÍ DỤ STM32F4 / CORTEX-M4):
+
+Địa chỉ cao
+0xFFFFFFFF +------------------------------------+
+           |  Cortex-M Internal Peripherals     |
+           |  (NVIC, SCB, SysTick, MPU...)       |
+0xE0000000 +------------------------------------+
+           |  Chip-Specific Peripherals         |
+           |  (USART, TIM, CAN, SPI, GPIO...)   |
+0x40000000 +------------------------------------+
+           |  Internal SRAM (128 KB)            |
+           |  .data, .bss, Heap, Stack          |
+0x20000000 +------------------------------------+
+           |                                    |
+           |  Internal Flash (1024 KB / 1 MB)   |
+           |  .text (Code), .rodata (Constants) |
+           |                                    |
+0x08000000 +------------------------------------+  <-- BẮT ĐẦU FLASH VẬT LÝ
+           |  Vector Table (Kích thước ~400B)   |
+           |  [0] Initial MSP Value (4 Bytes)   |  <-- Nạp vào SP khi Boot
+           |  [1] Reset_Handler Addr (4 Bytes)  |  <-- Nạp vào PC khi Boot
+           |  [2] NMI_Handler Addr (4 Bytes)    |
+           |  [3] HardFault_Handler Addr        |
+           |  ...                               |
+           |  [44] TIM2_IRQHandler Addr        |
+0x08000000 +------------------------------------+
+           |                                    |
+0x00000000 +------------------------------------+  <-- VÙNG BOOT ALIAS
+           |  Boot Alias Memory Area            |  <-- Ánh xạ tới 0x08000000 khi Boot từ Flash
+0x00000000 +------------------------------------+
+Địa chỉ thấp
 ```
 
-**Tai sao Vector Table phai o DAU Flash?**
+#### ❓ Tại Sao Vector Table Luôn Nằm Ở Đầu Flash?
+Khi phần cứng ARM Cortex-M cấp nguồn (Power-On Reset), CPU hoàn toàn chưa chạy bất kỳ dòng code nào và thanh ghi VTOR mặc định bằng `0x00000000`. Phần cứng CPU được "hardwired" bất di bất dịch theo kiến trúc ARM:
+1. Đọc **4 bytes tại địa chỉ 0x00000000** ➔ Tự động gán vào thanh ghi **MSP (Main Stack Pointer)**.
+2. Đọc **4 bytes tại địa chỉ 0x00000004** ➔ Tự động gán vào thanh ghi **PC (Program Counter)**.
+3. Nhảy thẳng đến địa chỉ trong PC để thực thi lệnh đầu tiên của `Reset_Handler`.
 
-Khi CPU Cortex-M boot, no KHONG biet chuong trinh cua ban o dau. No chi biet mot dieu:  
-> "Sau khi Reset, toi se tim Stack Pointer tai dia chi 0x00000000, va tim Reset_Handler tai 0x00000004"
+Do đó, Vector Table bắt buộc phải nằm tại địa chỉ `0x00000000` (hoặc vùng Flash được ánh xạ / alias tới `0x00000000`).
 
-Dieu nay la CUNG VA KHONG THE THAY DOI o hardware level. VTOR (Vector Table Offset Register) ban dau = 0x00000000.
+---
 
-Tren STM32, 0x00000000 duoc ALIAS (remap) den 0x08000000 (dau Flash) thong qua BOOT pins hoac address remapping.
+### 2.3 Cấu Trúc Của Từng Entry Trong Vector Table
 
-### 2.3 Moi Entry Trong Vector Table Chua Gi?
+Mỗi Entry là một số nguyên 32-bit (4 bytes):
+* **Entry [0] (Đặc Biệt):** Chứa giá trị **Initial Stack Pointer** (địa chỉ đỉnh RAM, ví dụ `0x20020000`). Đây là giá trị nạp trực tiếp vào thanh ghi SP, **không phải con trỏ hàm**.
+* **Entry [1 đến N]:** Chứa **địa chỉ con trỏ hàm của ISR kèm Thumb Bit**:
+  * Kiến trúc Cortex-M chỉ hỗ trợ tập lệnh **Thumb-2** (không hỗ trợ tập lệnh ARM 32-bit truyền thống).
+  * Tất cả con trỏ hàm trong Cortex-M bắt buộc phải có **Bit 0 (LSB) = 1** (Thumb Indicator Bit).
+  * Ví dụ: Hàm `Reset_Handler` nằm tại địa chỉ chẵn `0x08000108` trong Flash ➔ Giá trị ghi trong Entry [1] của Vector Table sẽ là `0x08000109`. Khi CPU fetch địa chỉ này, nó dùng bit 0 để bật chế độ Thumb và nhảy đến thực thi lệnh tại `0x08000108`. Nếu bit 0 bằng 0, CPU sẽ lập tức kích hoạt lỗi **UsageFault (INVSTATE)**!
 
-```
-Vector Table Entry (4 bytes = 32-bit):
+---
 
-Bit 31                                    Bit 1  Bit 0
-+------------------------------------------+------+---+
-|      ISR Function Address [31:1]         |  0   | T |
-+------------------------------------------+------+---+
-                                                    |
-                                            T=1: Thumb mode
-                                            (Cortex-M chi chay Thumb)
-```
+### 2.4 Cơ Chế Tái Định Vị Vector Table (Vector Table Relocation — VTOR)
 
-**Quan trong:** Entry [0] la NGOAI LE - no la gia tri nap vao MSP (Main Stack Pointer), KHONG phai dia chi ISR.
-
-```
-Entry [0]: Initial Stack Pointer Value
-           = 0x20020000 (cuoi RAM 128KB: 0x20000000 + 0x20000)
-           CPU se nap gia tri nay vao SP truoc khi chay bat cu lenh nao
-
-Entry [1..n]: ISR Address | 0x1 (Thumb bit)
-              Vi du: Reset_Handler tai 0x08000101
-              = 0x08000100 | 0x1 = 0x08000101
-              CPU jump den 0x08000100 (bit 0 chi la Thumb flag)
-```
-
-### 2.4 Relocate Vector Table - VTOR
-
-Cortex-M3/M4/M7 co thanh ghi **VTOR** (Vector Table Offset Register) tai dia chi `0xE000ED08`.
+Trên Cortex-M3/M4/M7/M33, thanh ghi **VTOR (Vector Table Offset Register)** nằm tại địa chỉ `0xE000ED08`. Thanh ghi này cho phép phần mềm thay đổi địa chỉ cơ sở của Vector Table tại runtime:
 
 ```c
-// Cach relocate vector table (vi du trong bootloader -> app)
-#define VTOR_ADDRESS  0xE000ED08
-#define APP_BASE      0x08008000  // App bat dau o day
+#define SCB_VTOR   (*((volatile uint32_t*)0xE000ED08))
 
-// Ghi dia chi moi vao VTOR
-*((volatile uint32_t*)VTOR_ADDRESS) = APP_BASE;
-// Tu bay gio, CPU se tim vector table tai 0x08008000
+/* Di chuyển Vector Table sang vùng nhớ mới của Application */
+void Relocate_Vector_Table(uint32_t new_base_address) {
+    __disable_irq();           /* Tạm khóa ngắt để đảm bảo an toàn */
+    SCB_VTOR = new_base_address;
+    __DSB();                   /* Data Synchronization Barrier: Đảm bảo ghi xong VTOR */
+    __ISB();                   /* Instruction Synchronization Barrier: Flush pipeline */
+    __enable_irq();            /* Mở lại ngắt */
+}
 ```
 
-**Rang buoc khi relocate:**
-- Address phai align theo so luong entries * 4, lam tron len power of 2
-- Vi du: 256 interrupts = 256 * 4 = 1024 bytes -> align 1024 bytes
-- STM32 thong thuong: align 0x200 (512 bytes)
+> [!IMPORTANT]
+> **Quy Tắc Căn Chỉnh Địa Chỉ Của VTOR (Alignment Rule):**  
+> Địa chỉ nạp vào VTOR bắt buộc phải được căn chỉnh (aligned) theo kích thước của Vector Table làm tròn lên lũy thừa của 2:  
+> $\text{Alignment} = 2^{\lceil \log_2(\text{Số lượng Exception} \times 4) \rceil}$  
+> Ví dụ: MCU có 16 Exception hệ thống + 84 External IRQs = 100 entries $\times$ 4 = 400 bytes ➔ Cần căn chỉnh tối thiểu theo biên **512 bytes** (Địa chỉ phải chia hết cho `0x200`, bit [8:0] của địa chỉ phải bằng 0).
 
-### 2.5 Kiem tra Tu Duy - Chuong 2
+---
 
-**Cau 1:** CPU doc entry [0] cua vector table de lam gi? Co phai de biet dia chi ISR dau tien khong?
+### 2.5 Câu Hỏi Kiểm Tra Tư Duy — Chương 2
 
-**Cau 2:** Neu ban co 256 external interrupts, vector table cua ban co kich thuoc bao nhieu bytes? Align requirement la gi?
-
-**Cau 3:** Mot bootloader chay dung. Sau do no jump vao application. Application khong nhan duoc bat ky interrupt nao du IRQ da enable. Nguyen nhan kha nang nhat la gi?
+1. **Câu 1:** CPU Cortex-M đọc giá trị tại Entry [0] của Vector Table để làm gì? Điều gì sẽ xảy ra nếu một kỹ sư vô tình đặt con trỏ hàm `Reset_Handler` vào Entry [0] và đặt địa chỉ Stack vào Entry [1]?
+2. **Câu 2:** Một vi điều khiển có tổng cộng 64 External Interrupts. Kích thước tối thiểu của Vector Table là bao nhiêu bytes và yêu cầu căn chỉnh địa chỉ (alignment) khi gán vào thanh ghi VTOR là bao nhiêu?
+3. **Câu 3:** Tại sao trong file `.map` hoặc khi dùng GDB kiểm tra Vector Table, địa chỉ của mọi hàm ISR như `SysTick_Handler` hay `USART1_IRQHandler` luôn là số lẻ (kết thúc bằng 1, 3, 5, 7, 9, B, D, F)?
 
 ---
 
 <a name="ch3"></a>
-## CHUONG 3: ARM CORTEX-M DEEP DIVE
+## CHƯƠNG 3: ARM CORTEX-M DEEP DIVE
 
-### 3.1 Toan Bo Exception List Cortex-M4
+### 3.1 Toàn Bộ Danh Mục Exception Chuẩn Trên Cortex-M
 
-```
-Exception  | IRQ# | Ten              | Priority     | Mo ta
------------|------|------------------|--------------|--------------------------------
-1          | -    | Reset            | -3 (cao nhat)| Power-on, watchdog, pin reset
-2          | -    | NMI              | -2           | Non-Maskable Interrupt
-3          | -    | HardFault        | -1           | Loi nghiem trong
-4          | -    | MemManage        | configurable | Vi pham MPU
-5          | -    | BusFault         | configurable | Loi bus (invalid address)
-6          | -    | UsageFault       | configurable | Lenh bat hop le, chia cho 0
-7-10       | -    | Reserved         | -            | -
-11         | -    | SVCall           | configurable | SVC instruction (RTOS API)
-12         | -    | DebugMonitor     | configurable | Debug breakpoint
-13         | -    | Reserved         | -            | -
-14         | -    | PendSV           | configurable | Pendable SVC (context switch)
-15         | -    | SysTick          | configurable | System tick timer (RTOS tick)
-16         | 0    | IRQ0             | configurable | External interrupt 0
-17         | 1    | IRQ1             | configurable | External interrupt 1
-...        | ...  | ...              | ...          | ...
-255        | 239  | IRQ239           | configurable | External interrupt 239
-```
-
-### 3.2 Mot So Exception Quan Trong Can Hieu Sau
-
-**RESET (Exception #1)**
-```
-- Priority: -3 (cao nhat tuyet doi, khong the thay doi)
-- Xay ra khi: Power-on, NRST pin, WWDG/IWDG reset, software reset
-- CPU lam gi: Nap MSP tu [0], nap PC tu [1], bat dau thuc hien
-- KHONG the bi preempt boi bat cu thu gi
-```
-
-**NMI - Non-Maskable Interrupt (Exception #2)**
-```
-- Priority: -2
-- KHONG the bi mask boi PRIMASK hay BASEPRI
-- Chi dung cho cac tinh huong khoc liet: Clock failure, power fail
-- Neu NMI handler bi loi -> vao HardFault
-```
-
-**HardFault (Exception #3)**
-```
-- Priority: -1
-- "Noi nuong chiu" cua moi loi khac
-- Xay ra khi: Fault khac ko the xu ly, fault trong fault handler
-- Debug HardFault = ky nang quan trong cua Senior
-- Registers can doc: SCB->HFSR, SCB->CFSR, SCB->BFAR, SCB->MMFAR
-```
-
-**SVCall - SVC (Exception #11)**
-```
-- Kich hoat boi lenh SVC #imm8
-- RTOS dung de: Task goi OS API tu unprivileged mode
-- Vi du FreeRTOS: xTaskCreate() -> SVC -> scheduler chay trong privileged mode
-```
-
-**PendSV (Exception #14)**
-```
-- "Context Switch Engine" cua RTOS
-- Luon co priority thap nhat
-- FreeRTOS SysTick ISR set PendSV pending -> PendSV chay sau tat ca ISR -> context switch
-- Tai sao can PendSV? Vi khong the context switch trong giua ISR khac
-```
-
-**SysTick (Exception #15)**
-```
-- Timer 24-bit tich hop trong CPU (khong phai peripheral rieng)
-- FreeRTOS dung lam RTOS tick (mac dinh 1ms = 1000Hz)
-- Nap vao: configTICK_RATE_HZ trong FreeRTOSConfig.h
-```
-
-### 3.3 NVIC vs Vector Table - Junior Thuong Nham
-
-**Day la diem quan trong nhat chuong nay.**
+ARM Cortex-M định nghĩa 15 Exception hệ thống (Core Exceptions) cùng tối đa 240 External Interrupts:
 
 ```
-+=====================================================+
-|  NVIC (Nested Vectored Interrupt Controller)       |
-|  - La HARDWARE BLOCK nam trong CPU                 |
-|  - Chuc nang:                                      |
-|    * Nhan IRQ tu peripherals                       |
-|    * Quan ly priority                              |
-|    * Enable/Disable tung IRQ                       |
-|    * Mask interrupt (PRIMASK, BASEPRI)             |
-|    * Theo doi trang thai: Pending, Active          |
-|    * Tinh toan IRQ nao duoc phep phuc vu           |
-|    * Gui tin hieu den CPU core khi can             |
-|  - Registers: NVIC->ISER, NVIC->ICER,             |
-|               NVIC->ISPR, NVIC->ICPR,             |
-|               NVIC->IPR                            |
-+=====================================================+
-         |
-         | NVIC chi gui "exception number" cho CPU
-         | NVIC KHONG biet ISR o dau
-         v
-+=====================================================+
-|  VECTOR TABLE (trong Flash/RAM)                    |
-|  - La SOFTWARE DATA STRUCTURE (mang dia chi)       |
-|  - Chuc nang:                                      |
-|    * Chua dia chi ISR cho moi exception            |
-|    * CPU doc truc tiep tu bo nho                   |
-|    * Duoc tao boi linker tu source code            |
-|  - CPU dung VTOR + exception_number*4 de tim       |
-+=====================================================+
-         |
-         | CPU doc dia chi ISR tu vector table
-         v
-+=====================================================+
-|  CPU CORE                                          |
-|  - Nhan exception number tu NVIC                   |
-|  - Tinh dia chi: VTOR + (exc_num * 4)              |
-|  - Doc 32-bit tai dia chi do = ISR address         |
-|  - Jump den ISR address                            |
-+=====================================================+
+VỊ TRÍ BẢNG VECTOR EXCEPTION CỦA ARM CORTEX-M:
+
+Vector Index | Exception # | Tên Exception      | Mức Ưu Tiên     | Mô Tả Kỹ Thuật
+-------------|-------------|--------------------|-----------------|---------------------------------------------------
+0            | 0           | Initial SP         | Không áp dụng   | Giá trị khởi tạo cho Main Stack Pointer (MSP)
+1            | 1           | Reset              | -3 (Cố định)    | Thực thi khi Power-on, chân Reset, Watchdog
+2            | 2           | NMI                | -2 (Cố định)    | Non-Maskable Interrupt (Không thể bị mask)
+3            | 3           | HardFault          | -1 (Cố định)    | Lỗi hệ thống nghiêm trọng / Fault Escalation
+4            | 4           | MemManage Fault    | Cấu hình được   | Vi phạm phân quyền vùng nhớ do MPU quản lý
+5            | 5           | BusFault           | Cấu hình được   | Lỗi phần cứng bus (AHB/APB), lỗi đọc ghi ô nhớ
+6            | 6           | UsageFault         | Cấu hình được   | Lệnh Undefined, chia cho 0, Unaligned access
+7 - 10       | 7 - 10      | Reserved           | -               | Dành riêng cho mở rộng phần cứng tương lai
+11           | 11          | SVCall (SVC)       | Cấu hình được   | System Service Call kích hoạt bằng lệnh `SVC`
+12           | 12          | DebugMonitor       | Cấu hình được   | Điểm dừng Debugger khi không dùng Halt mode
+13           | 13          | Reserved           | -               | Dành riêng
+14           | 14          | PendSV             | Cấu hình được   | Pendable Service Request (Dùng cho RTOS Context)
+15           | 15          | SysTick            | Cấu hình được   | Bộ đếm nhịp hệ thống 24-bit (RTOS System Tick)
+16           | 16 (IRQ0)   | WWDG               | Cấu hình được   | External Interrupt 0 (Window Watchdog)
+17           | 17 (IRQ1)   | PVD                | Cấu hình được   | External Interrupt 1 (Power Voltage Detector)
+...          | ...         | ...                | ...             | ...
+N+15         | N+15 (IRQN) | Peripheral_IRQn    | Cấu hình được   | External Interrupt N (Ngoại vi của hãng chip)
 ```
 
-**Luu y quan trong:**
-- NVIC: Hardware, quan ly PRIORITY va ENABLE
-- Vector Table: Software (data trong Flash), chua ADDRESS
-- Chung la 2 thu hoan toan khac nhau
-- Enable NVIC ma khong co vector table dung = HardFault
-- Vector table dung ma khong enable NVIC = interrupt khong chay
+---
 
-### 3.4 Kiem tra Tu Duy - Chuong 3
+### 3.2 Phân Tích Chuyên Sâu 4 Exception Hệ Thống Quan Trọng Nhất
 
-**Cau 1:** Neu NVIC->ISER da set (IRQ enable) nhung Vector Table entry cho IRQ do la 0x00000000, chuyen gi xay ra khi interrupt kich hoat?
+#### 1. HardFault (Exception #3) — "Tòa Án Tối Cao" Của CPU
+* **Mức ưu tiên:** Cố định ở mức `-1` (chỉ xếp sau Reset và NMI).
+* **Nguyên nhân:** Xảy ra khi một Fault khác (MemManage, BusFault, UsageFault) bị kích hoạt nhưng chưa được bật (disabled trong `SCB->SHCSR`), hoặc khi một lỗi mới xảy ra ngay bên trong chính Fault Handler đang chạy (Fault Escalation).
+* **Thanh ghi chẩn đoán bắt buộc phải đọc khi điều tra HardFault:**
+  * `SCB->HFSR` (HardFault Status Register): Cho biết lỗi do bộ phân giải bảng vector (`VECTTBL`) hay bị ép từ fault khác (`FORCED`).
+  * `SCB->CFSR` (Configurable Fault Status Register): Bóc tách chi tiết thành `MMFSR` (MemManage), `BFSR` (BusFault), `UFSR` (UsageFault).
+  * `SCB->BFAR` (BusFault Address Register): Chứa địa chỉ ô nhớ gây lỗi bus chính xác.
+  * `SCB->MMFAR` (MemManage Address Register): Chứa địa chỉ ô nhớ vi phạm quyền truy cập MPU.
 
-**Cau 2:** PendSV luon co priority thap nhat. Tai sao? Neu dat PendSV priority cao hon SysTick thi hau qua la gi?
+#### 2. SVCall — Supervisor Call (Exception #11)
+* Được kích hoạt đồng bộ bằng phần mềm thông qua lệnh Assembly: `SVC #imm8`.
+* **Ứng dụng thực tế:** Được các hệ điều hành thời gian thực (RTOS) sử dụng để chuyển đổi từ **Unprivileged Thread Mode** (tác vụ người dùng bị hạn chế quyền) sang **Privileged Handler Mode** nhằm khởi động bộ lập lịch OS hoặc yêu cầu dịch vụ hạt nhân.
 
-**Cau 3:** SVC va PendSV deu la "software interrupt". Khac nhau gi? Tai sao FreeRTOS can ca hai?
+#### 3. PendSV — Pendable Service Call (Exception #14)
+* Được kích hoạt bất đồng bộ bằng cách set bit `PENDSVSET` trong thanh ghi `SCB->ICSR`.
+* **Quy tắc thiết kế RTOS:** Luôn luôn cấu hình mức ưu tiên của PendSV ở mức **THẤP NHẤT TUYỆT ĐỐI (Lowest Priority)** trong toàn bộ hệ thống.
+* **Lý do kỹ nghệ:** Trì hoãn việc chuyển đổi ngữ cảnh (Context Switching) cho đến khi **TẤT CẢ** các ngắt phần cứng quan trọng khác (UART, Timer, CAN) đã xử lý xong hoàn toàn. Điều này ngăn chặn việc làm gián đoạn các ISR thời gian thực.
+
+#### 4. SysTick (Exception #15)
+* Bộ đếm thời gian 24-bit tích hợp sẵn bên trong lõi ARM Cortex-M (không phụ thuộc vào ngoại vi của từng nhà sản xuất chip như ST, NXP, TI).
+* Tạo ngắt định kỳ (thường là 1 ms = 1000 Hz) để làm nguồn nhịp (Timebase Tick) cho hệ điều hành FreeRTOS / AUTOSAR OS.
+
+---
+
+### 3.3 Mối Quan Hệ Giữa CPU, NVIC, Vector Table & ISR
+
+```
++===================================================================================+
+|                          KIẾN TRÚC XỬ LÝ NGẮT CỦA CORTEX-M                         |
++===================================================================================+
+
+ 1. NGOẠI VI (PERIPHERAL)
+    [Timer / UART / CAN / GPIO] ──(Kéo đường vật lý IRQ Line)──┐
+                                                               │
+ 2. INTERRUPT CONTROLLER (NVIC - HARDWARE TRONG LÕI CPU)      │
+    ┌──────────────────────────────────────────────────────────┘
+    │  • Thanh ghi ISER / ICER: Bật / Tắt từng kênh ngắt phần cứng.
+    │  • Thanh ghi IPR: Quản lý mức ưu tiên (Priority 0 đến 255).
+    │  • Thanh ghi ISPR / ICPR: Quản lý trạng thái chờ (Pending).
+    │  • Thanh ghi IABR: Quản lý trạng thái đang chạy (Active).
+    │  ==> NVIC chọn ra ngắt có ưu tiên cao nhất và gửi "Exception #" tới CPU Core.
+    │
+ 3. CPU CORE (EXCEPTION EXECUTION ENGINE)
+    ┌──────────────────────────────────────────────────────────┘
+    │  • Kiểm tra cờ ngắt toàn cục: PRIMASK, BASEPRI, FAULTMASK.
+    │  • Tự động PUSH {R0-R3, R12, LR, PC, xPSR} xuống Stack (Auto-stacking).
+    │  • Đọc thanh ghi SCB->VTOR để xác định địa chỉ cơ sở của Vector Table.
+    │  • Tính toán địa chỉ: Target_Addr = VTOR + (Exception # * 4).
+    │
+ 4. BẢNG VECTOR NGẮT (VECTOR TABLE TRONG FLASH / RAM)
+    ┌──────────────────────────────────────────────────────────┘
+    │  • CPU đọc giá trị 32-bit tại Target_Addr.
+    │  • Giá trị này chính là con trỏ hàm trỏ tới địa chỉ của hàm ISR.
+    │
+ 5. HÀM PHỤC VỤ NGẮT (ISR IN C CODE)
+    ┌──────────────────────────────────────────────────────────┘
+    │  • CPU nạp địa chỉ vừa đọc vào thanh ghi PC và bắt đầu thực thi code ISR.
+    │  • Gán thanh ghi LR = EXC_RETURN (ví dụ 0xFFFFFFF9).
++===================================================================================+
+```
+
+---
+
+### 3.4 Bảng Phân Tích: NVIC Khác Vector Table Như Thế Nào?
+
+| Tiêu Chí Phân Biệt | NVIC (Nested Vectored Interrupt Controller) | Vector Table (Bảng Vector Ngắt) |
+|---|---|---|
+| **Bản chất** | **Phần cứng (Hardware IP Block)** tích hợp sâu trong CPU core. | **Cấu trúc dữ liệu phần mềm (Software Data Array)** do lập trình viên/Linker định nghĩa. |
+| **Vị trí lưu trữ** | Vùng thanh ghi ngoại vi hệ thống `0xE000E100` – `0xE000ECFC`. | Nằm trong bộ nhớ Flash (thường từ `0x08000000`) hoặc RAM. |
+| **Nhiệm vụ chính** | Bật/tắt ngắt, phân xử ưu tiên (Arbitration), quản lý trạng thái Pending/Active, kích hoạt tín hiệu ngắt tới CPU. | Cung cấp địa chỉ thực thi của từng hàm ISR tương ứng với từng Exception Number. |
+| **Cách truy cập** | Đọc/ghi qua các thanh ghi điều khiển MMIO (`NVIC->ISER`, `NVIC->IPR`). | CPU core tự động đọc dữ liệu 32-bit thông qua bus bộ nhớ dựa vào thanh ghi `VTOR`. |
+| **Khả năng cấu hình** | Có thể bật/tắt, thay đổi độ ưu tiên linh hoạt bất kỳ lúc nào tại runtime. | Cố định trong Flash sau khi nạp code (chỉ có thể trỏ sang RAM nếu dùng VTOR). |
+
+---
+
+### 3.5 Câu Hỏi Kiểm Tra Tư Duy — Chương 3
+
+1. **Câu 1:** Nếu trong thanh ghi `NVIC->ISER` đã set bit Enable cho `TIM2_IRQn`, nhưng trong mảng Vector Table tại ô nhớ tương ứng với TIM2 lại chứa giá trị `0x00000000` (NULL). Chuyện gì sẽ xảy ra chính xác khi bộ đếm Timer đếm tràn?
+2. **Câu 2:** Tại sao các hệ điều hành FreeRTOS và AUTOSAR OS đều bắt buộc phải gán độ ưu tiên của ngắt `PendSV` ở mức thấp nhất trong toàn bộ hệ thống? Nếu gán PendSV mức ưu tiên cao hơn ngắt UART RX thì hậu quả nghiêm trọng nào sẽ xảy ra?
+3. **Câu 3:** Cả `SVC` và `PendSV` đều là các cơ chế kích hoạt ngắt bằng phần mềm (Software Exception). Tại sao hệ điều hành cần phân tách thành 2 loại ngắt này mà không dùng chung một loại?
 
 ---
 
 <a name="ch4"></a>
-## CHUONG 4: CODE THUC TE - STARTUP + LINKER + ISR
+## CHƯƠNG 4: CODE THỰC TẾ — STARTUP + LINKER SCRIPT + ISR
 
-### 4.1 Khai Bao Vector Table Trong C
+### 4.1 Khai Báo Vector Table Chuẩn Bằng Ngôn Ngữ C
+
+Dưới đây là mã nguồn C chuẩn công nghiệp để định nghĩa bảng Vector Table cho ARM Cortex-M4 (STM32F4):
 
 ```c
-/* startup_stm32f4xx.c */
+/* =========================================================================
+ * File: startup_stm32f407xx.c
+ * Định nghĩa bảng Vector Table và Startup Code chuẩn Bare-Metal
+ * ========================================================================= */
 
-/* Kieu du lieu cho ISR */
-typedef void (*ISR_Handler)(void);
+#include <stdint.h>
 
-/* Khai bao cac ISR (weak - co the override) */
+/* Kiểu dữ liệu con trỏ hàm đại diện cho các hàm phục vụ ngắt */
+typedef void (*const Exception_Handler_t)(void);
+
+/* Khai báo đỉnh Stack Pointer được định nghĩa từ Linker Script */
+extern uint32_t _estack;
+
+/* Khai báo hàm khởi động hệ thống */
 void Reset_Handler(void);
+void Default_Handler(void);
+
+/* Khai báo các Exception Handlers hệ thống (Dạng Weak Alias trỏ về Default_Handler) */
 void NMI_Handler(void)          __attribute__((weak, alias("Default_Handler")));
 void HardFault_Handler(void)    __attribute__((weak, alias("Default_Handler")));
 void MemManage_Handler(void)    __attribute__((weak, alias("Default_Handler")));
@@ -499,2524 +436,1499 @@ void SVC_Handler(void)          __attribute__((weak, alias("Default_Handler")));
 void DebugMon_Handler(void)     __attribute__((weak, alias("Default_Handler")));
 void PendSV_Handler(void)       __attribute__((weak, alias("Default_Handler")));
 void SysTick_Handler(void)      __attribute__((weak, alias("Default_Handler")));
+
+/* Khai báo các Ngoại vi IRQ Handlers (Chip-Specific) */
+void WWDG_IRQHandler(void)      __attribute__((weak, alias("Default_Handler")));
+void USART1_IRQHandler(void)    __attribute__((weak, alias("Default_Handler")));
 void TIM2_IRQHandler(void)      __attribute__((weak, alias("Default_Handler")));
-/* ... them cac IRQ khac */
+void CAN1_RX0_IRQHandler(void)  __attribute__((weak, alias("Default_Handler")));
 
-/* Default handler - vong lap vo han neu ISR chua duoc implement */
-void Default_Handler(void) {
-    while (1);
-    /* Senior: them log truoc khi loop de debug */
-}
+/* =========================================================================
+ * BẢNG VECTOR TABLE CHÍNH THỨC
+ * - __attribute__((section(".isr_vector"))): Ép đặt vào section riêng trong Flash
+ * - __attribute__((used)): Ngăn cản trình biên dịch xóa bỏ khi bật tối ưu hóa (-O2/-O3)
+ * ========================================================================= */
+__attribute__((section(".isr_vector"), used))
+const Exception_Handler_t g_pfnVectors[] = {
+    /* Stack Pointer ban đầu (Nạp trực tiếp vào MSP khi Reset) */
+    (Exception_Handler_t)(&_estack),
 
-/* Linker symbol - dia chi cuoi RAM (stack bau dau tu day) */
-extern uint32_t __StackTop;
+    /* 15 Core Exception Handlers của ARM Cortex-M */
+    Reset_Handler,             /* Exception #1: Reset Handler */
+    NMI_Handler,               /* Exception #2: Non-Maskable Interrupt */
+    HardFault_Handler,         /* Exception #3: HardFault Handler */
+    MemManage_Handler,         /* Exception #4: MPU Memory Manage Fault */
+    BusFault_Handler,          /* Exception #5: Bus Fault */
+    UsageFault_Handler,        /* Exception #6: Usage Fault */
+    0, 0, 0, 0,                /* Exception #7-10: Reserved */
+    SVC_Handler,               /* Exception #11: SVCall Handler */
+    DebugMon_Handler,          /* Exception #12: Debug Monitor */
+    0,                         /* Exception #13: Reserved */
+    PendSV_Handler,            /* Exception #14: Pendable Request for System Service */
+    SysTick_Handler,           /* Exception #15: System Tick Timer */
 
-/*
- * VECTOR TABLE
- * - __attribute__((section(".isr_vector"))): dat vao section rieng
- * - __attribute__((used)): bao compiler KHONG xoa du linker khong thay reference
- * - const: nam trong Flash (khong phai RAM)
- */
-__attribute__((section(".isr_vector")))
-__attribute__((used))
-const ISR_Handler vector_table[] = {
-    /* [0]  Stack Pointer initial value */
-    (ISR_Handler)&__StackTop,
-
-    /* [1]  Reset */
-    Reset_Handler,
-
-    /* [2]  NMI */
-    NMI_Handler,
-
-    /* [3]  HardFault */
-    HardFault_Handler,
-
-    /* [4]  MemManage */
-    MemManage_Handler,
-
-    /* [5]  BusFault */
-    BusFault_Handler,
-
-    /* [6]  UsageFault */
-    UsageFault_Handler,
-
-    /* [7-10] Reserved */
-    0, 0, 0, 0,
-
-    /* [11] SVCall */
-    SVC_Handler,
-
-    /* [12] DebugMon */
-    DebugMon_Handler,
-
-    /* [13] Reserved */
-    0,
-
-    /* [14] PendSV */
-    PendSV_Handler,
-
-    /* [15] SysTick */
-    SysTick_Handler,
-
-    /* [16] IRQ0 = WWDG */
-    WWDG_IRQHandler,
-
-    /* [17] IRQ1 = PVD */
-    PVD_IRQHandler,
-
-    /* [18] IRQ2 = TAMP_STAMP */
-    TAMP_STAMP_IRQHandler,
-
-    /* ... tiep tuc cho toan bo IRQ cua MCU */
-
-    /* [46] IRQ30 = TIM2 */
-    TIM2_IRQHandler,
+    /* Các External Interrupt Handlers (Bắt đầu từ Exception #16 = IRQ 0) */
+    WWDG_IRQHandler,           /* IRQ 0: Window Watchdog */
+    0,                         /* IRQ 1: PVD */
+    0,                         /* IRQ 2: TAMP_STAMP */
+    0,                         /* IRQ 3: RTC_WKUP */
+    0,                         /* IRQ 4: FLASH */
+    0,                         /* IRQ 5: RCC */
+    0,                         /* IRQ 6: EXTI0 */
+    /* ... các vector khác ... */
+    TIM2_IRQHandler,           /* IRQ 28: TIM2 Global Interrupt */
+    0,                         /* IRQ 29: TIM3 */
+    0,                         /* IRQ 30: TIM4 */
+    0,                         /* IRQ 31: I2C1_EV */
+    0,                         /* IRQ 32: I2C1_ER */
+    0,                         /* IRQ 33: I2C2_EV */
+    0,                         /* IRQ 34: I2C2_ER */
+    0,                         /* IRQ 35: SPI1 */
+    0,                         /* IRQ 36: SPI2 */
+    USART1_IRQHandler,         /* IRQ 37: USART1 Global Interrupt */
+    CAN1_RX0_IRQHandler,       /* IRQ 19: CAN1 RX0 */
 };
-```
 
-### 4.2 Weak Symbol - Ky Thuat Quan Trong
-
-```c
-/*
- * WEAK SYMBOL MECHANISM
- *
- * void TIM2_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
- *
- * Nghia la:
- * 1. TIM2_IRQHandler la "weak" definition
- * 2. No la alias cua Default_Handler
- * 3. Neu user code KHONG dinh nghia TIM2_IRQHandler:
- *    -> Linker dung alias nay -> TIM2 interrupt vao Default_Handler (while(1))
- * 4. Neu user code CO dinh nghia TIM2_IRQHandler:
- *    -> Linker dung dinh nghia cua user -> override weak symbol
- *
- * Ket qua: Compile thanh cong du user chua implement moi ISR
- * Neu interrupt xay ra ma khong implement ISR -> vao Default_Handler
- */
-
-/* User code trong main.c hoac tim2.c */
-void TIM2_IRQHandler(void) {
-    /* Ghi de weak symbol */
-    if (TIM2->SR & TIM_SR_UIF) {
-        TIM2->SR &= ~TIM_SR_UIF;  /* Clear interrupt flag */
-        /* Xu ly logic */
-        timer2_tick_count++;
+/* Default Handler xử lý khi ngắt xảy ra mà chưa có hàm triển khai cụ thể */
+void Default_Handler(void) {
+    /* Khi CPU chạy vào đây, nghĩa là có một interrupt được bật nhưng chưa viết hàm xử lý */
+    while (1) {
+        /* Đặt breakpoint tại đây khi debug */
     }
 }
 ```
 
-### 4.3 Linker Script Chi Tiet
+---
+
+### 4.2 Cơ Chế Weak Symbol & Alias (Cực Kỳ Quan Trọng)
+
+```c
+void TIM2_IRQHandler(void) __attribute__((weak, alias("Default_Handler")));
+```
+
+**Bản chất hoạt động ở cấp độ Linker:**
+1. Thuộc tính `weak` báo cho Linker biết: Đây chỉ là định nghĩa **mặc định có độ ưu tiên thấp**.
+2. Thuộc tính `alias("Default_Handler")` báo cho Linker biết: Nếu trong toàn bộ dự án **KHÔNG CÓ** file nào khác định nghĩa hàm `TIM2_IRQHandler`, hãy trỏ symbol `TIM2_IRQHandler` tới địa chỉ của hàm `Default_Handler`.
+3. Khi lập trình viên viết hàm `void TIM2_IRQHandler(void) { ... }` trong file `main.c` hoặc `timer.c`:
+   * Trình biên dịch tạo ra một **Strong Symbol** cho `TIM2_IRQHandler`.
+   * Linker tự động ghi đè Strong Symbol này vào vị trí tương ứng trong bảng Vector Table, thay thế hoàn toàn alias cũ mà không gây lỗi trùng tên hàm (Multiple Definition Error).
+
+---
+
+### 4.3 Phân Tích Linker Script Chi Tiết
+
+Linker Script là "kiến trúc sư" quyết định chính xác Vector Table và mã nguồn nằm ở đâu trong bộ nhớ vật lý:
 
 ```ld
-/* stm32f407vg.ld */
+/* =========================================================================
+ * File: stm32f407vg.ld — Linker Script cho ARM Cortex-M4
+ * ========================================================================= */
 
-/* MEMORY REGIONS: Dinh nghia vung bo nho vat ly */
-MEMORY
-{
-    /* Flash: doc/thuc thi, bat dau 0x08000000, 1MB */
-    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 1024K
-
-    /* SRAM: doc/ghi/thuc thi, bat dau 0x20000000, 128KB */
-    SRAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 128K
-
-    /* CCM RAM: chi CPU co the truy cap, nhanh hon */
-    CCMRAM (rw) : ORIGIN = 0x10000000, LENGTH = 64K
-}
-
-/* ENTRY POINT: Noi lenh dau tien duoc thuc hien */
+/* Khai báo điểm vào đầu tiên của chương trình */
 ENTRY(Reset_Handler)
 
-/* LINKER SYMBOLS: Gia tri duoc dung trong C code */
-_stack_size = 0x400;  /* 1KB stack */
+/* Khai báo kích thước Stack và Heap */
+_Min_Heap_Size  = 0x200;  /* 512 Bytes */
+_Min_Stack_Size = 0x400;  /* 1024 Bytes / 1 KB */
 
+/* ĐỊNH NGHĨA KHÔNG GIAN BỘ NHỚ VẬT LÝ */
+MEMORY
+{
+    FLASH (rx)  : ORIGIN = 0x08000000, LENGTH = 1024K  /* 1 MB Flash */
+    RAM   (xrw) : ORIGIN = 0x20000000, LENGTH = 128K   /* 128 KB SRAM */
+}
+
+/* ĐỊNH NGHĨA ĐỈNH CỦA STACK (Cuối vùng RAM) */
+_estack = ORIGIN(RAM) + LENGTH(RAM);  /* = 0x20020000 */
+
+/* ĐỊNH NGHĨA PHÂN BỐ CÁC SECTION VÀO BỘ NHỚ */
 SECTIONS
 {
-    /* ==== SECTION 1: VECTOR TABLE ==== */
+    /* 1. BẢNG VECTOR NGẮT PHẢI NẰM TẠI VỊ TRÍ ĐẦU TIÊN CỦA FLASH */
     .isr_vector :
     {
         . = ALIGN(4);
-        KEEP(*(.isr_vector))  /* KEEP: khong xoa du code chua reference truc tiep */
+        KEEP(*(.isr_vector))  /* LỆNH BẮT BUỘC: Ngăn Linker xóa bỏ mảng này */
         . = ALIGN(4);
     } > FLASH
 
-    /* ==== SECTION 2: CODE ==== */
+    /* 2. MÃ NGUỒN CHƯƠNG TRÌNH VÀ DỮ LIỆU HẰNG SỐ */
     .text :
     {
         . = ALIGN(4);
-        *(.text)          /* Code chinh */
-        *(.text*)         /* Code tu tat ca object files */
-        *(.glue_7)        /* ARM/Thumb interworking */
-        *(.glue_7t)
-        *(.eh_frame)
-        KEEP(*(.init))
-        KEEP(*(.fini))
-        . = ALIGN(4);
-        _etext = .;       /* Symbol: ket thuc phan code */
-    } > FLASH
-
-    /* ==== SECTION 3: CONST DATA ==== */
-    .rodata :
-    {
-        . = ALIGN(4);
-        *(.rodata)
+        *(.text)           /* Tất cả mã thực thi (.text) từ các file .o */
+        *(.text*)          /* Tất cả sub-sections của code */
+        *(.rodata)         /* Dữ liệu chỉ đọc (Hằng số const, chuỗi text) */
         *(.rodata*)
         . = ALIGN(4);
+        _etext = .;        /* Đánh dấu kết thúc phần code trong Flash */
     } > FLASH
 
-    /* ==== SECTION 4: DATA (initialized) ==== */
-    /* Gia tri khoi tao nam trong Flash, duoc copy sang RAM khi boot */
-    _sidata = LOADADDR(.data);  /* Dia chi trong Flash */
+    /* 3. DỮ LIỆU CÓ KHỞI TẠO (INITIALIZED DATA) */
+    /* Lưu trữ giá trị ban đầu trong FLASH (LMA), nhưng thực thi trong RAM (VMA) */
+    _sidata = LOADADDR(.data);
 
     .data :
     {
         . = ALIGN(4);
-        _sdata = .;        /* Symbol: bat dau .data trong RAM */
+        _sdata = .;        /* Địa chỉ bắt đầu .data trong RAM */
         *(.data)
         *(.data*)
         . = ALIGN(4);
-        _edata = .;        /* Symbol: ket thuc .data trong RAM */
-    } > SRAM AT> FLASH     /* Chay trong SRAM, luu trong Flash */
+        _edata = .;        /* Địa chỉ kết thúc .data trong RAM */
+    } > RAM AT> FLASH
 
-    /* ==== SECTION 5: BSS (zero-initialized) ==== */
+    /* 4. DỮ LIỆU KHÔNG KHỞI TẠO (BSS - PHẢI ĐƯỢC XÓA VỀ 0 KHI BOOT) */
     .bss :
     {
         . = ALIGN(4);
-        _sbss = .;
-        __bss_start__ = _sbss;
+        _sbss = .;         /* Địa chỉ bắt đầu .bss trong RAM */
         *(.bss)
         *(.bss*)
         *(COMMON)
         . = ALIGN(4);
-        _ebss = .;
-        __bss_end__ = _ebss;
-    } > SRAM
+        _ebss = .;         /* Địa chỉ kết thúc .bss trong RAM */
+    } > RAM
 
-    /* ==== SECTION 6: STACK ==== */
+    /* 5. VÙNG BỘ NHỚ USER STACK VÀ HEAP */
     ._user_heap_stack :
     {
         . = ALIGN(8);
-        PROVIDE(end = .);
-        . = . + _stack_size;
+        PROVIDE ( end = . );
+        . = . + _Min_Heap_Size;
+        . = . + _Min_Stack_Size;
         . = ALIGN(8);
-    } > SRAM
-
-    /* __StackTop: CPU dung lam gia tri khoi tao MSP */
-    __StackTop = ORIGIN(SRAM) + LENGTH(SRAM);
+    } > RAM
 }
 ```
-
-### 4.4 Startup Code (Reset_Handler)
-
-```c
-/* startup_stm32f4xx.c - Reset_Handler */
-void Reset_Handler(void) {
-
-    /* 1. Copy .data tu Flash sang RAM */
-    uint32_t *src = &_sidata;  /* Nguon: Flash */
-    uint32_t *dst = &_sdata;   /* Dich: RAM */
-    while (dst < &_edata) {
-        *dst++ = *src++;
-    }
-
-    /* 2. Zero-fill .bss */
-    dst = &_sbss;
-    while (dst < &_ebss) {
-        *dst++ = 0;
-    }
-
-    /* 3. Goi system init (clock setup, etc.) */
-    SystemInit();
-
-    /* 4. Goi main() */
-    main();
-
-    /* 5. Neu main() thoat (khong nen) */
-    while (1);
-}
-```
-
-### 4.5 Full Flow: Tu Source Code Den ISR
-
-```
-SOURCE CODE (.c, .h)
-        |
-        | GCC compile
-        v
-OBJECT FILES (.o)
-  startup.o     <- chua vector_table[]
-  main.o        <- chua main(), TIM2_IRQHandler()
-  tim.o         <- chua TIM2 config code
-        |
-        | LD linker (dung linker script .ld)
-        v
-ELF FILE (axf/elf)
-  - Chua tat ca sections
-  - Symbol table
-  - Debug info
-  - .isr_vector tai 0x08000000
-        |
-        | objcopy -O binary
-        v
-BINARY FILE (.bin)
-  Bytes thuan tuy, khong co header
-  Byte dau = LSB cua __StackTop
-  Byte 4-7 = dia chi Reset_Handler
-        |
-        | Flash programmer
-        v
-FLASH MEMORY
-  0x08000000: [Stack Top value]
-  0x08000004: [Reset_Handler addr]
-  0x08000008: [NMI_Handler addr]
-  ...
-        |
-        | Power-on Reset
-        v
-CPU BOOT
-  1. Doc 0x08000000 -> nap vao MSP
-  2. Doc 0x08000004 -> nap vao PC
-  3. Jump den Reset_Handler
-  4. Reset_Handler copy .data, zero .bss
-  5. Goi main()
-        |
-        | TIM2 interrupt xay ra
-        v
-CPU -> NVIC -> VECTOR TABLE LOOKUP
-  Tinh: 0x08000000 + (46 * 4) = 0x080000B8
-  Doc 4 bytes: = dia chi TIM2_IRQHandler
-        |
-        v
-ISR THUC HIEN
-```
-
-### 4.6 Cach Kich Hoat Interrupt Day Du
-
-```c
-void setup_TIM2_interrupt(void) {
-
-    /* BUOC 1: Enable clock cho peripheral */
-    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
-
-    /* BUOC 2: Cau hinh peripheral */
-    TIM2->PSC = 8400 - 1;    /* Prescaler: 84MHz / 8400 = 10kHz */
-    TIM2->ARR = 10000 - 1;   /* Auto-reload: 10kHz / 10000 = 1Hz */
-    TIM2->CNT = 0;
-
-    /* BUOC 3: Enable interrupt tai peripheral */
-    TIM2->DIER |= TIM_DIER_UIE;   /* Update Interrupt Enable */
-
-    /* BUOC 4: Enable IRQ trong NVIC */
-    NVIC_EnableIRQ(TIM2_IRQn);    /* = IRQ28 tren STM32F4 */
-
-    /* BUOC 5: Set priority (tuy chon, truoc khi enable) */
-    NVIC_SetPriority(TIM2_IRQn, 5);  /* Priority 5, thap hon 0 */
-
-    /* BUOC 6: Enable peripheral */
-    TIM2->CR1 |= TIM_CR1_CEN;
-
-    /* BUOC 7: Global interrupt enable */
-    /* Thong thuong da enable tu dau, neu khong: */
-    __enable_irq();   /* Xoa bit PRIMASK */
-}
-```
-
-### 4.7 Kiem tra Tu Duy - Chuong 4
-
-**Cau 1:** Tai sao can `KEEP(*(.isr_vector))` trong linker script? Neu bo KEEP thi chuyen gi xay ra khi build voi optimization `-O2`?
-
-**Cau 2:** `__attribute__((weak))` hoat dong o buoc nao: compiler hay linker? Neu ca startup.c va user code deu dinh nghia TIM2_IRQHandler (khong co weak), linker se bao loi gi?
-
-**Cau 3:** Reset_Handler copy .data tu Flash sang RAM. Neu buoc nay bi bo qua (gia su Reset_Handler bi viet sai), bien global co gia tri khoi tao nhu `int x = 5;` se co gia tri gi?
 
 ---
 
+### 4.4 Quy Trình Biên Dịch & Liên Kết Đầy Đủ (Toolchain Flow)
+
+```
+[SOURCE CODE]
+startup.c, main.c, timer.c
+     │
+     ▼ (arm-none-eabi-gcc -c -mcpu=cortex-m4 -mthumb -O2)
+[OBJECT FILES (.o)]
+startup.o (chứa .isr_vector), main.o, timer.o (chứa TIM2_IRQHandler Strong Symbol)
+     │
+     ▼ (arm-none-eabi-ld -T stm32f407vg.ld)
+[EXECUTABLE ELF FILE (.elf)]
+- Bảng ký hiệu hoàn chỉnh (Symbol Table).
+- .isr_vector được cố định tuyệt đối tại địa chỉ 0x08000000.
+- TIM2_IRQHandler Strong Symbol ghi đè hoàn toàn Default_Handler.
+     │
+     ▼ (arm-none-eabi-objcopy -O binary firmware.elf firmware.bin)
+[RAW BINARY (.bin)]
+File nhị phân thuần túy nạp trực tiếp vào ô nhớ Flash từ 0x08000000:
+- 4 bytes đầu: Giá trị Initial Stack Pointer (0x20020000).
+- 4 bytes tiếp theo: Địa chỉ Reset_Handler (0x08000109).
+- Byte thứ 0xB0 - 0xB3: Địa chỉ TIM2_IRQHandler.
+```
+
+---
+
+### 4.5 Hàm Khởi Động Reset_Handler Thực Tế (Startup Sequence)
+
+```c
+/* Hàm thực thi đầu tiên sau khi bật nguồn */
+void Reset_Handler(void) {
+    uint32_t *pSrc, *pDest;
+
+    /* 1. Copy toàn bộ dữ liệu .data từ Flash sang RAM */
+    pSrc  = &_sidata;  /* Điểm bắt đầu trong Flash */
+    pDest = &_sdata;   /* Điểm bắt đầu trong RAM */
+    while (pDest < &_edata) {
+        *pDest++ = *pSrc++;
+    }
+
+    /* 2. Xóa sạch toàn bộ vùng nhớ .bss về 0 */
+    pDest = &_sbss;
+    while (pDest < &_ebss) {
+        *pDest++ = 0UL;
+    }
+
+    /* 3. Cấu hình phần cứng lõi (FPU, System Clock) */
+    SystemInit();
+
+    /* 4. Nhảy vào hàm main() của ứng dụng */
+    main();
+
+    /* 5. Phòng thủ: Nếu main() thoát, khóa CPU trong vòng lặp */
+    while (1) {
+        __NOP();
+    }
+}
+```
+
+---
+
+### 4.6 Quy Trình Bật Ngắt Ngoại Vi Toàn Diện (7 Bước Bắt Buộc)
+
+```c
+/* Cấu hình ngắt Timer 2 (TIM2 Update Interrupt) chuẩn xác 100% */
+void TIM2_Interrupt_Init(void) {
+    /* BƯỚC 1: Cấp Clock cho ngoại vi TIM2 trên Bus APB1 */
+    RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+
+    /* BƯỚC 2: Cấu hình tham số phần cứng (Prescaler & Auto-Reload) */
+    TIM2->PSC = 8400 - 1;    /* Clock 84 MHz / 8400 = 10 kHz */
+    TIM2->ARR = 10000 - 1;   /* Đếm 10000 xung = Đúng chu kỳ 1 giây */
+    TIM2->CNT = 0;
+
+    /* BƯỚC 3: Bật cờ ngắt Update Interrupt bên trong ngoại vi */
+    TIM2->DIER |= TIM_DIER_UIE;
+
+    /* BƯỚC 4: Thiết lập mức ưu tiên ngắt trong NVIC (Priority = 5) */
+    NVIC_SetPriority(TIM2_IRQn, 5);
+
+    /* BƯỚC 5: Kích hoạt kênh ngắt TIM2_IRQn trong thanh ghi NVIC->ISER */
+    NVIC_EnableIRQ(TIM2_IRQn);
+
+    /* BƯỚC 6: Bật bộ đếm Timer bắt đầu chạy */
+    TIM2->CR1 |= TIM_CR1_CEN;
+
+    /* BƯỚC 7: Đảm bảo ngắt toàn cục đã được mở (Clear PRIMASK) */
+    __enable_irq();
+}
+```
+
+---
+
+### 4.7 Câu Hỏi Kiểm Tra Tư Duy — Chương 4
+
+1. **Câu 1:** Từ khóa `KEEP(*(.isr_vector))` trong Linker Script đóng vai trò sống còn như thế nào? Điều gì sẽ xảy ra nếu lập trình viên xóa bỏ lệnh `KEEP()` và biên dịch dự án với cờ tối ưu hóa loại bỏ hàm rác `-Wl,--gc-sections`?
+2. **Câu 2:** Thuộc tính `__attribute__((weak))` được xử lý ở giai đoạn nào: **Compiler** hay **Linker**? Nếu cả file `startup.c` và file `main.c` đều định nghĩa hàm `void TIM2_IRQHandler(void)` mà **KHÔNG CÓ** từ khóa `weak`, trình biên dịch/liên kết sẽ báo lỗi gì?
+3. **Câu 3:** Trong hàm `Reset_Handler`, nếu vòng lặp copy `.data` từ Flash sang RAM bị lỗi hoặc bị bỏ qua, một biến toàn cục được khai báo `int g_timeout_counter = 100;` sẽ có giá trị bao nhiêu khi hàm `main()` bắt đầu chạy?
+
 <a name="ch5"></a>
-## CHUONG 5: INTERRUPT FLOW O CAP CPU
+## CHƯƠNG 5: INTERRUPT FLOW Ở CẤP CPU CORE
 
-### 5.1 Context Save - CPU Lam Gi Truoc Khi Vao ISR?
+### 5.1 Lưu Trữ Ngữ Cảnh Tự Động (Hardware Context Stacking)
 
-Day la ky nang phan biet Junior va Senior: hieu chinh xac CPU luu gi, o dau, theo thu tu nao.
-
-**Cortex-M Auto-stacking (Hardware Automatic):**
+Kỹ năng cốt lõi phân biệt giữa Senior và Junior là sự thấu hiểu chính xác phần cứng làm gì ở chu kỳ xung nhịp (clock cycle level) khi có ngắt:
 
 ```
-TRUOC INTERRUPT:           SAU CONTEXT SAVE:
-Stack (RAM):               Stack (RAM):
-                           +----------------+  <- SP truoc (cao hon)
-                           |    xPSR        |  [SP+28]
-                           |    PC          |  [SP+24] <- return address
-                           |    LR          |  [SP+20]
-                           |    R12         |  [SP+16]
-                           |    R3          |  [SP+12]
-                           |    R2          |  [SP+8]
-                           |    R1          |  [SP+4]
-                           |    R0          |  [SP+0]
-                           +----------------+  <- SP moi (thap hon 32 bytes)
+TRƯỚC KHI VÀO NGẮT:              SAU KHI AUTO-STACKING (32 BYTES):
+Bộ nhớ Stack (RAM):              Bộ nhớ Stack (RAM):
+                                 +------------------+  <-- SP cũ (Vị trí cao hơn)
+                                 |       xPSR       |  [SP + 28] (Thanh ghi trạng thái)
+                                 |        PC        |  [SP + 24] (Địa chỉ lệnh trở về)
+                                 |        LR        |  [SP + 20] (Link Register cũ)
+                                 |       R12        |  [SP + 16] (Intra-procedure scratch)
+                                 |        R3        |  [SP + 12] (Tham số hàm 4)
+                                 |        R2        |  [SP + 8]  (Tham số hàm 3)
+                                 |        R1        |  [SP + 4]  (Tham số hàm 2)
+                                 |        R0        |  [SP + 0]  (Tham số hàm 1 / Return val)
+                                 +------------------+  <-- SP mới (Thấp hơn 32 bytes)
 ```
 
-**Tai sao chi luu R0-R3, R12, LR, PC, xPSR?**
+#### ❓ Tại Sao Phần Cứng Chỉ Lưu 8 Thanh Ghi {R0-R3, R12, LR, PC, xPSR}?
+Theo chuẩn giao tiếp hàm của ARM (**AAPCS — ARM Architecture Procedure Call Standard**):
+- **Caller-Saved Registers {R0-R3, R12}:** Là các thanh ghi tạm (scratch registers) mà bất kỳ hàm C nào cũng được quyền ghi đè tùy ý mà không cần khôi phục. Vì ngắt có thể nhảy vào bất kỳ lúc nào, phần cứng CPU bắt buộc phải tự động lưu 5 thanh ghi này cùng {LR, PC, xPSR}.
+- **Callee-Saved Registers {R4-R11}:** Là các thanh ghi lưu biến cục bộ. Nếu hàm ISR của lập trình viên có sử dụng `R4-R11`, trình biên dịch GCC sẽ tự động chèn lệnh Assembly `PUSH {R4-R11}` ở đầu hàm ISR (Prologue) và `POP {R4-R11}` ở cuối hàm ISR (Epilogue).
+- **Kết quả:** Tiết kiệm tối đa chu kỳ lưu trữ phần cứng (chỉ mất đúng 12 chu kỳ xung nhịp trên Cortex-M4 để hoàn tất context saving).
 
-Day la AAPCS (ARM Architecture Procedure Call Standard):
-- R0-R3, R12: Caller-saved registers (function duoc phep thay doi)
-- R4-R11: Callee-saved registers (function phai bao ton)
-- ISR la "function" -> no tu giu R4-R11 neu can dung
-- Hardware chi luu phan ma caller khong bao ton
+---
 
-```
-R0-R3:   Tham so function / gia tri tra ve
-R4-R11:  Local variables (ISR phai push/pop neu dung)
-R12:     Scratch register (Intra-procedure-call)
-LR:      Link Register (EXC_RETURN trong exception context)
-PC:      Program Counter (dia chi lenh tiep theo de return ve)
-xPSR:    Program Status Register (flags, exception number, Thumb bit)
-SP:      Stack Pointer (tu dong thay doi, khong push)
-```
+### 5.2 Giá Trị Ma Thuật EXC_RETURN Trong Thanh Ghi LR
 
-### 5.2 EXC_RETURN - Gia Tri Bao Than
+Khi CPU bước chân vào hàm ISR, thanh ghi `LR` (Link Register) **KHÔNG CHỨA ĐỊA CHỈ TRỞ VỀ** như hàm C thông thường. Thay vào đó, CPU nạp một mã trạng thái phần cứng đặc biệt gọi là **EXC_RETURN**:
 
-Khi CPU vao ISR, LR KHONG chua dia chi return nhu truong hop function call binh thuong. LR chua gia tri dac biet goi la **EXC_RETURN**:
+| Giá Trị EXC_RETURN | Chế Độ Trở Về (Return Mode) | Stack Pointer Sử Dụng | Loại Khung Ngữ Cảnh (Stack Frame) |
+|---|---|---|---|
+| `0xFFFFFFF1` | **Handler Mode** (Nested Interrupt) | **MSP** (Main Stack Pointer) | Standard 8 Registers (Không có FPU) |
+| `0xFFFFFFF9` | **Thread Mode** (Về chương trình chính) | **MSP** (Main Stack Pointer) | Standard 8 Registers (Không có FPU) |
+| `0xFFFFFFFD` | **Thread Mode** (Về RTOS Task) | **PSP** (Process Stack Pointer) | Standard 8 Registers (Không có FPU) |
+| `0xFFFFFFE1` | **Handler Mode** (Nested Interrupt) | **MSP** (Main Stack Pointer) | Extended Frame (Bao gồm 16 thanh ghi FPU S0-S15) |
+| `0xFFFFFFE9` | **Thread Mode** (Về chương trình chính) | **MSP** (Main Stack Pointer) | Extended Frame (Bao gồm FPU) |
+| `0xFFFFFFED` | **Thread Mode** (Về RTOS Task) | **PSP** (Process Stack Pointer) | Extended Frame (Bao gồm FPU) |
 
-```
-EXC_RETURN gia tri (Cortex-M4):
+#### ⚙️ Cơ Chế Thoát Ngắt (Exception Return Mechanism)
+Khi hàm ISR thực hiện lệnh `BX LR`:
+1. CPU kiểm tra 4 bit cao nhất `LR[31:28]`. Nếu bằng `0xF`, CPU nhận biết đây là **Lệnh Thoát Ngắt (Exception Return)**, không phải lệnh nhảy hàm thông thường.
+2. CPU đọc các bit cấu hình trong `EXC_RETURN` để xác định: Cần unstack từ `MSP` hay `PSP`? Trở về `Thread Mode` hay `Handler Mode`? Có cần khôi phục thanh ghi thực số thực FPU không?
+3. Phần cứng tự động POP 8 thanh ghi và nạp lại Program Counter (PC) một cách mượt mà.
 
-0xFFFFFFF1: Return to Handler mode, MSP, 8 regs stacked
-0xFFFFFFF9: Return to Thread mode, MSP, 8 regs stacked
-0xFFFFFFFD: Return to Thread mode, PSP, 8 regs stacked
-0xFFFFFFE1: Return to Handler mode, MSP, 26 regs (FPU)
-0xFFFFFFE9: Return to Thread mode, MSP, 26 regs (FPU)
-0xFFFFFFED: Return to Thread mode, PSP, 26 regs (FPU)
+---
 
-Bit [3] = 1: Use MSP for unstacking
-Bit [3] = 0: Use PSP for unstacking
-Bit [2] = 1: Return to Thread mode
-Bit [2] = 0: Return to Handler mode (nested interrupt)
-```
-
-**Tai sao CPU biet day la exception return?**
-
-Khi ISR thuc hien `BX LR`:
-- CPU kiem tra bit[31:28] cua gia tri
-- Neu = 0xF (1111 1111 1111 1111 1111 1111 1111 XXXX) -> Day la EXC_RETURN
-- CPU biet can thuc hien exception return, khong phai jump binh thuong
-
-### 5.3 Mo Phong Timer Interrupt Step-by-Step
+### 5.3 Mô Phỏng Ngắt Timer Từng Chu Kỳ (Step-by-Step Hardware Trace)
 
 ```
-TIME 0:   TIM2 counter dem den gia tri ARR (underflow/overflow)
-          TIM2->SR bit UIF = 1 (Update Interrupt Flag)
-          TIM2 assert TIM2_IRQn line (dien ap thay doi)
-
-TIME 1:   NVIC nhan IRQ line active
-          NVIC kiem tra NVIC->ISER[0] bit 28 (TIM2) = 1? -> Yes
-          NVIC kiem tra NVIC->IPR[7] byte 0 (priority TIM2) = 5
-          NVIC kiem tra BASEPRI: co mask khong? -> No
-          NVIC kiem tra co IRQ uu tien cao hon dang active? -> No
-          NVIC gui nIRQ signal den CPU core
-
-TIME 2:   CPU dang thuc hien lenh ADD R1, R2, R3
-          CPU hoan thanh lenh nay (KHONG dung giua chung)
-          CPU kiem tra nIRQ signal: active
-
-TIME 3:   CPU bat dau exception entry sequence:
-          - Push {R0-R3, R12, LR, PC, xPSR} xuong MSP (hoac PSP)
-          - SP giam 32 bytes
-          - CPU doc exception number tu NVIC: 28+16 = 44
-          - LR = EXC_RETURN (0xFFFFFFF9 neu Thread mode, MSP)
-
-TIME 4:   CPU doc VTOR: 0x08000000
-          CPU tinh: 0x08000000 + (44 * 4) = 0x080000B0
-          CPU doc 4 bytes tai 0x080000B0: gia tri = 0x08001234 | 0x1
-          PC = 0x08001235 (Thumb bit set)
-
-TIME 5:   CPU bat dau thuc hien TIM2_IRQHandler tai 0x08001234
-          NVIC danh dau TIM2 la "Active" (khong chi "Pending" nua)
-
-          void TIM2_IRQHandler(void) {
-              if (TIM2->SR & TIM_SR_UIF) {
-                  TIM2->SR &= ~TIM_SR_UIF;  /* QUAN TRONG: phai clear flag */
-                  timer_tick++;
-              }
-          }
-
-TIME 6:   ISR ket thuc, thuc hien BX LR (EXC_RETURN = 0xFFFFFFF9)
-          CPU phat hien EXC_RETURN
-          CPU bat dau exception return:
-          - Pop {R0-R3, R12, LR, PC, xPSR} tu MSP
-          - SP tang 32 bytes
-          - PC = gia tri vua pop = dia chi lenh tiep theo truoc khi bi ngat
-          - xPSR duoc khoi phuc
-
-TIME 7:   CPU tiep tuc thuc hien main code tu dung cho
-          Moi thu nhu chua co gi xay ra
+[THỜI ĐIỂM T0] Bộ đếm phần cứng TIM2 chạm ngưỡng ARR. Cờ phần cứng TIM2->SR (UIF) bật lên 1.
+               Đường dây ngắt vật lý TIM2_IRQn gửi tín hiệu điện áp tới NVIC.
+     │
+[THỜI ĐIỂM T1] NVIC kiểm tra NVIC->ISER[0] bit 28 = 1 (Enabled).
+               NVIC kiểm tra Priority của TIM2 (ví dụ Priority = 5) cao hơn mức hiện tại.
+               NVIC gửi tín hiệu nIRQ tới CPU Core và đánh dấu TIM2 là PENDING.
+     │
+[THỜI ĐIỂM T2] CPU Core hoàn thành chu kỳ của câu lệnh hiện tại.
+               CPU Core chấp nhận ngắt.
+     │
+[THỜI ĐIỂM T3] [GIAI ĐOẠN AUTO-STACKING: 12 CYCLES]
+               CPU PUSH {R0-R3, R12, LR, PC, xPSR} xuống bộ nhớ Stack của Task.
+               SP giảm 32 bytes.
+               Thanh ghi LR được gán giá trị EXC_RETURN = 0xFFFFFFFD.
+     │
+[THỜI ĐIỂM T4] [GIAI ĐOẠN VECTOR FETCH]
+               CPU đọc VTOR (0x08000000) + (Exception 44 * 4) = 0x080000B0.
+               CPU nạp địa chỉ hàm TIM2_IRQHandler (0x08001235) vào PC.
+               NVIC chuyển trạng thái TIM2 từ PENDING sang ACTIVE.
+     │
+[THỜI ĐIỂM T5] [GIAI ĐOẠN ISR EXECUTION (C CODE)]
+               CPU thực thi mã nguồn hàm TIM2_IRQHandler():
+               void TIM2_IRQHandler(void) {
+                   if (TIM2->SR & TIM_SR_UIF) {
+                       TIM2->SR &= ~TIM_SR_UIF;  /* BẮT BUỘC: Xóa cờ ngắt phần cứng */
+                       g_system_ticks++;
+                   }
+               }
+     │
+[THỜI ĐIỂM T6] [GIAI ĐOẠN EXCEPTION RETURN]
+               Hàm ISR thực hiện lệnh kết thúc: `BX LR` (LR = 0xFFFFFFFD).
+               CPU phát hiện EXC_RETURN -> Thực hiện Auto-Unstacking từ PSP.
+               SP tăng 32 bytes. Khôi phục {R0-R3, R12, LR, PC, xPSR}.
+     │
+[THỜI ĐIỂM T7] CPU Core tiếp tục chạy lệnh của RTOS Task tại địa chỉ PC vừa khôi phục.
 ```
 
-### 5.4 Kiem tra Tu Duy - Chuong 5
+---
 
-**Cau 1:** Neu ISR KHONG clear flag cua peripheral (vi du TIM2->SR bit UIF), chuyen gi xay ra sau khi ISR return?
+### 5.4 Câu Hỏi Kiểm Tra Tư Duy — Chương 5
 
-**Cau 2:** Stack pointer thay doi bao nhieu bytes khi vao ISR? Neu stack da gan day (chi con 20 bytes), chuyen gi xay ra?
-
-**Cau 3:** EXC_RETURN = 0xFFFFFFFD co nghia la gi? Khi nao CPU su dung PSP thay vi MSP de unstack?
+1. **Câu 1:** Nếu trong hàm `TIM2_IRQHandler()`, lập trình viên quên không viết dòng lệnh xóa cờ `TIM2->SR &= ~TIM_SR_UIF;`, hiện tượng gì sẽ xảy ra ngay sau khi CPU thực thi lệnh `BX LR` để thoát ngắt?
+2. **Câu 2:** Khi một ngắt xảy ra, Stack Pointer giảm đi 32 bytes. Nếu trước thời điểm ngắt, Stack chỉ còn trống đúng 16 bytes trước khi chạm đáy bộ nhớ RAM, CPU sẽ phản ứng như thế nào và thanh ghi nào sẽ ghi nhận lỗi?
+3. **Câu 3:** Tại sao giá trị `EXC_RETURN` lại có dạng `0xFFFFFFFx` với các bit cao đều là `1`? Điều gì ngăn cản việc một hàm C thông thường vô tình có địa chỉ trả về trùng với `0xFFFFFFFx`?
 
 ---
 
 <a name="ch6"></a>
-## CHUONG 6: INTERRUPT PRIORITY VA PREEMPTION
+## CHƯƠNG 6: INTERRUPT PRIORITY, PREEMPTION & SUB-PRIORITY
 
-### 6.1 Priority Trong Cortex-M
+### 6.1 Cấu Trúc Priority Trong ARM Cortex-M
 
-```
-Priority Number:  0 = HIGHEST, 255 = LOWEST
-(Nguoc voi common sense - Junior thuong nham)
+> [!WARNING]
+> **Quy Tắc Vàng Về Priority Trong ARM Cortex-M:**  
+> **SỐ CÀNG NHỎ ➔ MỨC ĐỘ ƯU TIÊN CÀNG CAO!**  
+> * Priority `0`: Mức ưu tiên cao nhất trong các ngắt cấu hình được.  
+> * Priority `255`: Mức ưu tiên thấp nhất.  
+> *(Hoàn toàn ngược lại với quy ước Task Priority trong FreeRTOS: Task số lớn = Ưu tiên cao).*
 
-Cortex-M4 co 4-bit priority (16 muc): 0, 16, 32, 48, 64, 80, 96, 112,
-                                       128, 144, 160, 176, 192, 208, 224, 240
+#### 🔹 Phân Bố Bit Priority (Priority Grouping)
+ARM Cortex-M quy định mỗi ngắt có một thanh ghi Priority 8-bit (`NVIC->IPR[x]`). Tuy nhiên, hầu hết các nhà sản xuất chip (STMicroelectronics, NXP, TI) chỉ cài đặt **4 bits cao nhất [7:4]** để tiết kiệm phần cứng silicon (hỗ trợ 16 mức ưu tiên từ 0, 16, 32, ... đến 240).
 
-Priority Grouping (SCB->AIRCR PRIGROUP field):
-  Group 0: [7:4] = preempt, [3:0] = subpriority (16 preempt, 1 sub)
-  Group 4: [7:5] = preempt, [4:0] = subpriority (8 preempt, 1 sub)
-  Group 7: No preemption bits, all sub-priority
+Thanh ghi `SCB->AIRCR` (trường `PRIGROUP`) cho phép chia 4 bits này thành 2 phần:
+1. **Preemption Priority (Mức Ưu Tiên Chiếm Quyền):** Ngắt có Preemption Priority cao hơn (số nhỏ hơn) CÓ THỂ cắt ngang (preempt) một ngắt có Preemption Priority thấp hơn đang chạy (Nested Interrupt).
+2. **Sub-Priority (Mức Ưu Tiên Phụ):** Khi 2 ngắt có CÙNG Preemption Priority kích hoạt đồng thời, ngắt nào có Sub-Priority nhỏ hơn sẽ được CPU phục vụ trước. **Sub-Priority KHÔNG BAO GIỜ có quyền chiếm quyền (preempt) ngắt đang chạy.**
 
-Preemption: ISR co priority cao hon CO THE ngat ISR dang chay
-Sub-priority: Quyet dinh thu tu khi nhieu IRQ co cung preemption priority dang pending
-```
+---
 
-### 6.2 States Cua Mot Interrupt
-
-```
-DISABLED <---> ENABLED
-                  |
-                  v
-              [Event xay ra]
-                  |
-                  v
-             PENDING <------+
-             (cho phuc vu)  |
-                  |         |
-                  v         |
-              ACTIVE        | (neu ISR KHONG clear flag)
-           (dang chay)  ----+
-                  |
-                  v
-               DONE
-               (ISR return)
-```
-
-### 6.3 Preemption Timeline
+### 6.2 Sơ Đồ Chiếm Quyền Ngắt Lồng Nhau (Nested Preemption Timeline)
 
 ```
-Kich ban: IRQ1 priority=3, IRQ2 priority=1 (HIGHER priority)
+KỊCH BẢN:
+- Ngắt IRQ1 (Priority thấp = 3, ví dụ UART RX)
+- Ngắt IRQ2 (Priority cao = 1, ví dụ Motor PWM Fault)
 
-Timeline:
+Trục Thời Gian:
+Main Thread  |===A===|                                     |=========C========|
+             |       |                                     |
+IRQ1 (Prio 3)|       |===B1===|                   |===B2===|
+             |       |        |                   |
+IRQ2 (Prio 1)|       |        |========D=========|
+             |       |        |                  |
+             +-------+--------+------------------+---------+------------------>
+             t0      t1       t2                 t3        t4                 Time
 
-Main    |===A====|          |============C============|
-        |        |          |
-IRQ1    |        |==B1===|  |==B2=|     |====B3======|
-        |        |       |  |     |     |
-IRQ2    |        |       |==|==D==|=|   |
-        |        |       |        |
-         t0     t1      t2  t3   t4  t5
-
-t0: Main dang chay (A)
-t1: IRQ1 xay ra, priority=3. CPU context save -> vao ISR1 (B1)
-t2: IRQ2 xay ra, priority=1 (cao hon 3). CPU preempt ISR1!
-    Context save them lan nua (stack lau lau hon)
-    CPU vao ISR2 (D)
-t3: ISR2 done, CPU exception return -> khoi phuc ISR1 (B2)
-t4: ISR1 done, CPU exception return -> khoi phuc Main (C)
-
-Stack luc t2 (tu tren xuong duoi):
-  [ISR1 frame: R0-R3,R12,LR,PC,xPSR]
-  [Main frame: R0-R3,R12,LR,PC,xPSR]
-  [... rest of stack ...]
+- t0: Main Thread đang chạy bình thường (Khối A).
+- t1: IRQ1 xảy ra. CPU Auto-stacking -> Chạy ISR1 (Khối B1).
+- t2: IRQ2 (Priority = 1, cao hơn 3) ập tới! CPU lập tức PREEMPT (cắt ngang) ISR1!
+      CPU đẩy thêm một khung Auto-stacking thứ hai lên Stack -> Chạy ISR2 (Khối D).
+- t3: ISR2 kết thúc (BX LR) -> CPU Auto-unstacking quay trở lại thực thi nốt ISR1 (Khối B2).
+- t4: ISR1 kết thúc (BX LR) -> CPU khôi phục lại Main Thread ban đầu (Khối C).
 ```
 
-### 6.4 Tail-Chaining - Optimization Cua Cortex-M
+---
+
+### 6.3 Hai Kỹ Thuật Tối Ưu Phần Cứng Độc Quyền Của Cortex-M
+
+#### ⚡ 1. Tail-Chaining (Nối Đuôi Ngắt Không Cần Restore Context)
+Khi một ngắt hoàn thành, nếu phần cứng phát hiện vẫn còn một ngắt khác đang ở trạng thái Pending:
+- **Cách làm thông thường (Naive):** POP 8 thanh ghi (12 cycles) ➔ PUSH lại 8 thanh ghi (12 cycles) = Tốn 24 cycles lãng phí!
+- **Cortex-M Tail-Chaining:** CPU **BỎ QUA HOÀN TOÀN** bước POP và PUSH. CPU giữ nguyên khung Stack và nhảy thẳng tới fetch Vector của ngắt tiếp theo. **Chỉ tốn đúng 6 chu kỳ xung nhịp!**
 
 ```
-Kich ban: IRQ1 va IRQ2 ca hai pending, IRQ1 priority cao hon
+KHÔNG CÓ TAIL-CHAINING (TỐN 24+ CYCLES OVERHEAD):
+[ ISR 1 Chạy ] ──> [ POP Stack (12 cyc) ] ──> [ PUSH Stack (12 cyc) ] ──> [ ISR 2 Chạy ]
 
-KHONG co Tail-Chaining (naive):
-  ISR1: | context save | ISR1 execute | context restore |
-  ISR2:                                                  | context save | ISR2 | restore |
-  Overhead: 2x context save/restore = 64 bytes * 2 = 16 cycles * 2
-
-VOI Tail-Chaining:
-  ISR1: | context save | ISR1 execute | --- NO RESTORE --- |
-  ISR2:                               | vector fetch | ISR2 | context restore |
-  Overhead: 1x save + 1x restore + 1x vector fetch
-  Tiet kiem ~12 cycles (khong restore roi save lai)
-
-CPU tu dong phat hien: sau khi ISR1 xong, con IRQ pending?
-  -> YES: khong restore, thuc hien tail-chain
-  -> NO: restore context, ve main
+CÓ TAIL-CHAINING TRÊN CORTEX-M (CHỈ TỐN ĐÚNG 6 CYCLES):
+[ ISR 1 Chạy ] ──> [ Tail-Chain Fetch (6 cyc) ] ──> [ ISR 2 Chạy ]
 ```
 
-### 6.5 Late Arrival
+#### ⚡ 2. Late-Arrival (Tiếp Nhận Ngắt Ưu Tiên Cao Đến Muộn)
+Khi CPU đang trong quá trình Auto-stacking 12 chu kỳ để chuẩn bị vào một ngắt ưu tiên thấp (IRQ1), nếu có một ngắt ưu tiên cao hơn (IRQ2) ập tới:
+- CPU **KHÔNG HỦY** quá trình stacking đang diễn ra.
+- CPU tận dụng chính khung Stack vừa lưu để chuyển hướng nạp Vector của IRQ2 vào thực thi trước!
 
-```
-Kich ban: IRQ1 (priority=5) dang trong qua trinh context save,
-          IRQ2 (priority=2) xay ra
+---
 
-KHONG co Late Arrival:
-  | IRQ1 context save | IRQ1 execute | IRQ1 return | IRQ2 context save | IRQ2 |
-
-VOI Late Arrival (Cortex-M):
-  | context save | IRQ2 fetch vector | IRQ2 execute | IRQ2 return |
-                                                                    | IRQ1 fetch vector | IRQ1 |
-  CPU dang context save -> IRQ cao priority den -> switch sang fetch vector cua IRQ moi
-  Context save cu van dung duoc (vi stack frame la chung)
-```
-
-### 6.6 BASEPRI, PRIMASK, FAULTMASK
+### 6.4 Các Thanh Ghi Khóa Ngắt Hệ Thống: PRIMASK, BASEPRI, FAULTMASK
 
 ```c
-/* PRIMASK: Mask tat ca interrupts ngoai NMI va HardFault */
-__set_PRIMASK(1);   /* Disable tat ca maskable interrupts */
-/* Critical section code */
-__set_PRIMASK(0);   /* Enable lai */
+/* 1. PRIMASK: Khóa TOÀN BỘ ngắt có thể cấu hình được (Chỉ NMI và HardFault chạy được) */
+__set_PRIMASK(1);   /* Khóa tất cả ngắt (Vào Critical Section) */
+/* Đoạn code an toàn không bao giờ bị ngắt */
+__set_PRIMASK(0);   /* Mở lại ngắt */
 
-/* BASEPRI: Chi mask interrupt priority <= gia tri nay */
-__set_BASEPRI(5 << 4);  /* Mask tat ca priority >= 5 (gia tri lon = priority thap) */
-/* Chi cho phep priority 0,1,2,3,4 preempt */
-__set_BASEPRI(0);        /* Disable masking */
+/* 2. BASEPRI: Chỉ khóa các ngắt có Priority THẤP HƠN HOẶC BẰNG một ngưỡng */
+/* Ví dụ: Khóa tất cả ngắt có Priority từ 5 đến 255 (Priority 0, 1, 2, 3, 4 vẫn được chạy!) */
+__set_BASEPRI(5 << (8 - __NVIC_PRIO_BITS));  /* Thường dùng trong FreeRTOS */
+__set_BASEPRI(0);                            /* Hủy bỏ lọc ngưỡng, mở lại toàn bộ */
 
-/* FAULTMASK: Mask ca HardFault (ngoai NMI) */
-__set_FAULTMASK(1);  /* Rat nguy hiem, chi dung trong fault handler */
-
-/* FreeRTOS su dung configMAX_SYSCALL_INTERRUPT_PRIORITY
-   = gia tri BASEPRI de protect RTOS critical sections
-   IRQ co priority < configMAX_SYSCALL = KHONG the goi FreeRTOS API */
+/* 3. FAULTMASK: Khóa cả HardFault (Chỉ dùng trong các tình huống cứu hộ đặc biệt) */
+__set_FAULTMASK(1);
 ```
 
-### 6.7 Kiem tra Tu Duy - Chuong 6
+---
 
-**Cau 1:** IRQ1 priority = 5, IRQ2 priority = 3. Ca hai dang pending cung luc. CPU se phuc vu cai nao truoc? Sau khi xong cai do, co tail-chain khong?
+### 6.5 Câu Hỏi Kiểm Tra Tư Duy — Chương 6
 
-**Cau 2:** FreeRTOS co configMAX_SYSCALL_INTERRUPT_PRIORITY = 5. ISR co priority = 3 goi xQueueSendFromISR(). Chuyen gi xay ra?
-
-**Cau 3:** Nested interrupt co the xay ra bao nhieu cap? Gioi han la gi?
+1. **Câu 1:** Trong hệ thống có IRQ_A (Preemption Prio = 2, Sub-Prio = 0) và IRQ_B (Preemption Prio = 2, Sub-Prio = 1). Khi IRQ_B đang thực thi, IRQ_A được kích hoạt. IRQ_A có thể preempt (cắt ngang) IRQ_B để chạy trước hay không? Tại sao?
+2. **Câu 2:** Tại sao FreeRTOS lại sử dụng thanh ghi `BASEPRI` để bảo vệ các vùng Critical Section (`taskENTER_CRITICAL()`) thay vì dùng lệnh khóa toàn cục `__disable_irq()` (`PRIMASK`)?
+3. **Câu 3:** Khái niệm "Tail-Chaining" giúp tiết kiệm bao nhiêu chu kỳ xung nhịp và tại sao nó lại là tính năng mang tính cách mạng cho các hệ thống vi điều khiển thời gian thực?
 
 ---
 
 <a name="ch7"></a>
-## CHUONG 7: INTERRUPT + RTOS (FREERTOS)
+## CHƯƠNG 7: INTERRUPT & RTOS (FREERTOS ARCHITECTURE)
 
-### 7.1 Tai Sao Khong The Goi xSemaphoreGive() Trong ISR?
+### 7.1 Tại Sao Tuyệt Đối Không Được Dùng API Chuẩn Trong ISR?
 
-```c
-/* HAM KHONG DUNG CHO ISR */
-BaseType_t xSemaphoreGive(SemaphoreHandle_t xSemaphore);
+Một lỗi kinh điển của lập trình viên Junior là gọi hàm `xSemaphoreGive(sem)` hoặc `xQueueSend(queue, &data, 0)` bên trong hàm ISR.
 
-/* Ham nay ben trong goi: */
-void xQueueGenericSend(...) {
-    /* ... */
-    taskENTER_CRITICAL();      /* Disable interrupts! */
-    /* ... them vao queue ... */
-    taskEXIT_CRITICAL();       /* Enable interrupts */
+```
+HẬU QUẢ CHÍNH XÁC KHI GỌI API CHUẨN TRONG ISR:
 
-    /* Neu co task dang cho, goi scheduler */
-    if (xHigherPriorityTaskWoken) {
-        portYIELD();            /* Trigger PendSV */
-    }
-}
+1. VI PHẠM KHÓA CRITICAL SECTION:
+   `xQueueSend()` bên trong gọi `taskENTER_CRITICAL()`. Hàm này thao tác với biến đếm
+   `uxCriticalNesting` vốn CHỈ DÀNH RIÊNG CHO THREAD CONTEXT. Khi gọi trong ISR (Handler Mode),
+   biến đếm này bị sai lệch, dẫn tới deadlock hệ thống!
+
+2. GỌI BỘ LẬP LỊCH SAI THỜI ĐIỂM:
+   Nếu việc gửi Queue đánh thức một Task có độ ưu tiên cao hơn, `xQueueSend()` sẽ gọi `portYIELD()`.
+   Lệnh này yêu cầu chuyển ngữ cảnh NGAY LẬP TỨC trong khi CPU VẪN ĐANG NẰM TRONG HANDLER MODE
+   CỦA PHẦN CỨNG ➔ Kích hoạt lỗi HardFault hoặc làm sập RTOS Kernel!
 ```
 
-**Van de 1: Critical Section trong ISR**
+#### 💡 GIẢI PHÁP: LUÔN DÙNG CÁC API CÓ ĐUÔI `...FromISR()`
+Các API `FromISR` được thiết kế chuyên biệt cho Handler Mode:
+- Không sử dụng `taskENTER_CRITICAL()` mà dùng cơ chế lưu trạng thái ngắt an toàn.
+- Không tự ý gọi chuyển ngữ cảnh mà thông báo qua con trỏ `pxHigherPriorityTaskWoken`.
 
-`taskENTER_CRITICAL()` disable interrupt bang cach set BASEPRI. Nhung chung ta DANG trong ISR roi - nghia la interrupt da bi disable de vao day. Goi tiep tuc disable co the gay ra deadlock hoac nested critical section sai.
+---
 
-**Van de 2: Scheduler goi sai luc**
-
-`portYIELD()` set PendSV pending. Nhung ISR hien tai CHUA ket thuc! PendSV se chay NGAY khi ISR return -> context switch xay ra truoc khi CPU khoi phuc dung trang thai.
-
-```c
-/* HAM DUNG CHO ISR */
-BaseType_t xSemaphoreGiveFromISR(
-    SemaphoreHandle_t xSemaphore,
-    BaseType_t *pxHigherPriorityTaskWoken  /* OUTPUT */
-);
-
-/* Ben trong: */
-void xQueueGenericSendFromISR(...) {
-    /* Khong dung taskENTER_CRITICAL() */
-    /* Thay the: UBaseType_t uxSavedInterruptStatus = portSET_INTERRUPT_MASK_FROM_ISR() */
-    /* -> Dung cach phu hop voi ISR context */
-
-    /* Them vao queue */
-    /* ... */
-
-    /* KHONG goi scheduler truc tiep */
-    /* Thay the: set flag de ISR caller quyet dinh */
-    *pxHigherPriorityTaskWoken = pdTRUE;
-
-    /* portCLEAR_INTERRUPT_MASK_FROM_ISR(uxSavedInterruptStatus) */
-}
-```
-
-### 7.2 Dung Pattern Chuan Cho ISR Voi FreeRTOS
+### 7.2 Mẫu Thiết Kế Chuẩn ISR Trong FreeRTOS (Design Pattern)
 
 ```c
-/* ISR chuan voi FreeRTOS */
-void UART1_IRQHandler(void) {
+/* Hàm ngắt UART RX xử lý chuẩn mực công nghiệp với FreeRTOS */
+void USART1_IRQHandler(void) {
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    uint8_t rx_data;
 
-    /* Doc du lieu tu peripheral */
-    uint8_t data = USART1->DR;
+    /* 1. Kiểm tra cờ ngắt phần cứng RXNE (Read data register not empty) */
+    if (USART1->SR & USART_SR_RXNE) {
+        rx_data = (uint8_t)(USART1->DR & 0xFF);  /* Đọc dữ liệu (Tự động xóa cờ RXNE) */
 
-    /* Gui vao queue - ham "FromISR" */
-    xQueueSendFromISR(uart_rx_queue, &data, &xHigherPriorityTaskWoken);
+        /* 2. Đưa dữ liệu vào Queue từ trong ISR */
+        xQueueSendFromISR(g_uart_rx_queue, &rx_data, &xHigherPriorityTaskWoken);
+    }
 
-    /* Neu task co priority cao hon da san sang:
-       Request context switch NGAY SAU KHI ISR return */
+    /* 3. BẮT BUỘC: Yêu cầu chuyển đổi ngữ cảnh nếu có Task ưu tiên cao hơn được đánh thức */
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    /* portYIELD_FROM_ISR:
-       Neu xHigherPriorityTaskWoken = pdTRUE: set PendSV pending
-       PendSV chay ngay sau khi ISR return
-       -> Context switch ngay lap tuc
-    */
+    /* Nếu xHigherPriorityTaskWoken == pdTRUE:
+       Hàm này sẽ set bit PENDSVSET trong thanh ghi SCB->ICSR.
+       Ngay khi hàm USART1_IRQHandler kết thúc (BX LR), CPU sẽ chuyển thẳng sang
+       PendSV_Handler để chuyển ngữ cảnh sang Task xử lý dữ liệu ngay lập tức! */
 }
 ```
 
-### 7.3 SysTick, PendSV, SVC - Ba Truc Cot Cua FreeRTOS
+---
+
+### 7.3 Tam Giác Vàng Của FreeRTOS: SysTick, PendSV, SVCall
 
 ```
-+=========================================================+
-|  FREERTOS INTERRUPT MECHANISM                           |
-+=========================================================+
-|                                                         |
-|  SysTick (Priority: cao - vi du 0xE0 = 224)            |
-|  -> Goi moi configTICK_RATE_HZ (1ms)                   |
-|  -> Dem tick count                                      |
-|  -> Phat hien task timeout/delay                        |
-|  -> Neu can context switch: set PendSV PENDING          |
-|                                                         |
-|  PendSV (Priority: THAP NHAT - 0xFF = 255)             |
-|  -> Chi chay khi khong con ISR nao khac dang active     |
-|  -> Thuc hien actual context switch                     |
-|  -> Luu thanh ghi R4-R11 cua task hien tai             |
-|  -> Nap thanh ghi R4-R11 cua task moi                  |
-|                                                         |
-|  SVC (Priority: configurable)                           |
-|  -> Task goi OS API tu unprivileged mode                |
-|  -> Bat dau scheduler lan dau (vTaskStartScheduler)     |
-|                                                         |
-+=========================================================+
++===================================================================================+
+|                    KIẾN TRÚC ĐIỀU PHỐI RTOS QUA 3 EXCEPTION                       |
++===================================================================================+
 
-FLOW CHINH XAC:
+ 1. SVC (Supervisor Call - Exception #11):
+    • Thực thi với lệnh: `SVC #0`.
+    • Nhiệm vụ: Khởi động Task đầu tiên khi gọi `vTaskStartScheduler()`.
+    • Chuyển CPU từ Privileged Mode sang Unprivileged Mode để chạy ứng dụng an toàn.
 
-1ms Hardware SysTick
-       |
-       v
-SysTick_Handler (FreeRTOS)
-  xTaskIncrementTick()
-  Phat hien TaskB het delay -> ReadyList
-  portYIELD_FROM_ISR(pdTRUE)
-    -> NVIC_INT_CTRL = PENDSVSET
-       |
-       v
-PendSV pending (nhung chua chay vi SysTick chua return)
-       |
-       v
-SysTick_Handler return (BX LR = EXC_RETURN)
-       |
-       v
-PendSV_Handler bat dau (vi no la pending va khong con ISR nao khac)
-  PUSH {R4-R11} xuong PSP cua TaskA (luu context)
-  TaskA->pxTopOfStack = PSP
-  TaskA -> NotReady list (neu het quantum)
+ 2. SysTick Timer (Exception #15 - Priority = configLIBRARY_LOWEST_INTERRUPT_PRIORITY):
+    • Tạo ngắt định kỳ mỗi 1 ms (configTICK_RATE_HZ = 1000).
+    • Tăng biến đếm thời gian `xTickCount`.
+    • Kiểm tra các Task đang Delay (`vTaskDelay`) hoặc Timeout.
+    • Nếu có Task ưu tiên cao sẵn sàng: Kéo cờ `SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk`.
 
-  TaskB = highest priority ready task
-  PSP = TaskB->pxTopOfStack
-  POP {R4-R11} tu PSP cua TaskB (nap context)
-  BX LR (EXC_RETURN)
-       |
-       v
-CPU return to Thread mode voi PSP cua TaskB
-TaskB tiep tuc chay tu dung cho
+ 3. PendSV (Pendable Service - Exception #14 - LUÔN CÓ PRIORITY THẤP NHẤT = 255):
+    • Đóng vai trò là "Cỗ máy chuyển đổi ngữ cảnh" (Context Switch Engine).
+    • Chỉ được phép chạy khi TẤT CẢ các ngắt phần cứng khác đã hoàn thành.
+    • Thực thi mã nguồn Assembly:
+        - Lưu các thanh ghi {R4-R11} của Task cũ vào vùng nhớ Stack (PSP).
+        - Cập nhật con trỏ `pxCurrentTCB->pxTopOfStack = PSP`.
+        - Lấy `pxCurrentTCB` mới (Task có độ ưu tiên cao nhất trong Ready List).
+        - Nạp lại {R4-R11} từ Stack của Task mới.
+        - Gán PSP = `pxCurrentTCB->pxTopOfStack`.
+        - Thực hiện `BX LR` (0xFFFFFFFD) ➔ CPU tự động nạp {R0-R3, R12, LR, PC, xPSR}
+          và bắt đầu chạy Task mới!
++===================================================================================+
 ```
 
-### 7.4 Kiem tra Tu Duy - Chuong 7
+---
 
-**Cau 1:** Tai sao PendSV phai co priority thap nhat trong he thong? Dieu gi xay ra neu PendSV co priority cao hon UART ISR?
+### 7.4 Cấu Hình `configMAX_SYSCALL_INTERRUPT_PRIORITY` (Cực Kỳ Quan Trọng)
 
-**Cau 2:** FreeRTOS portENTER_CRITICAL() dung BASEPRI, khong dung PRIMASK. Tai sao? Su khac biet trong thuc te la gi?
+Trong file `FreeRTOSConfig.h`:
 
-**Cau 3:** vTaskDelay(100) ben trong hoat dong nhu the nao lien quan den SysTick va scheduler?
+```c
+/* Ngưỡng ưu tiên ngắt cao nhất được phép gọi API FreeRTOS (ví dụ = 5) */
+#define configLIBRARY_MAX_SYSCALL_INTERRUPT_PRIORITY   5
+```
+
+```
+PHÂN CHIA TẦNG NGẮT TRONG HỆ THỐNG EMBEDDED:
+
+Priority 0 - 4 (CAO HƠN configMAX_SYSCALL):
+  • Các ngắt cực kỳ khẩn cấp, thời gian thực tuyệt đối (Zero-Latency ISRs):
+    - Điều khiển băm xung Motor FOC (20 kHz PWM).
+    - Bảo vệ ngắt mạch phần cứng quá dòng / quá nhiệt.
+  • KHÔNG BAO GIỜ bị RTOS khóa (Kernel Critical Section không thể chạm tới).
+  • TUYỆT ĐỐI KHÔNG ĐƯỢC GỌI BẤT KỲ API NÀO CỦA FREERTOS (Kể cả ...FromISR)!
+
+Priority 5 - 15 (THẤP HƠN HOẶC BẰNG configMAX_SYSCALL):
+  • Các ngắt thông thường (UART, CAN, SPI, I2C, Timer định thời).
+  • Có thể gọi an toàn các hàm API có đuôi `...FromISR`.
+  • Sẽ bị tạm dừng trong khoảng thời gian rất ngắn khi RTOS chạy Critical Section.
+```
+
+---
+
+### 7.5 Câu Hỏi Kiểm Tra Tư Duy — Chương 7
+
+1. **Câu 1:** Điều gì sẽ xảy ra nếu một kỹ sư vô tình cấu hình ngắt CAN RX có mức ưu tiên `Priority = 3` (cao hơn `configMAX_SYSCALL = 5`) và bên trong ISR gọi hàm `xQueueSendFromISR()`?
+2. **Câu 2:** Tại sao `PendSV` bắt buộc phải có mức ưu tiên thấp nhất trong hệ thống? Nếu gán `PendSV` mức ưu tiên cao nhất, điều gì sẽ xảy ra khi một ngắt UART đang nhận dở gói tin thì bị PendSV cắt ngang để đổi Task?
+3. **Câu 3:** Phân tích cơ chế hoạt động của `portYIELD_FROM_ISR(xHigherPriorityTaskWoken)`. Tại sao lệnh này không thực hiện chuyển Task ngay lập tức trong thân hàm ISR mà lại thông qua `PendSV`?
 
 ---
 
 <a name="ch8"></a>
-## CHUONG 8: BOOTLOADER + MULTI-IMAGE
+## CHƯƠNG 8: BOOTLOADER & MULTI-IMAGE ARCHITECTURE
 
-### 8.1 Flash Layout Voi Bootloader
-
-```
-FLASH MEMORY (Vi du STM32F4, 1MB):
-
-0x08000000 +---------------------------+
-           |    BOOTLOADER             |
-           |    Vector Table BL        |  <- CPU doc day khi power-on
-           |    BL Code                |
-           |    BL Data (rodata)       |
-0x08008000 +---------------------------+
-           |    APPLICATION            |
-           |    Vector Table APP       |  <- App co vector table RIENG
-           |    App Code               |
-           |    App Data               |
-0x08100000 +---------------------------+
-           |    (Unused / OTA buffer)  |
-0x08200000 +---------------------------+  <- End of Flash
-```
-
-### 8.2 Bootloader Jump Vao Application - Dung Cach
-
-```c
-/* Bootloader code */
-
-/* Dinh nghia dia chi app */
-#define APP_START_ADDRESS   0x08008000
-#define APP_STACK_POINTER   (*((volatile uint32_t*)APP_START_ADDRESS))
-#define APP_RESET_HANDLER   (*((volatile uint32_t*)(APP_START_ADDRESS + 4)))
-
-typedef void (*AppResetHandler_t)(void);
-
-void bootloader_jump_to_app(void) {
-
-    /* BUOC 1: Tat tat ca peripheral va interrupt */
-    /* QUAN TRONG: Neu khong tat, app se inherit trang thai tu BL */
-    HAL_DeInit();
-    /* Hoac thu cong: */
-    RCC->AHB1ENR = 0;
-    RCC->APB1ENR = 0;
-    RCC->APB2ENR = 0;
-
-    /* BUOC 2: Disable tat ca NVIC IRQ */
-    for (int i = 0; i < 8; i++) {
-        NVIC->ICER[i] = 0xFFFFFFFF;  /* Disable all */
-        NVIC->ICPR[i] = 0xFFFFFFFF;  /* Clear pending */
-    }
-
-    /* BUOC 3: Disable SysTick */
-    SysTick->CTRL = 0;
-
-    /* BUOC 4: Disable global interrupts */
-    __disable_irq();
-
-    /* BUOC 5: Validate app (kiem tra magic number hoac CRC) */
-    /* Stack pointer phai nam trong RAM range */
-    if ((APP_STACK_POINTER & 0xFF000000) != 0x20000000) {
-        /* App khong hop le */
-        Error_Handler();
-    }
-
-    /* BUOC 6: Set MSP toi gia tri Stack Pointer cua app */
-    __set_MSP(APP_STACK_POINTER);
-
-    /* BUOC 7: RELOCATE VECTOR TABLE cua app */
-    SCB->VTOR = APP_START_ADDRESS;
-
-    /* BUOC 8: Enable interrupt tro lai (app se tu config) */
-    __enable_irq();
-
-    /* BUOC 9: Jump den Reset_Handler cua app */
-    AppResetHandler_t app_reset = (AppResetHandler_t)APP_RESET_HANDLER;
-    app_reset();
-
-    /* Khong bao gio den day */
-    while(1);
-}
-```
-
-### 8.3 Tai Sao Chi Jump Reset_Handler Chua Du?
+### 8.1 Sơ Đồ Phân Vùng Bộ Nhớ Flash (Dual-Image Layout)
 
 ```
-Junior thuong nghĩ: "Toi chi can jump den Reset_Handler cua app la xong"
+SƠ ĐỒ BỘ NHỚ FLASH KHI CÓ BOOTLOADER VÀ APPLICATION:
 
-Sai vi:
-1. VTOR van tro den vector table cua bootloader
-   -> App interrupt -> CPU tim ISR cua BOOTLOADER -> sai!
-   -> App se gap HardFault ngay khi co interrupt dau tien
-
-2. MSP van tro den stack cua bootloader
-   -> App Reset_Handler se copy .data, zero .bss, sau do goi main()
-   -> main() chay tren stack cua BL -> stack overflow neu BL stack nho
-
-3. Peripheral state cua BL con do
-   -> App khong biet peripheral da duoc cau hinh gi
-   -> Co the gay conflict
-
-DUNG CACH (thu tu quan trong):
-1. Tat peripheral + NVIC + SysTick
-2. Set MSP = app->stack_pointer
-3. Set VTOR = app_start_address
-4. Jump den app->reset_handler
+Địa chỉ Flash
+0x08100000 +------------------------------------------+  <-- HẾT FLASH (1 MB)
+           |  Vùng Lưu Trữ Firmware Mới (OTA Buffer)  |
+0x08080000 +------------------------------------------+
+           |  APPLICATION FIRMWARE                    |
+           |  • Bảng Vector Table của App (512B)     |  <-- NẰM TẠI 0x08008000
+           |    [0] Initial Stack Pointer của App     |
+           |    [1] Reset_Handler của App             |
+           |  • Mã thực thi (.text) của App           |
+           |  • Hằng số (.rodata) của App             |
+0x08008000 +------------------------------------------+  <-- ĐỊA CHỈ BẮT ĐẦU APP
+           |  BOOTLOADER FIRMWARE                     |
+           |  • Bảng Vector Table của Bootloader      |  <-- NẰM TẠI 0x08000000
+           |    [0] Initial Stack Pointer của BL      |
+           |    [1] Reset_Handler của BL              |
+           |  • Logic kiểm tra OTA, Flash Read/Write  |
+0x08000000 +------------------------------------------+  <-- BẮT ĐẦU FLASH VẬT LÝ
 ```
-
-### 8.4 Loi Thuong Gap Khi Bootloader Jump App
-
-```
-LOI 1: HardFault ngay khi app enable interrupt lan dau
-  Nguyen nhan: VTOR chua duoc set -> CPU tim ISR sai address
-  Debug: Kiem tra SCB->VTOR = 0x08008000 (khong phai 0x08000000)
-
-LOI 2: App chay duoc nhung crash sau vai giay
-  Nguyen nhan: Stack MSP chua duoc update -> stack overlap BL data
-  Debug: Xem SP register, so sanh voi _stack_size trong linker
-
-LOI 3: App khong chay duoc gi ca
-  Nguyen nhan: NVIC interrupts tu BL van con active/pending
-  Debug: Tat tat ca NVIC truoc khi jump
-
-LOI 4: App chay nhung FreeRTOS crash
-  Nguyen nhan: SysTick cua BL van dang chay -> xung dot voi SysTick cua app
-  Debug: Disable SysTick (SysTick->CTRL = 0) truoc khi jump
-
-LOI 5: OTA update xong nhung app moi khong nhan duoc flash moi nhat
-  Nguyen nhan: Flash cache chua duoc invalidate
-  Debug: FLASH->ACR cache flush
-```
-
-### 8.5 Kiem tra Tu Duy - Chuong 8
-
-**Cau 1:** Bootloader dat tai 0x08000000, App tai 0x08008000. App da chay duoc. Nhung khi Timer interrupt xay ra, CPU vao HardFault. Nguyen nhan chinh xac la gi va cach fix?
-
-**Cau 2:** Tai sao can disable global interrupt truoc khi jump, nhung sau khi set VTOR lai can enable lai?
-
-**Cau 3:** App linker script co can thay doi so voi project thong thuong (khong co bootloader) khong?
 
 ---
 
+### 8.2 Quy Trình 9 Bước Nhảy Từ Bootloader Sang Application Chuẩn Senior
+
+Dưới đây là hàm chuyển giao quyền thực thi từ Bootloader sang Application an toàn tuyệt đối 100%:
+
+```c
+#define APPLICATION_START_ADDRESS   (0x08008000UL)
+
+typedef void (*pFunction)(void);
+
+void Jump_To_Application(void) {
+    uint32_t app_stack_pointer;
+    uint32_t app_reset_handler_addr;
+    pFunction app_entry;
+
+    /* BƯỚC 1: Đọc giá trị Initial Stack Pointer của App tại Entry [0] */
+    app_stack_pointer = *(__IO uint32_t*)APPLICATION_START_ADDRESS;
+
+    /* BƯỚC 2: Kiểm tra tính hợp lệ của Stack Pointer (Phải nằm trong không gian SRAM 0x20000000 - 0x20020000) */
+    if ((app_stack_pointer & 0xFFFE0000) != 0x20000000) {
+        /* Firmware Application bị rỗng hoặc lỗi nạp -> Không thể nhảy! */
+        Error_Handler();
+    }
+
+    /* BƯỚC 3: Đọc địa chỉ hàm Reset_Handler của App tại Entry [1] */
+    app_reset_handler_addr = *(__IO uint32_t*)(APPLICATION_START_ADDRESS + 4);
+    app_entry = (pFunction)app_reset_handler_addr;
+
+    /* BƯỚC 4: Khóa toàn bộ ngắt toàn cục trước khi dọn dẹp hệ thống */
+    __disable_irq();
+
+    /* BƯỚC 5: Tắt toàn bộ ngắt phần cứng trong NVIC và xóa sạch trạng thái Pending */
+    for (int i = 0; i < 8; i++) {
+        NVIC->ICER[i] = 0xFFFFFFFF;  /* Disable all IRQ channels */
+        NVIC->ICPR[i] = 0xFFFFFFFF;  /* Clear all Pending flags */
+    }
+
+    /* BƯỚC 6: Tắt bộ đếm SysTick để không làm gián đoạn quá trình Boot của App */
+    SysTick->CTRL = 0;
+    SysTick->LOAD = 0;
+    SysTick->VAL  = 0;
+
+    /* BƯỚC 7: TÁI ĐỊNH VỊ VECTOR TABLE SANG APPLICATION */
+    SCB->VTOR = APPLICATION_START_ADDRESS;
+
+    /* BƯỚC 8: Thiết lập thanh ghi Main Stack Pointer (MSP) sang vùng nhớ Stack của App */
+    __set_MSP(app_stack_pointer);
+
+    /* BƯỚC 9: Thiết lập trạng thái thanh ghi CONTROL = 0 (Privileged Mode, sử dụng MSP) */
+    __set_CONTROL(0);
+    __ISB();  /* Flush pipeline lệnh */
+
+    /* BƯỚC 10: Mở lại ngắt toàn cục và nhảy thẳng vào Reset_Handler của Application */
+    __enable_irq();
+    app_entry();
+
+    /* Đoạn code phòng thủ: Không bao giờ được chạy tới đây */
+    while (1) {
+        __NOP();
+    }
+}
+```
+
+---
+
+### 8.3 5 Lỗi Kinh Điển Khi Làm Bootloader Khiến App Bị Crash
+
+| Lỗi Phổ Biến | Nguyên Nhân Bản Chất | Cách Khắc Phục Chuẩn Senior |
+|---|---|---|
+| **Lỗi 1: HardFault ngay khi App kích hoạt ngắt đầu tiên** | Bootloader nhảy vào App nhưng quên không cập nhật thanh ghi `SCB->VTOR = 0x08008000`. Khi có ngắt, CPU vẫn tra cứu Vector Table của Bootloader! | Bắt buộc gán `SCB->VTOR = APPLICATION_START_ADDRESS` trước khi nhảy. |
+| **Lỗi 2: Lỗi tràn Stack bí ẩn sau vài phút App hoạt động** | Bootloader quên không gọi `__set_MSP(app_stack_pointer)`, khiến App tiếp tục chạy trên vùng Stack cũ kỹ của Bootloader. | Nạp `__set_MSP()` từ Entry [0] của Application. |
+| **Lỗi 3: App bị treo cứng ngay khi vừa khởi động** | Các ngoại vi của Bootloader (UART, Timer) vẫn đang chạy và sinh ngắt dở dang. App chưa khởi tạo xong driver nhưng đã bị ngắt thừa của Bootloader ập vào! | Gọi `HAL_DeInit()` hoặc tắt toàn bộ Clock ngoại vi và tắt NVIC trước khi nhảy. |
+| **Lỗi 4: FreeRTOS trong App không thể chuyển ngữ cảnh** | SysTick của Bootloader vẫn chạy nền, xung đột trực tiếp với SysTick Driver của App. | Tắt sạch `SysTick->CTRL = 0` trước khi thực hiện lệnh nhảy. |
+| **Lỗi 5: UsageFault INVSTATE** | Địa chỉ hàm `Reset_Handler` bị mất bit LSB (Thumb bit 0 = 0). | Đảm bảo Entry [1] của App luôn là số lẻ (Ví dụ `0x08008109`). |
+
+---
+
+### 8.4 Câu Hỏi Kiểm Tra Tư Duy — Chương 8
+
+1. **Câu 1:** Tại sao nếu chỉ dùng con trỏ hàm để gọi `((void(*)(void))0x08008004)()` mà không nạp lại thanh ghi `MSP` và `VTOR` thì Application vẫn có thể chạy được hàm `main()` nhưng sẽ crash ngay khi có ngắt xảy ra?
+2. **Câu 2:** Tại sao địa chỉ bắt đầu của Application trong Flash (ví dụ `0x08008000` hay `0x08010000`) bắt buộc phải chia hết cho `0x200` (512 bytes) hoặc `0x400` (1024 bytes)?
+3. **Câu 3:** Trong các hệ thống an toàn cao (Automotive ECU), trước khi nhảy vào Application, Bootloader cần thực hiện các bước xác thực phần mềm (Secure Boot) nào?
+
 <a name="ch9"></a>
-## CHUONG 9: DEBUGGING VECTOR TABLE - 5 CASE THUC TE
+## CHƯƠNG 9: DEBUGGING VECTOR TABLE — 5 CASE STUDY THỰC TẾ
 
-### Case 1: Interrupt Khong Bao Gio Vao ISR
+### 🐞 CASE STUDY 1: Interrupt Không Bao Giờ Nhảy Vào ISR
 
-**Checklist debug 9 buoc (theo thu tu):**
+#### 📋 Quy Trình Chẩn Đoán 9 Bước Chuẩn Senior (Elimination Checklist):
 
 ```
-BUOC 1: Kiem tra Peripheral Clock
-  - RCC->APB1ENR / APB2ENR / AHB1ENR co bit clock cua peripheral duoc set?
-  - Neu clock chua enable: peripheral KHONG hoat dong, KHONG the tao IRQ
-  Fix: RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;
+[BƯỚC 1: KIỂM TRA PERIPHERAL CLOCK]
+- Đọc thanh ghi RCC->APB1ENR / APB2ENR / AHB1ENR tương ứng.
+- Nếu Clock ngoại vi chưa bật (bit = 0) ➔ Ngoại vi chết lâm sàng, không thể sinh ngắt!
+- Fix: `RCC->APB1ENR |= RCC_APB1ENR_TIM2EN;`
 
-BUOC 2: Kiem tra Peripheral Interrupt Flag
-  - Co su kien xay ra chua? (TIM2->SR & TIM_SR_UIF)?
-  - Neu flag = 0: peripheral chua tao ra event
-  Fix: Kiem tra cau hinh peripheral (ARR, PSC, etc.)
+[BƯỚC 2: KIỂM TRA CỜ SỰ KIỆN PHẦN CỨNG (HARDWARE FLAG)]
+- Dùng Debugger đọc thanh ghi trạng thái (TIM2->SR, USART1->SR).
+- Cờ sự kiện (UIF, RXNE) có bật lên 1 khi có tín hiệu vật lý không?
+- Nếu cờ không bật ➔ Lỗi cấu hình thông số ngoại vi (Prescaler, Baudrate, GPIO Pin Alternate Function).
 
-BUOC 3: Kiem tra Peripheral Interrupt Enable
-  - TIM2->DIER & TIM_DIER_UIE = 1?
-  - Neu = 0: peripheral co event nhung KHONG gui IRQ signal
-  Fix: TIM2->DIER |= TIM_DIER_UIE;
+[BƯỚC 3: KIỂM TRA PERIPHERAL INTERRUPT ENABLE (NGOẠI VI NỘI BỘ)]
+- Đọc thanh ghi DIER / CR1 của ngoại vi (TIM2->DIER bit UIE = 1?).
+- Nếu cờ sự kiện bật nhưng bit Interrupt Enable = 0 ➔ Ngoại vi không kéo đường dây IRQ.
+- Fix: `TIM2->DIER |= TIM_DIER_UIE;`
 
-BUOC 4: Kiem tra NVIC Enable
-  - NVIC->ISER[0] bit 28 (TIM2) = 1?
-  - Neu = 0: NVIC nhan duoc IRQ nhung bo qua
-  Fix: NVIC_EnableIRQ(TIM2_IRQn);
+[BƯỚC 4: KIỂM TRA NVIC ENABLE REGISTER]
+- Dùng GDB đọc: `x/8xw 0xE000E100` (NVIC->ISER).
+- Kênh IRQ của ngoại vi (ví dụ TIM2_IRQn = 28) có bit tương ứng bằng 1 không?
+- Fix: `NVIC_EnableIRQ(TIM2_IRQn);`
 
-BUOC 5: Kiem tra Priority va Masking
-  - NVIC->IPR priority < BASEPRI?
-  - PRIMASK = 1?
-  - FAULTMASK = 1?
-  - Neu BASEPRI = 0x50 (80) va priority = 96: bi mask!
-  Fix: __set_BASEPRI(0); hoac tang priority cua IRQ
+[BƯỚC 5: KIỂM TRA LỌC NGƯỠNG PRIORITY (BASEPRI & PRIMASK)]
+- Đọc thanh ghi BASEPRI: Mức ưu tiên của ngắt có bị chặn bởi BASEPRI của RTOS không?
+- Đọc thanh ghi PRIMASK: Có đoạn mã nào đang khóa ngắt toàn cục (`__disable_irq()`) mà quên mở không?
+- Fix: `__set_BASEPRI(0);` và `__enable_irq();`
 
-BUOC 6: Kiem tra Global Interrupt Enable
-  - __get_PRIMASK() = 0? (0 = interrupts enabled)
-  - Neu PRIMASK = 1: tat ca maskable interrupts bi disable
-  Fix: __enable_irq();
+[BƯỚC 6: KIỂM TRA THANH GHI VTOR]
+- Đọc thanh ghi: `x/xw 0xE000ED08` (SCB->VTOR).
+- Giá trị VTOR có đúng là `0x08000000` (hoặc địa chỉ bắt đầu của App `0x08008000`) không?
+- Nếu VTOR trỏ ra địa chỉ rác ➔ CPU tra cứu sai bảng Vector.
 
-BUOC 7: Kiem tra Vector Table o Dung Dia Chi
-  - SCB->VTOR = 0x08000000 (hoac gia tri mong doi)?
-  - Su dung GDB: x/4xw 0x08000000
-  - Gia tri tai [28] = dia chi TIM2_IRQHandler?
-  Fix: Kiem tra linker script, them VTOR setup
+[BƯỚC 7: KIỂM TRA GIÁ TRỊ TRONG VECTOR TABLE TẠI RUNTIME]
+- Tính toán địa chỉ Vector: Target = VTOR + (Exception_Num * 4).
+- Dùng GDB đọc 4 bytes tại Target: Giá trị có phải là con trỏ hàm ISR hợp lệ trong Flash không?
+- Bit 0 của con trỏ hàm có bằng 1 (Thumb bit) không?
 
-BUOC 8: Kiem tra ISR Symbol Co Trong Binary
-  - arm-none-eabi-nm firmware.elf | grep TIM2_IRQHandler
-  - Co ket qua khong? Dia chi co hop le khong?
-  Fix: Kiem tra ten function, extern "C" trong C++
+[BƯỚC 8: KIỂM TRA TÊN HÀM VÀ EXTERN "C"]
+- Kiểm tra xem tên hàm ISR trong file `.c` có bị sai chính tả (Typo) so với tên trong startup code không.
+- Nếu viết bằng C++, đã có bọc `extern "C"` chưa? (Nếu thiếu `extern "C"`, C++ Name Mangling sẽ đổi tên hàm khiến Linker không thể nhận diện!).
 
-BUOC 9: Kiem tra Linker Placement
-  - arm-none-eabi-objdump -h firmware.elf | grep isr_vector
-  - Section .isr_vector co o dia chi 0x08000000?
-  - arm-none-eabi-readelf -s firmware.elf | grep vector_table
-  Fix: Kiem tra linker script, them KEEP()
+[BƯỚC 9: KIỂM TRA LINKER SECTION KEEP()]
+- Kiểm tra file `.map` và disasm `.elf`: Mảng `.isr_vector` có bị Linker Garbage Collection `-Wl,--gc-sections` xóa bỏ không?
 ```
 
-### Case 2: CPU Nhay Vao Default_Handler
+---
 
-**Nguyen nhan va cach phan biet:**
+### 🐞 CASE STUDY 2: CPU Bị Kẹt Trong `Default_Handler` (Vòng Lặp Vô Tận)
+
+#### 🔍 Cơ Chế Bẫy Lỗi Trong `Default_Handler`
+Khi CPU nhảy vào `Default_Handler`, nghĩa là **CÓ MỘT INTERRUPT ĐÃ XẢY RA NHƯNG CHƯA ĐƯỢC VIẾT HÀM XỬ LÝ (Hoặc bị sai tên hàm)**.
 
 ```c
-/* Default_Handler duoc vao khi:
- * 1. ISR CHUA duoc implement (weak alias)
- * 2. ISR NAME SAI (typo)
- * 3. Vector table co NULL pointer
- */
-
-/* Cach phat hien: Them debug info vao Default_Handler */
+/* Nâng cấp Default_Handler chuẩn Senior để tự động chẩn đoán chính xác IRQ nào gây lỗi: */
 void Default_Handler(void) {
-    /* Doc exception number dang active */
-    volatile uint32_t exc_number = __get_IPSR() & 0xFF;
-    /* exc_number: 1=Reset, 2=NMI, 3=HardFault, ..., 16+=IRQ0+ */
+    /* Đọc thanh ghi IPSR (Interrupt Program Status Register) để lấy Exception Number */
+    volatile uint32_t active_exception = __get_IPSR() & 0x1FF;
+    volatile int active_irq_number = (int)active_exception - 16;
 
-    /* Tinh ten IRQ */
-    volatile int irq_number = (int)exc_number - 16;
-
-    /* Dung debugger tai day de doc exc_number */
-    __BKPT(0);  /* Breakpoint */
-    while (1);
-}
-
-/* Sau khi biet exc_number:
- * - Lookup IRQ table de biet ten IRQ
- * - Kiem tra co implement ISR cho IRQ do chua
- * - Kiem tra ten co dung chinh xac khong
- */
-```
-
-**Typo example:**
-```c
-/* SAI: Ten function sai */
-void Tim2_IRQHandler(void) { /* 'T' thay vi 'TIM' */
-    /* Code nay KHONG bao gio duoc goi */
-    /* Weak alias van tro den Default_Handler */
-}
-
-/* DUNG: */
-void TIM2_IRQHandler(void) {
-    /* ... */
+    /* TẠI ĐÂY: Dừng Debugger để xem biến active_irq_number!
+       - Nếu active_exception == 15  -> SysTick_Handler bị thiếu hoặc sai tên!
+       - Nếu active_irq_number == 28 -> TIM2_IRQHandler bị thiếu hoặc sai tên!
+       - Nếu active_irq_number == 37 -> USART1_IRQHandler bị thiếu hoặc sai tên!
+    */
+    __BKPT(0);  /* Kích hoạt điểm dừng phần cứng Debugger */
+    while (1) {
+        /* Chờ kỹ sư kết nối GDB kiểm tra biến */
+    }
 }
 ```
 
-### Case 3: CPU Vao HardFault Ngay Sau Khi Interrupt Xay Ra
+---
 
-**Cac nguyen nhan co the xay ra:**
+### 🐞 CASE STUDY 3: CPU Rơi Vào `HardFault` Ngay Sau Khi Interrupt Xảy Ra
+
+#### 🔬 Bảng Ma Trận Nguyên Nhân & Cách Phân Biệt:
 
 ```
-NGUYEN NHAN A: Invalid ISR Address trong Vector Table
-  Trieu chung: HardFault NGAY khi fetch ISR address
-  Debug: Kiem tra SCB->HFSR bit VECTTBL = 1
-         SCB->HFSR |= 0x00000002 -> VECTTBL fault
-  Cach fix: Kiem tra vector table co dia chi hop le
+NGUYÊN NHÂN 1: Lỗi Phân Giải Vector Table (Vector Table Read Fault)
+• Thanh ghi chẩn đoán: `SCB->HFSR` có bit `VECTTBL` (Bit 1) = 1.
+• Bản chất: CPU gặp lỗi Bus khi cố gắng đọc 4 bytes con trỏ hàm trong Vector Table (VTOR trỏ vào vùng nhớ không tồn tại).
+• Cách fix: Kiểm tra lại giá trị nạp vào VTOR và bộ nhớ Flash/RAM.
 
-NGUYEN NHAN B: Stack Corruption Truoc Do
-  Trieu chung: HardFault khi CPU co push stack (exception entry)
-  Debug: Kiểm tra SP: phai aligned 8 bytes, phai trong RAM range
-         CFSR->STKERR = 1 -> stacking error
-  Cach fix: Tang stack size, tim stack overflow
+NGUYÊN NHÂN 2: Lỗi Tràn Khung Ngữ Cảnh (Stacking Error / Stack Overflow)
+• Thanh ghi chẩn đoán: `SCB->CFSR` có bit `STKERR` (Bit 12) = 1 hoặc `MSTKERR` (Bit 4) = 1.
+• Bản chất: Khi ngắt kích hoạt, CPU tự động PUSH 32 bytes xuống Stack. Tuy nhiên, con trỏ Stack Pointer (MSP/PSP) đã chạm đáy RAM hoặc vượt ra ngoài vùng nhớ MPU cho phép!
+• Cách fix: Tăng dung lượng Stack của Task / System Stack trong Linker Script.
 
-NGUYEN NHAN C: Sai ISR Address (Thumb bit missing)
-  Trieu chung: CPU nhay den dia chi chan (even) tren Cortex-M -> FAULT
-  Debug: Kiem tra gia tri trong vector table co Thumb bit set?
-         Gia tri phai la ODD (ket thuc bang 1)
-  Cach fix: Linker script va compiler tu xu ly, nhung kiem tra neu assembly
-
-NGUYEN NHAN D: Wrong Vector Table (sau Bootloader Jump)
-  Trieu chung: VTOR van tro den BL vector table
-  Debug: SCB->VTOR = 0x08000000 khi le ra phai la 0x08008000
-  Cach fix: Them SCB->VTOR = APP_START; trong bootloader
-
-NGUYEN NHAN E: MPU Violation
-  Trieu chung: ISR co gang truy cap vung nho bi cam
-  Debug: SCB->CFSR IACCVIOL hoac DACCVIOL
-  Cach fix: Cau hinh lai MPU regions
+NGUYÊN NHÂN 3: Mất Thumb Bit Trong Con Trỏ Hàm ISR
+• Thanh ghi chẩn đoán: `SCB->CFSR` có bit `INVSTATE` (Bit 17) = 1 trong trường UsageFault.
+• Bản chất: Con trỏ hàm trong Vector Table có Bit 0 = 0 (Địa chỉ chẵn). CPU cố gắng chuyển sang chế độ ARM State vốn không được hỗ trợ trên Cortex-M!
+• Cách fix: Đảm bảo địa chỉ con trỏ hàm luôn được cộng thêm 1 (Bit 0 = 1).
 ```
 
-**Debug HardFault chuan:**
-```c
-/* Them vao HardFault_Handler de doc thong tin */
-void HardFault_Handler(void) {
-    __asm volatile (
-        "TST LR, #4\n"          /* Kiem tra EXC_RETURN bit 2 */
-        "ITE EQ\n"
-        "MRSEQ R0, MSP\n"       /* Neu = 0: dung MSP */
-        "MRSNE R0, PSP\n"       /* Neu = 1: dung PSP */
-        "B hard_fault_handler_c\n"
-    );
-}
+---
 
-void hard_fault_handler_c(uint32_t *sp) {
-    /* Doc stacked registers */
-    volatile uint32_t stacked_r0  = sp[0];
-    volatile uint32_t stacked_r1  = sp[1];
-    volatile uint32_t stacked_r2  = sp[2];
-    volatile uint32_t stacked_r3  = sp[3];
-    volatile uint32_t stacked_r12 = sp[4];
-    volatile uint32_t stacked_lr  = sp[5];
-    volatile uint32_t stacked_pc  = sp[6];  /* PC tai thoi diem fault */
-    volatile uint32_t stacked_psr = sp[7];
+### 🐞 CASE STUDY 4: Firmware Chạy Đúng Ở Debug (-O0) Nhưng Sập Ở Release (-O2)
 
-    /* Doc fault status registers */
-    volatile uint32_t cfsr  = SCB->CFSR;   /* Combined Fault Status */
-    volatile uint32_t hfsr  = SCB->HFSR;   /* HardFault Status */
-    volatile uint32_t dfsr  = SCB->DFSR;   /* Debug Fault Status */
-    volatile uint32_t bfar  = SCB->BFAR;   /* Bus Fault Address */
-    volatile uint32_t mmar  = SCB->MMFAR;  /* MemManage Fault Address */
-
-    __BKPT(0);
-    while(1);
-}
-```
-
-### Case 4: Firmware Bi Loi Sau Khi Bat -O2 Optimization
-
-**Phan tich nguyen nhan:**
+#### 🔬 Phân Tích 3 Bản Chất Kỹ Nghệ:
 
 ```c
-/* NGUYEN NHAN 1: Thieu volatile cho bien chia se voi ISR */
-uint32_t counter = 0;  /* THIEU volatile */
+/* NGUYÊN NHÂN A: Thiếu từ khóa 'volatile' cho biến chia sẻ giữa ISR và Main Thread */
+/* SAI: */
+uint8_t g_packet_ready = 0;
 
-void TIM2_IRQHandler(void) {
-    counter++;
+void USART1_IRQHandler(void) {
+    g_packet_ready = 1;  /* Ghi trong ISR */
 }
 
-void main_task(void) {
-    while (counter < 100) {  /* Compiler co the optimize thanh while(true) */
-        /* Compiler nghi: counter khong thay doi trong loop nay */
-        /* Nen: no co the cache gia tri counter trong register */
+void Process_Task(void) {
+    /* Ở mức tối ưu -O2, Compiler nhận thấy biến g_packet_ready không bị thay đổi
+       trong thân vòng lặp -> Compiler TỐI ƯU HÓA ĐỌC BIẾN NÀY VÀO MỘT THANH GHI CPU (R4)
+       VÀ KHÔNG BAO GIỜ ĐỌC LẠI TỪ RAM NỮA! Vòng lặp trở thành while(1) vô tận! */
+    while (!g_packet_ready) {
+        /* Busy wait */
     }
 }
 
-/* FIX: */
-volatile uint32_t counter = 0;  /* Phai co volatile */
+/* ĐÚNG CHUẨN: */
+volatile uint8_t g_packet_ready = 0;  /* Ép Compiler luôn đọc từ ô nhớ RAM */
+```
 
-/* NGUYEN NHAN 2: ISR bi inline hoac bi xoa */
-/* Neu ISR khong duoc reference ngoai vector table:
-   compiler co the xoa, hoac optimizer thay doi cau truc */
+```c
+/* NGUYÊN NHÂN B: Thiếu rào cản bộ nhớ (Memory Barrier) */
+volatile uint8_t  g_data_ready = 0;
+uint32_t          g_sensor_data = 0;
 
-/* FIX: Them __attribute__((noinline)) hoac __attribute__((used)) */
-
-/* NGUYEN NHAN 3: Memory ordering (khong co barrier) */
-uint8_t data_ready = 0;
-uint32_t data_value = 0;
-
-void ISR(void) {
-    data_value = read_sensor();
-    data_ready = 1;           /* CPU co the reorder truoc data_value! */
+void Sensor_IRQHandler(void) {
+    g_sensor_data = SENSOR->DATA;  /* Đọc dữ liệu */
+    __DMB();                       /* Data Memory Barrier: Đảm bảo g_sensor_data được ghi xong */
+    g_data_ready = 1;              /* Bật cờ sẵn sàng */
 }
+```
 
-void main_loop(void) {
-    if (data_ready) {
-        use(data_value);      /* data_value co the chua duoc ghi */
+```c
+/* NGUYÊN NHÂN C: Cờ ngắt chưa kịp xóa đã thoát ISR do độ trễ Bus (Write Buffer Latency) */
+void TIM2_IRQHandler(void) {
+    if (TIM2->SR & TIM_SR_UIF) {
+        TIM2->SR &= ~TIM_SR_UIF;  /* Lệnh ghi xóa cờ */
+        /* Ở mức -O2, code chạy cực nhanh. Lệnh ghi vào thanh ghi ngoại vi qua bus APB1
+           chưa kịp hoàn tất trên phần cứng thì CPU đã thực thi lệnh BX LR thoát ngắt!
+           Cờ UIF vẫn còn = 1 trên ngoại vi ➔ CPU bị ngắt lại ngay lập tức (Interrupt Storm)! */
+        
+        /* FIX SENIOR: Thêm lệnh đọc lại thanh ghi hoặc DSB để ép Bus hoàn tất lệnh ghi */
+        (void)TIM2->SR;  /* Dummy read để đồng bộ Bus */
     }
 }
-
-/* FIX: Them memory barrier */
-void ISR(void) {
-    data_value = read_sensor();
-    __DMB();                  /* Data Memory Barrier */
-    data_ready = 1;
-}
-
-/* NGUYEN NHAN 4: Interrupt flag khong clear truoc khi exit */
-/* Voi -O2 code chay nhanh hon -> interrupt re-enter ngay lap tuc */
-/* Lich su tich luy khi code chay cham an di loi */
-```
-
-### Case 5: Bootloader OK Nhung App Khong Nhan Interrupt
-
-**Debug step-by-step:**
-
-```
-BUOC 1: Xac nhan VTOR
-  GDB: x/xw 0xE000ED08
-  Ket qua mong doi: 0x08008000 (app start)
-  Neu thay 0x08000000: VTOR chua duoc update -> Fix: SCB->VTOR = 0x08008000
-
-BUOC 2: Xac nhan Vector Table App
-  GDB: x/32xw 0x08008000
-  Entry [0]: gia tri Stack Pointer (phai trong RAM: 0x20000000-0x20020000)
-  Entry [1]: Reset_Handler address (phai trong Flash app)
-  Entry [TIM2]: TIM2_IRQHandler address
-
-BUOC 3: Kiem tra NVIC State
-  NVIC->ICER co bi set boi BL ma chua duoc clear?
-  GDB: x/8xw 0xE000E180  (NVIC ICER registers)
-  Phai = 0 (tat ca 0) sau khi BL reset NVIC
-
-BUOC 4: Kiem tra SysTick
-  SysTick->CTRL: bit 0 (ENABLE) = 0?
-  Neu BL dung SysTick va khong tat truoc khi jump -> xung dot
-
-BUOC 5: Kiem tra App Linker Script
-  App phai co ORIGIN = 0x08008000 (khong phai 0x08000000)
-  arm-none-eabi-objdump -h app.elf | grep isr_vector
-  -> Address phai la 0x08008000
 ```
 
 ---
 
 <a name="ch10"></a>
-## CHUONG 10: DEBUG VOI GDB
+## CHƯƠNG 10: QUY TRÌNH DEBUG CHUYÊN SÂU VỚI GDB
 
-### 10.1 Cac Lenh GDB Thiet Yeu
+### 10.1 15 Lệnh GDB Bắt Buộc Của Kỹ Sư Senior
 
 ```gdb
-# Ket noi den target (OpenOCD)
-target remote localhost:3333
+# 1. Đọc 16 phần tử đầu tiên của bảng Vector Table tại đầu Flash
+(gdb) x/16xw 0x08000000
 
-# Doc toan bo Vector Table (64 entries dau)
-x/64xw 0x08000000
+# 2. Đọc thanh ghi VTOR để kiểm tra vị trí hiện tại của Vector Table
+(gdb) x/1xw 0xE000ED08
 
-# Doc VTOR - Biet vector table dang o dau
-x/xw 0xE000ED08
+# 3. Đọc thanh ghi ICSR (Interrupt Control and State Register) để xem ngắt nào đang Pending/Active
+(gdb) x/1xw 0xE000ED04
 
-# Doc SCB registers quan trong
-x/xw 0xE000ED04    # ICSR - Interrupt Control and State Register
-x/xw 0xE000ED28    # CFSR - Configurable Fault Status Register
-x/xw 0xE000ED2C    # HFSR - HardFault Status Register
-x/xw 0xE000ED34    # BFAR - Bus Fault Address Register
-x/xw 0xE000ED38    # MMFAR - MemManage Fault Address Register
+# 4. Đọc toàn bộ thanh ghi trạng thái lỗi CFSR (Configurable Fault Status Register)
+(gdb) x/1xw 0xE000ED28
 
-# Xem tat ca registers hien tai
-info registers
+# 5. Đọc thanh ghi HFSR (HardFault Status Register)
+(gdb) x/1xw 0xE000ED2C
 
-# Xem Stack Pointer
-info registers sp
-# Hoac:
-print $sp
+# 6. Đọc thanh ghi BFAR (BusFault Address Register - Ô nhớ gây lỗi Bus)
+(gdb) x/1xw 0xE000ED34
 
-# Xem Program Counter
-info registers pc
-print $pc
+# 7. Đọc thanh ghi MMFAR (MemManage Address Register - Ô nhớ vi phạm MPU)
+(gdb) x/1xw 0xE000ED38
 
-# Kiem tra CPU o Thread hay Handler mode
-# IPSR (lo 8 bits cua xPSR) != 0 -> Handler mode
-x/xw 0xE000EF00    # Khong chinh xac, dung:
-info registers xpsr
-# IPSR = xPSR & 0xFF, neu != 0 -> dang trong exception
+# 8. Xem toàn bộ giá trị các thanh ghi CPU Core hiện tại
+(gdb) info registers
 
-# Xem bo nho tai dia chi cu the
-x/16xb 0x20000000  # 16 bytes tu 0x20000000 (hex bytes)
-x/4xw  0x20000000  # 4 words tu 0x20000000
-x/s    0x20000000  # Doc string
+# 9. Đọc 8 giá trị trong khung Auto-stacking từ con trỏ Stack Pointer ($sp)
+(gdb) x/8xw $sp
 
-# Xem source code tai dia chi
-list *0x08001234
+# 10. Xem địa chỉ lệnh bị ngắt (Stacked PC nằm ở vị trí thứ 7 trong khung Stack)
+(gdb) print/x *(uint32_t*)($sp + 24)
 
-# Find function address
-info functions TIM2
+# 11. Tìm tên hàm và dòng mã nguồn tương ứng với địa chỉ bị lỗi
+(gdb) info line *(*(uint32_t*)($sp + 24))
+(gdb) list *(*(uint32_t*)($sp + 24))
+
+# 12. Kiểm tra CPU đang ở Thread Mode hay Handler Mode (Đọc thanh ghi xPSR)
+(gdb) print/x $xpsr & 0x1FF
+
+# 13. Xem danh sách các kênh ngắt đang được Enable trong NVIC (ISER 0 đến 2)
+(gdb) x/3xw 0xE000E100
+
+# 14. Xem danh sách các kênh ngắt đang ở trạng thái Active trong NVIC (IABR 0 đến 2)
+(gdb) x/3xw 0xE000E300
+
+# 15. Disassemble 10 lệnh Assembly tại vị trí hàm ISR hiện tại
+(gdb) x/10i $pc
 ```
 
-### 10.2 Phan Tich CFSR - Giai Ma Loi
+---
+
+### 10.2 Giải Mã Thanh Ghi Lỗi CFSR (Configurable Fault Status Register)
+
+Thanh ghi `SCB->CFSR` (Địa chỉ `0xE000ED28`) là "hộp đen" quý giá nhất khi xảy ra Crash:
 
 ```
-CFSR (Configurable Fault Status Register) = 0xE000ED28
+CẤU TRÚC 32-BIT CỦA THANH GHI CFSR:
 
-Bit layout:
-  [31:26] Reserved
-  [25]    DIVBYZERO  - UsageFault: chia cho 0
-  [24]    UNALIGNED  - UsageFault: truy cap khong align
-  [19]    NOCP       - UsageFault: lenh coprocessor khong co
-  [18]    INVPC      - UsageFault: PC khong hop le (EXC_RETURN loi)
-  [17]    INVSTATE   - UsageFault: EPSR.T = 0 (khong phai Thumb)
-  [16]    UNDEFINSTR - UsageFault: lenh khong dinh nghia
-  [15]    BFARVALID  - BusFault: BFAR chua dia chi hop le
-  [13]    LSPERR     - BusFault: loi khi lazy float save
-  [12]    STKERR     - BusFault: loi khi stacking (exception entry)
-  [11]    UNSTKERR   - BusFault: loi khi unstacking (exception return)
-  [10]    IMPRECISERR- BusFault: loi async (khong biet dia chi)
-  [9]     PRECISERR  - BusFault: loi precise (BFAR hop le)
-  [8]     IBUSERR    - BusFault: loi fetch lenh
-  [7]     MMARVALID  - MemManage: MMFAR chua dia chi hop le
-  [5]     MLSPERR    - MemManage: loi khi lazy float save
-  [4]     MSTKERR    - MemManage: loi khi stacking
-  [3]     MUNSTKERR  - MemManage: loi khi unstacking
-  [1]     DACCVIOL   - MemManage: vi pham truy cap data
-  [0]     IACCVIOL   - MemManage: vi pham fetch lenh
+ 31          25 24 23         19 18 17 16 15        9 8 7          1 0
++--------------+--+-------------+--+--+--+-----------+-+------------+-+
+| UsageFault   |D | Unaligned   |N |I |I | BusFault  |P| MemManage  |I|
+| Status (UFSR)|I | Access (24) |O |N |N | (BFSR)    |R| (MMFSR)    |A|
+|              |V |             |C |V |V |           |E|            |C|
+|              |0 |             |P |P |S |           |C|            |C|
+|              |(25)            |(19)|C|(17)|         |(9)           |(0)
++--------------+--+-------------+--+--+--+-----------+-+------------+-+
 
-HFSR (HardFault Status Register) = 0xE000ED2C
-  [31]    DEBUGEVT   - Debug event
-  [30]    FORCED     - Forced HardFault (fault bi escalate)
-  [1]     VECTTBL    - Fault khi doc Vector Table
-```
-
-### 10.3 Debug Workflow Khi Co HardFault
-
-```
-BUOC 1: Dung tai HardFault_Handler (breakpoint hoac while(1))
-
-BUOC 2: Doc stacked PC (dia chi lenh gay fault)
-  info registers -> lay SP
-  x/8xw $sp -> [6] la stacked PC
-  Hoac: print ((uint32_t*)$sp)[6]
-
-BUOC 3: Tim source code tai stacked PC
-  list *0x<stacked_pc>
-  info symbol 0x<stacked_pc>
-
-BUOC 4: Doc CFSR de biet loai fault
-  x/xw 0xE000ED28
-
-BUOC 5: Neu PRECISERR set -> BFAR co dia chi sai
-  x/xw 0xE000ED34   # BFAR
-
-BUOC 6: Neu STKERR set -> stack overflow/corruption
-  Kiem tra: x/xw $sp - xem co trong RAM khong
-  So sanh voi __StackTop - __stack_size
-
-BUOC 7: Neu FORCED set -> fault khac escalate thanh HardFault
-  Kiem tra CFSR[15:8] (BusFault), CFSR[7:0] (MemManage), CFSR[31:16] (UsageFault)
+CÁC BIT QUAN TRỌNG NHẤT:
+• Bit 25 (DIVBYZERO) : Lỗi chia cho 0 trong phần mềm.
+• Bit 24 (UNALIGNED) : Truy cập dữ liệu 32-bit tại địa chỉ không chia hết cho 4.
+• Bit 18 (INVPC)     : Lỗi EXC_RETURN không hợp lệ khi thoát ngắt.
+• Bit 17 (INVSTATE)  : CPU cố gắng chạy tập lệnh ARM 32-bit thay vì Thumb (Mất Thumb Bit 0).
+• Bit 16 (UNDEFINSTR): CPU gặp lệnh rác không thể giải mã (Nhảy vào vùng Flash rác).
+• Bit 15 (BFARVALID) : Địa chỉ trong thanh ghi BFAR là hợp lệ -> Đọc ngay BFAR để tìm thủ phạm!
+• Bit 12 (STKERR)    : Lỗi Bus khi CPU tự động PUSH Stack lúc vào ngắt (Tràn Stack!).
+• Bit 11 (UNSTKERR)  : Lỗi Bus khi CPU tự động POP Stack lúc thoát ngắt.
+• Bit 9  (PRECISERR) : Truy cập ô nhớ bị cấm hoặc ngoại vi chưa cấp Clock.
+• Bit 7  (MMARVALID) : Địa chỉ trong MMFAR là hợp lệ -> Vi phạm phân vùng bảo vệ MPU!
 ```
 
 ---
 
 <a name="ch11"></a>
-## CHUONG 11: 15+ MISCONCEPTIONS CUA JUNIOR
+## CHƯƠNG 11: 15+ SAI LẦM PHỔ BIẾN (MISCONCEPTIONS) CỦA JUNIOR
 
-### Misconception 1
-```
-MISCONCEPTION: "Vector table chinh la NVIC"
+### ❌ Misconception 1: "Vector Table chính là NVIC"
+* ❌ **Sai ở đâu:** Nghĩ rằng bảng Vector Table là một phần cứng tích hợp bên trong NVIC.
+* ✅ **Cách hiểu đúng:** NVIC là khối **Hardware** quản lý logic (bật/tắt, priority, pending). Vector Table là một **Mảng dữ liệu phần mềm** nằm trong bộ nhớ Flash/RAM. NVIC chỉ gửi Exception Number tới CPU, còn CPU tự đọc mảng Vector Table để lấy địa chỉ hàm ISR.
+* 🧠 **Vì sao dễ nhầm:** Cả hai đều cùng xuất hiện trong tài liệu về ngắt.
+* 🔧 **Hậu quả Production:** Cấu hình sai thứ tự khởi tạo, không biết cách relocate Vector Table khi viết Bootloader.
 
-THUC TE:
-- NVIC: Hardware block, quan ly enable/disable/priority/pending/active
-- Vector Table: Mang dia chi ISR trong Flash/RAM, doc boi CPU
-- CPU doc vector table truc tiep, NVIC chi cung cap exception number
+---
 
-TAI SAO NHAM: Ca hai deu lien quan den interrupt -> de nham
-HU QUA: Cau hinh sai thu tu, debug sai huong
-```
+### ❌ Misconception 2: "Bật `NVIC_EnableIRQ()` là đủ để ngắt hoạt động"
+* ❌ **Sai ở đâu:** Cho rằng chỉ cần bật NVIC là ngoại vi sẽ tự động sinh ngắt.
+* ✅ **Cách hiểu đúng:** Cần thỏa mãn đủ chuỗi **7 mắt xích phần cứng**: (1) Cấp Clock ngoại vi, (2) Cấu hình chân GPIO, (3) Cấu hình tham số ngoại vi, (4) Bật cờ ngắt nội bộ ngoại vi (DIER/CR), (5) Cấu hình Priority, (6) Bật kênh trong NVIC, (7) Mở ngắt toàn cục (`__enable_irq()`).
+* 🧠 **Vì sao dễ nhầm:** Thư viện HAL đôi khi gom chung các bước khiến lập trình viên mất đi cái nhìn gốc rễ.
+* 🔧 **Hậu quả Production:** Mất hàng giờ đồng hồ vô ích để debug mà không hiểu tại sao ngắt không chạy.
 
-### Misconception 2
-```
-MISCONCEPTION: "ISR chi la function binh thuong, chi can khai bao va implement"
+---
 
-THUC TE:
-- ISR phai duoc DAT vao Vector Table dung vi tri
-- Ten phai KHOP CHINH XAC voi khai bao weak alias
-- ISR chay o Handler mode (privilege) khac Thread mode
-- ISR khong duoc tra ve gia tri, khong co tham so
-- ISR KHONG the goi nhieu FreeRTOS API binh thuong
-- ISR nhat thiet phai clear interrupt flag cua peripheral
+### ❌ Misconception 3: "Priority số lớn hơn là ưu tiên cao hơn"
+* ❌ **Sai ở đâu:** Nghĩ rằng Priority 15 ưu tiên hơn Priority 0.
+* ✅ **Cách hiểu đúng:** Trong kiến trúc ARM Cortex-M, **SỐ CÀNG NHỎ THÌ MỨC ƯU TIÊN CÀNG CAO** (Priority 0 là cao nhất). Hoàn toàn ngược lại với quy ước Task Priority trong FreeRTOS.
+* 🧠 **Vì sao dễ nhầm:** Nhầm lẫn giữa NVIC Hardware Priority và RTOS Software Task Priority.
+* 🔧 **Hậu quả Production:** Đặt nhầm ngắt an toàn khẩn cấp (Emergency Stop) thành ưu tiên thấp nhất, khiến hệ thống phản ứng chậm trễ khi có sự cố.
 
-TAI SAO NHAM: Cau truc giong function binh thuong
-HU QUA: Interrupt khong hoat dong hoac HardFault
-```
+---
 
-### Misconception 3
-```
-MISCONCEPTION: "Interrupt luon chay ngay lap tuc khi event xay ra"
+### ❌ Misconception 4: "Có thể gọi `xSemaphoreGive()` bình thường trong ISR"
+* ❌ **Sai ở đâu:** Dùng chung API của Thread Context vào trong Handler Context của ISR.
+* ✅ **Cách hiểu đúng:** Bắt buộc phải dùng `xSemaphoreGiveFromISR()` kèm cờ `pxHigherPriorityTaskWoken` và `portYIELD_FROM_ISR()`.
+* 🧠 **Vì sao dễ nhầm:** Nhìn cú pháp hàm tương tự nhau.
+* 🔧 **Hậu quả Production:** Gây sai lệch biến đếm `uxCriticalNesting`, deadlock Kernel hoặc HardFault ngẫu nhiên rất khó tái hiện.
 
-THUC TE:
-- Interrupt co the bi mask (PRIMASK, BASEPRI, FAULTMASK)
-- Interrupt co priority thap co the bi tri hoan boi IRQ priority cao dang chay
-- CPU hoan thanh lenh hien tai truoc khi chap nhan interrupt
-- Trong FreeRTOS critical section: interrupt bi mask hoan toan
+---
 
-TAI SAO NHAM: Khai niem "real-time" lam nguoi ta nghĩ "tuc thi"
-HU QUA: Thiet ke sai timing, bo sot su kien, latency bug
-```
+### ❌ Misconception 5: "Vector Table bắt buộc phải cố định tại địa chỉ 0x00000000"
+* ❌ **Sai ở đâu:** Cho rằng không thể thay đổi vị trí Vector Table sau khi nạp code.
+* ✅ **Cách hiểu đúng:** Cortex-M3/M4/M7/M33 trang bị thanh ghi `SCB->VTOR` cho phép di chuyển Vector Table tới bất kỳ vị trí nào trong Flash hoặc RAM tại runtime.
+* 🧠 **Vì sao dễ nhầm:** Học trên các dòng vi điều khiển 8-bit cũ (8051, PIC) hoặc Cortex-M0 (vốn không có VTOR).
+* 🔧 **Hậu quả Production:** Không thể phát triển kiến trúc Bootloader OTA hoặc cập nhật ISR động trong RAM.
 
-### Misconception 4
-```
-MISCONCEPTION: "Enable NVIC la du de interrupt hoat dong"
+---
 
-THUC TE:
-Phai du 6 dieu kien:
-1. Peripheral clock enable
-2. Peripheral interrupt flag
-3. Peripheral interrupt enable (DIER, CR1, etc.)
-4. NVIC enable (NVIC->ISER)
-5. Global interrupt enable (PRIMASK = 0)
-6. Vector table entry dung
+### ❌ Misconception 6: "Viết sai tên hàm ISR thì Trình biên dịch sẽ báo lỗi Compile"
+* ❌ **Sai ở đâu:** Nghĩ rằng compiler sẽ kiểm tra lỗi chính tả của tên hàm ngắt.
+* ✅ **Cách hiểu đúng:** Do cơ chế **Weak Alias**, nếu viết sai tên hàm (ví dụ `Tim2_IRQHandler` thay vì `TIM2_IRQHandler`), Linker sẽ âm thầm trỏ Vector Table về `Default_Handler`. Chương trình biên dịch 100% thành công mà không có bất kỳ cảnh báo nào!
+* 🧠 **Vì sao dễ nhầm:** Nghĩ rằng C Compiler kiểm soát toàn bộ định danh hàm.
+* 🔧 **Hậu quả Production:** Thiết bị treo cứng trong `Default_Handler` ngay khi sự kiện ngắt đầu tiên kích hoạt.
 
-TAI SAO NHAM: NVIC la "interrupt controller" nen tuong rang no la thu can enable duy nhat
-HU QUA: Debug hang gio ma khong tim ra nguyen nhan
-```
+---
 
-### Misconception 5
-```
-MISCONCEPTION: "Vector table luon phai o dia chi 0x00000000"
+### ❌ Misconception 7: "Interrupt luôn luôn ngắt ngang CPU ngay lập tức"
+* ❌ **Sai ở đâu:** Nghĩ rằng độ trễ ngắt (Interrupt Latency) luôn luôn bằng 0.
+* ✅ **Cách hiểu đúng:** Ngắt có thể bị trì hoãn bởi: (1) CPU đang bận hoàn tất câu lệnh hiện tại, (2) CPU đang nằm trong vùng Critical Section (`BASEPRI` / `PRIMASK`), (3) Một ngắt khác có Priority cao hơn đang thực thi.
+* 🧠 **Vì sao dễ nhầm:** Khái niệm "Real-Time" bị hiểu nhầm thành "Tức thời vô hạn".
+* 🔧 **Hậu quả Production:** Bỏ sót xung ngắt tốc độ cao hoặc tính toán sai lệch ngân sách thời gian thực (Timing Budget).
 
-THUC TE:
-- Sau Reset: CPU doc tu 0x00000000 (co the la alias)
-- VTOR co the thay doi: Vector table co the relocate
-- Cortex-M0: KHONG co VTOR, vector table luon o 0x00000000
-- Cortex-M3/M4/M7: VTOR co the tro den Flash, RAM, hoac bat ky dau
-- Bootloader relocate vector table cua app la use case pho bien
+---
 
-TAI SAO NHAM: Tai lieu nhap mon thuong noi "0x00000000"
-HU QUA: Khong hieu bootloader, loi khi porting
-```
+### ❌ Misconception 8: "Không cần xóa cờ ngắt ngoại vi trong ISR nếu hàm quá ngắn"
+* ❌ **Sai ở đâu:** Bỏ qua dòng lệnh xóa cờ ngắt phần cứng (ví dụ `TIM2->SR &= ~TIM_SR_UIF;`).
+* ✅ **Cách hiểu đúng:** Nếu không xóa cờ ngắt, đường tín hiệu IRQ line vẫn duy trì mức tích cực ➔ Ngay khi CPU thoát ngắt bằng `BX LR`, nó sẽ bị NVIC kéo quay trở lại ISR ngay lập tức ➔ Tạo ra cơn bão ngắt (**Interrupt Storm**), khóa chặt chương trình chính!
+* 🧠 **Vì sao dễ nhầm:** Tưởng rằng CPU tự động xóa cờ ngắt của ngoại vi.
+* 🔧 **Hậu quả Production:** CPU quá tải 100% trong ISR, hệ thống tê liệt hoàn toàn.
 
-### Misconception 6
-```
-MISCONCEPTION: "CPU tu tim ISR bang ten function (string)"
+---
 
-THUC TE:
-- CPU KHONG hieu ten function
-- CPU chi lam: VTOR + (exception_number * 4) = dia chi trong vector table
-- Doc 4 bytes tai dia chi do = dia chi ISR
-- Jump den dia chi do
-- Ten function la khai niem cua C/Assembler, khong ton tai sau khi link
+### ❌ Misconception 9: "Dùng hàm `printf()` trong ISR để debug rất tiện"
+* ❌ **Sai ở đâu:** Gọi `printf()` qua UART blocking hoặc `malloc()` bên trong hàm ngắt.
+* ✅ **Cách hiểu đúng:** `printf()` tốn hàng mili-giây để truyền chuỗi byte qua UART, phá nát tính thời gian thực của toàn bộ hệ thống và có nguy cơ tràn Stack của ngắt.
+* 🧠 **Vì sao dễ nhầm:** Thói quen debug trên môi trường PC/Desktop.
+* 🔧 **Hậu quả Production:** Mất dữ liệu của các ngoại vi khác, kích hoạt Watchdog Timeout reset vi điều khiển.
 
-TAI SAO NHAM: Lap trinh C quen voi khai niem ten ham
-HU QUA: Khong hieu qua trinh link, kho debug
-```
+---
 
-### Misconception 7
-```
-MISCONCEPTION: "ISR co the goi bat ky API nao"
-
-THUC TA:
-- KHONG the goi ham co the block (delay, mutex, malloc thong thuong)
-- KHONG the goi FreeRTOS API binh thuong (phai dung FromISR variant)
-- KHONG the in printf (neu dung UART blocking)
-- KHONG the goi ham phu thuoc vao scheduler
-- Moi thu trong ISR phai non-blocking va ngan
-
-TAI SAO NHAM: ISR trong nhu function binh thuong
-HU QUA: Deadlock, priority inversion, crash RTOS
-```
-
-### Misconception 8
-```
-MISCONCEPTION: "Priority so lon thi priority cao"
-
-THUC TE (Cortex-M):
-- So NHAT = Priority CAO NHAT (0 = cao nhat)
-- FreeRTOS ngược lai: so LON = task priority CAO (nhung day la task priority, khong phai IRQ priority)
-- NVIC: 0 = highest, 255 = lowest
-- Nham lan giua NVIC priority va FreeRTOS task priority la loi pho bien nhat
-
-TAI SAO NHAM: Common sense "so lon = quan trong hon"
-HU QUA: ISR quan trong bi preempt boi ISR it quan trong
-```
-
-### Misconception 9
-```
-MISCONCEPTION: "Interrupt khong the bi interrupt khac preempt"
-
-THUC TE:
-- Cortex-M ho tro NESTED interrupt (preemption)
-- IRQ co priority cao HON co the preempt IRQ priority thap dang chay
-- Nest co the sau nhieu cap (chi gioi han boi stack size)
-- Tai sao FreeRTOS co configMAX_SYSCALL_INTERRUPT_PRIORITY
-
-TAI SAO NHAM: Nghi rang interrupt la "atomic" voi cac interrupt khac
-HU QUA: Race condition trong ISR, loi RTOS
-```
-
-### Misconception 10
-```
-MISCONCEPTION: "vector table chi lien quan den startup code"
-
-THUC TE:
-- Vector table duoc su dung LIEN TUC trong qua trinh chay firmware
-- Moi khi co interrupt: CPU doc vector table
-- Bootloader dung vector table de redirect interrupt
-- FreeRTOS thay the SysTick/PendSV/SVC handlers trong vector table
-- Vector table co the bi thay doi runtime (VTOR)
-
-TAI SAO NHAM: Chi thay vector table trong startup.c
-HU QUA: Khong hieu architecture tong the
-```
-
-### Misconception 11
-```
-MISCONCEPTION: "RTOS tu xu ly toan bo interrupt, toi chi can viet code"
-
-THUC TE:
-- RTOS chi quan ly mot so exception: SysTick, PendSV, SVC
-- Moi peripheral interrupt (UART, TIM, SPI...) van phai:
-  * Implement ISR rieng
-  * Enable trong NVIC
-  * Xu ly flag
-  * Dung FromISR API khi tuong tac voi RTOS
-
-TAI SAO NHAM: RTOS tao cam giac "quan ly het"
-HU QUA: Firmware khong hoat dong, debug mat thoi gian
-```
-
-### Misconception 12
-```
-MISCONCEPTION: "ISR ngan thi tot, khong can quan tam gi them"
-
-THUC TE:
-- "Ngan" la DIEU KIEN CAN nhung chua du
-- Van can: volatile cho bien chia se, memory barrier, clear flag, dung FromISR API
-- Van co the co race condition du ISR rat ngan
-- ISR qua ngan co the bi "interrupt storm" (re-enter lien tuc)
-- Design pattern ISR -> queue/semaphore phai chinh xac
-
-TAI SAO NHAM: Nghi rang "ngan" giai quyet moi thu
-HU QUA: Race condition bi an, loi sau, kho reproduce
-```
-
-### Misconception 13
-```
-MISCONCEPTION: "Float trong ISR thi phai turn off FPU"
-
-THUC TE:
-- Cortex-M4/M7 co FPU (Floating Point Unit)
-- CPU tu dong luu FPU registers khi can (lazy stacking)
-- Van co the dung float trong ISR
-- Nhung: neu ca task va ISR dung float thi stack can lon hon (26 regs thay vi 8)
-- Khong phai "turn off FPU" ma la "dam bao stack du lon"
-- __FPU_PRESENT = 1 va __FPU_USED = 1 trong project
-
-TAI SAO NHAM: Doc tai lieu khong day du
-HU QUA: Stack overflow do FPU context save, kho debug
-```
-
-### Misconception 14
-```
-MISCONCEPTION: "Tat ca Cortex-M deu giong nhau ve interrupt"
-
-THUC TE:
-- Cortex-M0/M0+: KHONG co VTOR, khong co MPU, it priority bits, khong nested
-- Cortex-M3: Co VTOR, MPU, 8-bit priority, nested interrupt
-- Cortex-M4: Giong M3 + FPU
-- Cortex-M7: Co ITCM/DTCM, dual-issue pipeline, advanced cache
-- Khac biet ve so luong priority bits: M0=2 bits, M3/M4=3-8 bits (chip-specific)
-
-TAI SAO NHAM: Cung la "Cortex-M" nen nghi giong nhau
-HU QUA: Porting sai, code khong portable
-```
-
-### Misconception 15
-```
-MISCONCEPTION: "Dung sai ten ISR thi se co loi compile"
-
-THUC TE:
-- Weak symbol mechanism: neu ISR chua implement -> weak alias -> Default_Handler
-- Sai ten ISR (typo) = KHONG CO LOI! Chi co warning (neu bat)
-- Firmware compile va link thanh cong
-- Runtime: interrupt xay ra -> vao Default_Handler -> while(1)
-- Day la bug DAC BIET KHO DEBUG vi compiler khong canh bao
-
-TAI SAO NHAM: Quen rang weak symbol boc lot loi name mismatch
-HU QUA: Firmware "bi treo" bi an khi co interrupt, kho reproduce
-```
+### ❌ Misconception 10: "Mọi dòng ARM Cortex-M đều xử lý ngắt giống hệt nhau"
+* ❌ **Sai ở đâu:** Nghĩ rằng code startup và cấu hình ngắt trên Cortex-M0 giống hệt Cortex-M4/M7.
+* ✅ **Cách hiểu đúng:** Cortex-M0/M0+ không có thanh ghi VTOR, chỉ hỗ trợ 2-bit Priority (4 mức), không hỗ trợ Fault Handlers phân tách. Trong khi Cortex-M4/M7 hỗ trợ VTOR, FPU Context Stacking, và MPU.
+* 🧠 **Vì sao dễ nhầm:** Cùng mang thương hiệu "Cortex-M".
+* 🔧 **Hậu quả Production:** Lỗi biên dịch hoặc crash phần cứng khi porting code giữa các dòng vi điều khiển khác nhau.
 
 ---
 
 <a name="ch12"></a>
-## CHUONG 12: SO SANH KIEN TRUC CPU
+## CHƯƠNG 12: SO SÁNH KIẾN TRÚC CPU
 
-### 12.1 Bang So Sanh Tong Quan
+### 12.1 Bảng So Sánh Toàn Diện: Cortex-M vs Cortex-A vs RISC-V vs x86
 
-```
-+------------------+----------+----------+---------+---------+
-| Dac Diem         |Cortex-M  |Cortex-A  | RISC-V  |  x86   |
-+------------------+----------+----------+---------+---------+
-| Vector Table     | Array    | Array    | Array   | IDT     |
-|                  | in Flash |in RAM/  |in RAM  | in RAM  |
-|                  |          |  Flash   |         |         |
-+------------------+----------+----------+---------+---------+
-| Interrupt Ctrl   | NVIC     | GIC      |PLIC/    | APIC/   |
-|                  |(trong CPU|(ngoai CPU)| CLIC   | PIC     |
-+------------------+----------+----------+---------+---------+
-| Context Save     | Hardware | Software | Software| Hardware|
-|                  | Auto     |(OS/SW)  |(OS/SW) | partial |
-+------------------+----------+----------+---------+---------+
-| Privilege        | Thread / | EL0-EL3  |U/S/M   | Ring0-3|
-|                  | Handler  |          | mode    |         |
-+------------------+----------+----------+---------+---------+
-| Fixed Vector     | No       | No       | No      | No      |
-| Address          |(VTOR)   |(VBAR)    |(mtvec) | (IDTR)  |
-+------------------+----------+----------+---------+---------+
-| Nested Interrupt | Yes      | Yes      | Yes     | Yes     |
-+------------------+----------+----------+---------+---------+
-| NMI              | Yes      | Yes(FIQ) | NMI ext | NMI     |
-+------------------+----------+----------+---------+---------+
-```
-
-### 12.2 Cortex-A vs Cortex-M (Diem Khac Quan Trong Nhat)
-
-```
-CORTEX-M                          CORTEX-A
-========================          ========================
-ISR "baremetal" style:            Exception handler voi MMU:
-  void IRQHandler(void) {}          void do_IRQ(struct pt_regs *regs) {}
-
-Context save: HARDWARE             Context save: SOFTWARE (OS)
-  -> CPU tu push 8 registers          -> OS phai push ALL registers
-  -> Nhanh, deterministic             -> Cham hon nhung flexible
-
-No MMU (thong thuong)             MMU mandatory
-  -> Physical address               -> Virtual address
-  -> Vector table = physical          -> VBAR = virtual address cua VT
-
-Stack: MSP/PSP (2 stacks)        Stack: per-mode stack (IRQ, SVC, FIQ...)
-  -> Thread dung PSP                  -> IRQ mode co IRQ_SP rieng
-  -> OS/Exception dung MSP            -> FIQ mode co FIQ_SP rieng
-
-FreeRTOS / Zephyr                 Linux / RTOS phuc tap hon
-```
-
-### 12.3 RISC-V Interrupt Mechanism
-
-```c
-/* RISC-V su dung CSR (Control and Status Registers) */
-/* Khac voi ARM dung Memory-Mapped registers */
-
-/* Set interrupt handler address */
-write_csr(mtvec, handler_address | 0x1);  /* 0x1 = vectored mode */
-
-/* Enable interrupt */
-set_csr(mstatus, MSTATUS_MIE);  /* Machine Interrupt Enable */
-set_csr(mie, MIE_MEIE);         /* Machine External Interrupt Enable */
-
-/* ISR trong RISC-V */
-__attribute__((interrupt))
-void trap_handler(void) {
-    uint32_t mcause = read_csr(mcause);
-    if (mcause & 0x80000000) {
-        /* Interrupt */
-        uint32_t irq_num = mcause & 0xFF;
-        /* Xu ly IRQ */
-    } else {
-        /* Exception (fault) */
-    }
-}
-```
+| Đặc Tính Kiến Trúc | ARM Cortex-M (Microcontroller) | ARM Cortex-A (Application Processor) | RISC-V (RV32I / RV64I) | Intel/AMD x86-64 |
+|---|---|---|---|---|
+| **Cơ Chế Bảng Vector** | **Mảng con trỏ hàm (Array of Function Pointers)**. | **Mảng câu lệnh nhảy (Array of Branch Instructions)**. | **Vectored Mode** (Array) hoặc **Direct Mode** (Single Trap Handler). | **IDT (Interrupt Descriptor Table)** chứa 256 Gate Descriptors (16 bytes/entry). |
+| **Vị Trí Bảng Vector** | Thanh ghi `SCB->VTOR` (Flash/RAM). | Thanh ghi `VBAR` (Virtual Address trong MMU). | Thanh ghi CSR `mtvec` (Machine Trap-Vector Base). | Thanh ghi `IDTR` (Nạp qua lệnh `LIDT`). |
+| **Lưu Ngữ Cảnh (Context Saving)** | **Phần cứng tự động 100% (Hardware Auto-stacking 8 regs)**. | **Phần mềm (Software OS)** phải lưu toàn bộ qua lệnh `STMFD` / `PUSH`. | **Phần mềm (Software Assembly)** lưu qua các lệnh `sw`/`sd` vào Stack. | **Phần cứng lưu một phần** (SS, RSP, RFLAGS, CS, RIP), OS lưu các thanh ghi đa năng. |
+| **Bộ Điều Khiển Ngắt** | **NVIC** (Tích hợp sâu trong lõi CPU). | **GIC (Generic Interrupt Controller)** nằm ngoài CPU core. | **PLIC** (Platform-Level) hoặc **CLIC** (Core-Local). | **APIC (Advanced Programmable Interrupt Controller)**. |
+| **Chế Độ Thực Thi** | 2 chế độ: **Thread Mode** (App) và **Handler Mode** (ISR). | 4 mức đặc quyền: **EL0** (User), **EL1** (Kernel), **EL2** (Hypervisor), **EL3** (TrustZone). | 3 chế độ: **U-Mode** (User), **S-Mode** (Supervisor), **M-Mode** (Machine). | 4 đặc quyền Rings: **Ring 0** (Kernel) đến **Ring 3** (User). |
+| **Độ Trễ Ngắt (Latency)** | **Cực thấp và xác định (Deterministic: 12 cycles)**. | Cao hơn (Tùy thuộc vào OS Pipeline, Cache, TLB Miss). | Tùy thuộc phần cứng (CLIC cho độ trễ thấp như NVIC). | Biến thiên lớn do kiến trúc phức tạp và Context Switching. |
 
 ---
 
 <a name="ch13"></a>
-## CHUONG 13: PHAN TICH STARTUP CODE THUC TE
+## CHƯƠNG 13: PHÂN TÍCH TOÀN DIỆN STARTUP CODE THỰC TẾ
 
-### 13.1 Startup Code Chi Tiet
+### 13.1 Giải Phẫu Từng Dòng Lệnh Của Bảng `g_pfnVectors`
 
 ```c
-/* startup_stm32f407xx.c - Phan tich tung dong */
+/* =========================================================================
+ * PHÂN TÍCH CẤP ĐỘ COMPILER & LINKER:
+ * ========================================================================= */
 
-/* Compiler lam gi? */
-/* 1. Tao object code cho tung function */
-/* 2. Xac dinh dia chi cua tung function (chua biet tuyet doi) */
-/* 3. Ghi dia chi vao .isr_vector section (relocation entries) */
-
-/* Linker lam gi? */
-/* 1. Ghep toan bo .isr_vector tu tat ca .o files */
-/* 2. Phan giai tat ca dia chi function (tuyet doi) */
-/* 3. Dat .isr_vector tai dia chi dau cua Flash (theo linker script) */
-/* 4. Viet gia tri cuoi vao tung entry */
-
-extern uint32_t __StackTop;   /* Linker symbol: cuoi RAM */
-
-/* Weak declaration - user co the override */
-__attribute__((weak)) void NMI_Handler(void)       { while(1); }
-__attribute__((weak)) void HardFault_Handler(void)  { while(1); }
-/* ... */
-
-/* Vector table - dat vao section dac biet */
+/* 1. Đặt mảng vào Section riêng để Linker Script định vị tại 0x08000000 */
 __attribute__((section(".isr_vector"), used))
-const uint32_t g_pfnVectors[] = {
-    /*
-     * Entry [0]: Stack Pointer
-     * - Khong phai dia chi ISR
-     * - La GIA TRI se nap vao MSP khi boot
-     * - CPU doc 4 bytes tai VTOR[0] -> nap vao MSP
-     * - &__StackTop: lay dia chi cua linker symbol
-     * - (uint32_t): cast de tranh warning
-     */
-    (uint32_t)&__StackTop,
+const Exception_Handler_t g_pfnVectors[] = {
 
-    /*
-     * Entry [1]: Reset Handler
-     * - Dia chi cua ham Reset_Handler
-     * - Compiler tu dong set Thumb bit (bit 0 = 1)
-     * - Vi du: Reset_Handler tai 0x08000100 -> entry = 0x08000101
-     * - CPU doc entry nay -> nap vao PC
-     * - PC = 0x08000101 -> CPU chay tu 0x08000100 (bo Thumb bit)
-     */
-    (uint32_t)Reset_Handler,
+    /* Entry [0]: Giá trị đỉnh Stack (Initial Main Stack Pointer - MSP)
+     * - Linker Symbol: `&_estack` lấy địa chỉ cuối vùng SRAM (0x20020000).
+     * - Khi CPU Reset, phần cứng đọc 4 bytes này và gán trực tiếp vào thanh ghi SP. */
+    (Exception_Handler_t)(&_estack),
 
-    /* Tuong tu cho NMI, HardFault, ... */
-    (uint32_t)NMI_Handler,
-    (uint32_t)HardFault_Handler,
+    /* Entry [1]: Con trỏ hàm Reset_Handler
+     * - Trình biên dịch tạo mã máy cho Reset_Handler tại địa chỉ Flash (ví dụ 0x08000108).
+     * - Do cờ biên dịch `-mthumb`, Compiler tự động bật Bit 0 = 1 ➔ Giá trị thực = 0x08000109.
+     * - CPU nạp giá trị này vào PC khi bật nguồn để bắt đầu chạy mã nguồn C! */
+    Reset_Handler,
+
+    /* Entry [2 - 15]: Các Exception Handlers cốt lõi của ARM */
+    NMI_Handler,
+    HardFault_Handler,
+    MemManage_Handler,
+    BusFault_Handler,
+    UsageFault_Handler,
+    0, 0, 0, 0,                /* Reserved entries theo quy chuẩn ARM */
+    SVC_Handler,
+    DebugMon_Handler,
+    0,
+    PendSV_Handler,
+    SysTick_Handler,
+
+    /* Entry [16+]: Các kênh External Interrupts của vi điều khiển */
+    WWDG_IRQHandler,
+    PVD_IRQHandler,
     /* ... */
 };
-
-/*
- * MCU Boot Sequence Chi Tiet:
- *
- * 1. Hardware Reset xay ra (NRST pin, power-on, watchdog)
- *
- * 2. CPU Core state:
- *    - Tat ca thanh ghi = undefined (ngoai SP, PC)
- *    - CPU doc 4 bytes tai 0x00000000 (= Flash alias 0x08000000)
- *    - CPU nap gia tri do vao MSP (Stack Pointer)
- *    - MSP = 0x20020000 (cuoi 128KB RAM)
- *
- * 3. CPU doc 4 bytes tai 0x00000004
- *    - Gia tri = 0x08000101 (Reset_Handler | Thumb bit)
- *    - CPU nap vao PC
- *    - PC = 0x08000100 (bo bit 0)
- *
- * 4. CPU bat dau thuc hien Reset_Handler()
- *    - Stack da san sang (MSP da duoc set)
- *    - Co the goi function ngay
- */
-```
-
-### 13.2 Co Che Weak Symbol Sau Hon
-
-```c
-/*
- * WEAK SYMBOL - Giai thich o buoc Linker, KHONG phai Compiler
- *
- * Compiler step:
- *   - Tao symbol "NMI_Handler" trong object file voi flag WEAK
- *   - Tao symbol "Default_Handler" trong object file binh thuong
- *
- * Linker step:
- *   - Gap WEAK symbol "NMI_Handler" -> ghi nho nhung chua dung ngay
- *   - Gap STRONG symbol "NMI_Handler" tu user code -> uu tien STRONG
- *   - Gap WEAK symbol "NMI_Handler" va KHONG co STRONG -> dung alias
- */
-
-/* Startup code: */
-void Default_Handler(void) __attribute__((section(".after_vectors")));
-void Default_Handler(void) { while (1); }
-
-void NMI_Handler(void)     __attribute__((weak, alias("Default_Handler")));
-void HardFault_Handler(void) __attribute__((weak, alias("Default_Handler")));
-
-/* User code (user.c): */
-/* Neu co: */
-void NMI_Handler(void) {
-    /* STRONG symbol - ghi de weak */
-    log_nmi();
-    NVIC_SystemReset();
-}
-/* Linker dung dinh nghia nay cho NMI_Handler */
-
-/* Neu KHONG co user NMI_Handler: */
-/* Linker dung alias -> NMI_Handler tro den Default_Handler */
 ```
 
 ---
 
+### 13.2 Cơ Chế Boot Toàn Diện Của MCU Từ Khi Bật Nguồn
+
+```
+[BƯỚC 1: CẤP NGUỒN VẬT LÝ (POWER-ON RESET)]
+Điện áp VDD tăng ổn định. Bộ giám sát nguồn (Power-On Reset Circuit) giải phóng tín hiệu Reset nội bộ.
+     │
+[BƯỚC 2: PHẦN CỨNG NẠP MSP VÀ PC BAN ĐẦU]
+1. CPU Core đọc 4 bytes tại địa chỉ 0x00000000 (Được ánh xạ từ 0x08000000 của Flash).
+   ➔ Nạp giá trị `0x20020000` vào thanh ghi `MSP`.
+2. CPU Core đọc 4 bytes tại địa chỉ 0x00000004.
+   ➔ Nạp giá trị `0x08000109` vào thanh ghi `PC` (và set cờ Thumb bit trong EPSR).
+     │
+[BƯỚC 3: THỰC THI HÀM RESET_HANDLER()]
+CPU bắt đầu chạy các lệnh đầu tiên trong hàm Reset_Handler():
+1. Copy toàn bộ phân vùng `.data` từ Flash (LMA) sang RAM (VMA) để khởi tạo các biến toàn cục có giá trị ban đầu.
+2. Xóa sạch phân vùng `.bss` trong RAM về giá trị `0` để khởi tạo các biến toàn cục không gán giá trị.
+3. Gọi hàm `SystemInit()` để cấu hình thạch anh dao động ngoại (HSE), nhân tần số PLL, và bật FPU.
+     │
+[BƯỚC 4: NHẢY VÀO HÀM MAIN()]
+Gọi hàm `main()` của ứng dụng. Hệ thống bước vào luồng thực thi chính thức.
+```
+
 <a name="ch14"></a>
-## CHUONG 14: THIET KE ISR CHUAN SENIOR
+## CHƯƠNG 14: THIẾT KẾ INTERRUPT HANDLING CHUẨN SENIOR
 
-### 14.1 ISR Nen Ngan Den Muc Nao?
+### 14.1 Triết Lý Thiết Kế ISR Của Firmware Architect
 
-**Nguyen tac co ban:**
+> [!TIP]
+> **Quy Tắc Tối Thượng Của ISR:**  
+> **"VÀO NHANH ➔ LÀM ÍT ➔ BÁO HIỆU ➔ THOÁT NGAY!"**  
+> *(Get In ➔ Do Minimum ➔ Defer Work ➔ Get Out!)*
+
+#### 📋 Những Việc ĐƯỢC PHÉP Làm Trong ISR:
+1. Đọc dữ liệu khẩn cấp từ thanh ghi ngoại vi (1 byte UART DR, giá trị ADC DR).
+2. Xóa cờ ngắt phần cứng của ngoại vi (Clear Interrupt Flag).
+3. Đẩy dữ liệu vào Ring Buffer (Lock-Free) hoặc Queue của RTOS.
+4. Gửi tín hiệu đánh thức Task (Give Semaphore / Set Event Flags).
+5. Yêu cầu chuyển ngữ cảnh (`portYIELD_FROM_ISR()`) nếu cần.
+
+#### 🚫 Những Việc TUYỆT ĐỐI CẤM Làm Trong ISR:
+1. **Tuyệt đối không gọi hàm Delay (`HAL_Delay`, `vTaskDelay`, busy loops).**
+2. **Tuyệt đối không sử dụng Mutex (`xSemaphoreTake` với Mutex vì Mutex có cơ chế Priority Inheritance chỉ dành cho Task).**
+3. **Tuyệt đối không cấp phát bộ nhớ động (`malloc`, `free`, `pvPortMalloc`).**
+4. **Tuyệt đối không in chuỗi qua UART blocking (`printf`).**
+5. **Tuyệt đối không thực hiện các thuật toán tính toán nặng (Mã hóa, lọc số học, giải mã JSON).**
+
+---
+
+### 14.2 3 Mẫu Thiết Kế (Design Patterns) Xử Lý Ngắt Kinh Điển
+
+#### 🌟 PATTERN 1: Mô Hình Ngắt Hai Nửa (Top-Half / Bottom-Half Architecture)
 
 ```
-ISR chi nen lam:
-1. Xac nhan nguon interrupt (doc flag)
-2. Clear flag cua peripheral
-3. Doc/ghi du lieu toi thieu
-4. Signal den task (semaphore/queue/event)
-5. Return
-
-ISR KHONG nen lam:
-1. Xu ly data phuc tap
-2. String processing
-3. File I/O
-4. Memory allocation (malloc)
-5. Blocking call bat ky loai nao
-6. Goi ham voi unknown execution time
+[TOP-HALF (CHẠY TRONG ISR - HANDLER MODE)]
+• Thời gian thực thi: < 5 micro giây.
+• Nhiệm vụ: Đọc phần cứng, xóa cờ ngắt, gửi Semaphore/Queue.
+     │
+     ▼ (xSemaphoreGiveFromISR + portYIELD_FROM_ISR)
+[BOTTOM-HALF (CHẠY TRONG RTOS TASK - THREAD MODE)]
+• Thời gian thực thi: Tùy ý (hàng chục mili-giây).
+• Nhiệm vụ: Xử lý logic nghiệp vụ, tính toán CRC, lưu Flash, gọi API mạng.
 ```
 
-**So sanh hai approach:**
+#### 🌟 PATTERN 2: Lock-Free Single-Producer Single-Consumer (SPSC) Ring Buffer
+Mô hình truyền dữ liệu tốc độ cao giữa 1 ISR (Producer) và 1 Task (Consumer) mà **KHÔNG CẦN KHÓA MUTEX / CRITICAL SECTION**:
 
 ```c
-/* APPROACH SAI - ISR Nang */
-void UART1_IRQHandler(void) {
-    uint8_t byte = USART1->DR;
+#define RING_BUFFER_SIZE  256  /* Bắt buộc là lũy thừa của 2 để dùng phép AND bit */
+#define RING_BUFFER_MASK  (RING_BUFFER_SIZE - 1)
 
-    /* Xu ly protocol ngay trong ISR - SAI! */
-    if (byte == 0xAA) {
-        frame_started = 1;
-        frame_index = 0;
-    } else if (frame_started) {
-        frame_buffer[frame_index++] = byte;
-        if (frame_index == FRAME_SIZE) {
-            calculate_checksum();   /* Ton thoi gian */
-            parse_frame();          /* Ton thoi gian */
-            update_database();      /* Ton thoi gian, co the block */
-            send_response();        /* UART khac, co the block */
+typedef struct {
+    uint8_t  buffer[RING_BUFFER_SIZE];
+    volatile uint32_t head;  /* Chỉ do ISR (Producer) ghi */
+    volatile uint32_t tail;  /* Chỉ do Task (Consumer) ghi */
+} SPSC_RingBuffer_t;
+
+SPSC_RingBuffer_t g_uart_rb = { .head = 0, .tail = 0 };
+
+/* Thực thi trong ISR (Producer) */
+void USART1_IRQHandler(void) {
+    if (USART1->SR & USART_SR_RXNE) {
+        uint8_t byte = (uint8_t)USART1->DR;
+        uint32_t next_head = (g_uart_rb.head + 1) & RING_BUFFER_MASK;
+
+        if (next_head != g_uart_rb.tail) {
+            g_uart_rb.buffer[g_uart_rb.head] = byte;
+            __DMB();  /* Data Memory Barrier: Đảm bảo dữ liệu ghi xong trước khi tăng head */
+            g_uart_rb.head = next_head;
+        } else {
+            /* Buffer bị đầy (Buffer Overflow) -> Ghi nhận lỗi */
         }
     }
 }
 
-/* APPROACH DUNG - ISR Nhe */
-void UART1_IRQHandler(void) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-
-    uint8_t byte = USART1->DR;  /* Doc byte */
-
-    /* Chi gui byte vao queue */
-    xQueueSendFromISR(uart_rx_queue, &byte, &xHigherPriorityTaskWoken);
-
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
-
-/* UART Task - Chay trong Thread context */
-void uart_task(void *pvParameters) {
-    uint8_t byte;
-    while (1) {
-        /* Block cho den khi co du lieu */
-        xQueueReceive(uart_rx_queue, &byte, portMAX_DELAY);
-
-        /* Xu ly protocol o day - co the lam bat cu thu gi */
-        process_protocol_byte(byte);
+/* Thực thi trong Task (Consumer) */
+bool RingBuffer_ReadByte(uint8_t *out_data) {
+    if (g_uart_rb.head == g_uart_rb.tail) {
+        return false;  /* Buffer rỗng */
     }
+    *out_data = g_uart_rb.buffer[g_uart_rb.tail];
+    __DMB();
+    g_uart_rb.tail = (g_uart_rb.tail + 1) & RING_BUFFER_MASK;
+    return true;
 }
 ```
 
-### 14.2 Cac Pattern ISR Hieu Qua
+#### 🌟 PATTERN 3: Zero-Copy Double-Buffering (Ping-Pong Buffer) Kết Hợp DMA
+Sử dụng DMA để chuyển dữ liệu trực tiếp từ ngoại vi vào RAM mà **KHÔNG TỐN MỘT CHU KỲ CPU NÀO**. CPU chỉ nhận ngắt khi toàn bộ khối dữ liệu lớn (Block) đã sẵn sàng:
 
-```c
-/* PATTERN 1: ISR -> Semaphore -> Task */
-SemaphoreHandle_t adc_done_sem;
-
-void ADC_IRQHandler(void) {
-    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    ADC1->SR &= ~ADC_SR_EOC;  /* Clear flag */
-
-    /* ADC conversion done, signal task */
-    xSemaphoreGiveFromISR(adc_done_sem, &xHigherPriorityTaskWoken);
-    portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-}
-
-void adc_task(void *pvParameters) {
-    while (1) {
-        /* Wait for ADC done */
-        xSemaphoreTake(adc_done_sem, portMAX_DELAY);
-
-        /* Xu ly ADC data o day */
-        uint16_t adc_val = ADC1->DR;
-        process_adc_data(adc_val);
-    }
-}
-
-/* PATTERN 2: ISR -> Ring Buffer (Lock-free cho 1 writer, 1 reader) */
-#define RX_BUFFER_SIZE 256
-volatile uint8_t rx_buf[RX_BUFFER_SIZE];
-volatile uint16_t rx_head = 0;  /* ISR writes */
-volatile uint16_t rx_tail = 0;  /* Task reads */
-
-void UART1_IRQHandler(void) {
-    uint8_t byte = USART1->DR;
-
-    uint16_t next_head = (rx_head + 1) % RX_BUFFER_SIZE;
-    if (next_head != rx_tail) {  /* Buffer chua day */
-        rx_buf[rx_head] = byte;
-        rx_head = next_head;     /* Atomic write (single write) */
-    }
-    /* Neu day: drop byte (co the set error flag) */
-}
-
-/* Task doc */
-uint8_t uart_read_byte(uint8_t *byte) {
-    if (rx_head == rx_tail) return 0;  /* Khong co du lieu */
-    *byte = rx_buf[rx_tail];
-    rx_tail = (rx_tail + 1) % RX_BUFFER_SIZE;
-    return 1;
-}
-
-/* PATTERN 3: DMA + Interrupt (Zero-copy) */
-void SPI_DMA_IRQHandler(void) {
-    /* DMA transfer hoan thanh */
-    DMA1->IFCR = DMA_IFCR_CTCIF3;  /* Clear flag */
-
-    /* Buffer da san sang, chi swap pointer */
-    uint8_t *ready_buf = dma_buffer_current;
-    dma_buffer_current = dma_buffer_next;
-
-    /* Re-arm DMA voi buffer moi */
-    DMA1_Channel3->CMAR = (uint32_t)dma_buffer_current;
-    DMA1_Channel3->CCR |= DMA_CCR_EN;
-
-    /* Signal task de xu ly ready_buf */
-    xQueueSendFromISR(dma_queue, &ready_buf, &xHigherPriorityTaskWoken);
-}
 ```
-
-### 14.3 Critical Section Va Memory Ordering
-
-```c
-/* Critical section tren bare-metal */
-void update_shared_data_baremetal(void) {
-    uint32_t saved = __get_PRIMASK();
-    __disable_irq();              /* Bat dau critical section */
-
-    /* Thao tac voi du lieu chia se */
-    shared_counter++;
-
-    __set_PRIMASK(saved);         /* Ket thuc critical section */
-}
-
-/* Critical section tren FreeRTOS - uu tien */
-void update_shared_data_freertos(void) {
-    taskENTER_CRITICAL();         /* BASEPRI = configMAX_SYSCALL, khong disable NMI */
-
-    shared_counter++;
-
-    taskEXIT_CRITICAL();
-}
-
-/* Memory Barrier - can thiet khi chia se bien voi ISR */
-volatile uint8_t data_ready = 0;
-uint32_t data_value = 0;
-
-void sensor_isr(void) {
-    data_value = read_sensor();
-    __DMB();                      /* Dam bao data_value duoc ghi truoc data_ready */
-    data_ready = 1;
-}
-
-void main_loop(void) {
-    if (data_ready) {
-        __DMB();                  /* Dam bao doc data_ready truoc data_value */
-        process(data_value);
-        data_ready = 0;
-    }
-}
+[NGOẠI VI ADC] ──(DMA Stream Chuyển Tự Động)──> [ BUFFER PING (1024 Samples) ] (Đang nạp)
+                                                  [ BUFFER PONG (1024 Samples) ] (Task đang xử lý)
+     │
+     ▼ (Khi nạp xong Buffer Ping)
+[DMA TRANSFER COMPLETE INTERRUPT (ISR)]
+• ISR chỉ làm 1 việc duy nhất: Tráo đổi con trỏ Ping <-> Pong (Swap Buffer).
+• Đánh thức Task xử lý Buffer Ping vừa nạp xong.
+• Tải trọng CPU giảm từ 80% xuống dưới 2%!
 ```
 
 ---
 
 <a name="ch15"></a>
-## CHUONG 15: PERFORMANCE VA REAL-TIME
+## CHƯƠNG 15: PHÂN TÍCH HIỆU NĂNG & HỆ THỐNG REAL-TIME
 
-### 15.1 Cac Khai Niem Thoi Gian
-
-```
-INTERRUPT LATENCY:
-  Thoi gian tu khi event xay ra den khi ISR bat dau thuc hien
-  = Event -> IRQ signal -> NVIC accept -> CPU context save -> ISR first instruction
-  Tren Cortex-M4: ~12-16 cycles (khoang 100-200ns tai 168MHz)
-
-ISR EXECUTION TIME:
-  Thoi gian ISR chay tu dau den cuoi
-  Can do bang logic analyzer hoac cycle counter
-
-INTERRUPT JITTER:
-  Su bien dong cua latency giua cac lan interrupt
-  Do: cache miss, pipeline flush, instruction latency
-  Gia tri tuyet doi va do bien dong ca hai quan trong
-
-RESPONSE TIME:
-  Thoi gian toan bo tu event den khi system phan hoi
-  = Latency + ISR time + Task wake-up + Task execution
-
-WCET (Worst-Case Execution Time):
-  Thoi gian lau nhat ISR/Task co the chay
-  Quan trong cho real-time analysis
-  Phai do ben canh hay debug mode (opt off)
-```
-
-### 15.2 Phan Tich ISR Architecture Thuc Te
+### 15.1 Các Chỉ Số Đo Lường Thời Gian Thực (Timing Metrics)
 
 ```
-He thong: UART 115200 baud + Timer 1kHz + ADC 20kHz
-
-UART 115200 baud:
-  Chu ky byte: 1/115200 * 10 bits = 86.8 microseconds
-  ISR phai hoan thanh truoc 86.8us hoac phai co buffer DU LON
-
-Timer 1kHz (1ms):
-  ISR chay moi 1ms = 1000 lan/giay
-  Neu ISR mat 100us = 10% CPU time chi cho ISR nay
-
-ADC 20kHz (50us):
-  ISR chay moi 50us = 20000 lan/giay
-  Neu ISR mat 10us = 20% CPU time
-
-Tong CPU load chi tu ISR (kem nhat):
-  UART: 86.8us period, ISR ~5us = 5.8%
-  Timer: 1000us period, ISR ~10us = 1%
-  ADC: 50us period, ISR ~10us = 20%
-  Tong ISR load: ~27% CPU
-
-Van de neu ISR qua nang:
-  - ADC ISR mat 30us thay vi 10us
-  - 30/50 = 60% CPU -> system bi qua tai
-  - Timer ISR bi delay -> jitter trong timing
-  - UART co the mat byte vi khong xu ly kip
-
-GIAI PHAP:
-  - ADC: Dung DMA thay vi ISR-per-sample
-  - UART: Ring buffer + DMA
-  - Timer: Chi lam minimum trong ISR, defer sang task
+                       THỜI GIAN ĐÁP ỨNG TOÀN DIỆN (TOTAL RESPONSE TIME)
+│◄───────────────────────────────────────────────────────────────────────────────────►│
+│                                                                                     │
+├─────────────────┼───────────────────────────┼───────────────────┼───────────────────┤
+│ Interrupt       │ ISR Execution Time        │ Context Switch    │ Task Execution    │
+│ Latency         │ (Thời gian chạy ISR)      │ Latency           │ Time (Xử lý Task) │
+│ (Độ trễ ngắt)   │                           │ (Đổi ngữ cảnh)    │                   │
+└─────────────────┴───────────────────────────┴───────────────────┴───────────────────┘
+▲                 ▲                           ▲                   ▲
+│                 │                           │                   │
+Event Xảy Ra      Bắt Đầu Lệnh Đầu ISR        Bắt Đầu PendSV      Task Bắt Đầu Chạy
 ```
 
-### 15.3 Priority Inversion Va Interrupt Storm
+1. **Interrupt Latency (Độ trễ ngắt):** Khoảng thời gian từ khi tín hiệu điện áp IRQ được kích hoạt vật lý đến khi lệnh đầu tiên trong hàm ISR được thực thi. Trên Cortex-M4 chạy ở 168 MHz: $12 	ext{ cycles} pprox 71.4 	ext{ ns}$.
+2. **Interrupt Jitter (Độ trôi ngắt):** Sự biến thiên sai lệch của độ trễ ngắt giữa các lần ngắt khác nhau (do ảnh hưởng của pipeline, flash wait states, cache miss, hoặc lệnh atomic).
+3. **WCET (Worst-Case Execution Time):** Thời gian thực thi trong tình huống xấu nhất của hàm ngắt. Đây là tham số bắt buộc phải chứng minh trong chứng chỉ an toàn chức năng ô tô ISO 26262 (ASIL-D).
+
+---
+
+### 15.3 Bài Toán Thiết Kế Ngân Sách CPU (CPU Load Budget Case Study)
+
+#### 🚗 Đề bài: Thiết kế hệ thống nhúng điều khiển xe điện (EV Controller) trên vi điều khiển 168 MHz:
+- **Ngoại vi 1:** UART Telemetry tốc độ **115200 baud** (1 byte mỗi 86.8 µs).
+- **Ngoại vi 2:** Timer điều khiển vòng lặp định thời **1 kHz** (chu kỳ 1 ms).
+- **Ngoại vi 3:** Bộ chuyển đổi ADC giám sát dòng điện pin **20 kHz** (chu kỳ 50 µs).
 
 ```
-PRIORITY INVERSION:
-  1. Low-priority task giu mutex
-  2. High-priority interrupt muon tai nguyen do
-  3. High-priority bi block boi low-priority
-  Giai phap: Priority inheritance mutex (FreeRTOS co)
+TÍNH TOÁN TẢI TRỌNG CPU (CPU LOAD ANALYSIS):
 
-INTERRUPT STORM:
-  Xay ra khi ISR KHONG clear flag cua peripheral
-  -> Peripheral lien tuc assert IRQ
-  -> CPU bi cuon vao ISR vo han
-  -> System bi "treo" vi main loop khong chay duoc
+1. Phân tích cách thiết kế KÉM (Junior Approach - Xử lý từng byte trong ISR):
+   • UART ISR (tốn 6 µs/lần): Load = 6 µs / 86.8 µs = 6.91%
+   • Timer ISR (tốn 20 µs/lần): Load = 20 µs / 1000 µs = 2.00%
+   • ADC ISR (tốn 15 µs/lần): Load = 15 µs / 50 µs = 30.00%
+   ==> TỔNG TẢI TRỌNG ISR = 38.91% CPU chỉ dùng để phục vụ ngắt!
+   ==> Nguy cơ: Jitter rất lớn, Task xử lý thuật toán chính bị trễ deadline!
 
-  Debug: Logic analyzer hoac oscilloscope tren IRQ line
-  Trieu chung: CPU load 100%, moi thu bi dong bang
-
-  Code fix:
-  void TIM2_IRQHandler(void) {
-      TIM2->SR &= ~TIM_SR_UIF;  /* PHAI co dong nay - clear flag */
-      /* ... */
-  }
-
-INTERRUPT STARVATION:
-  ISR co priority cao chay qua nhieu/qua lau
-  -> Low-priority task khong bao gio duoc chay
-  -> Watchdog timeout (neu co)
-  Fix: Giam execution time cua high-priority ISR
+2. Phân tích cách thiết kế XUẤT SẮC (Senior Architect Approach):
+   • UART: Sử dụng DMA Circular + IDLE Line Interrupt.
+     CPU chỉ ngắt 1 lần khi nhận đủ 1 gói tin 128 bytes (Load < 0.1%).
+   • Timer: Tối ưu ISR rút gọn còn 1.5 µs (Load = 0.15%).
+   • ADC: Sử dụng DMA Ping-Pong Buffer 1000 samples.
+     CPU chỉ ngắt 1 lần mỗi 50 ms (Load < 0.05%).
+   ==> TỔNG TẢI TRỌNG ISR GIẢM XUỐNG DƯỚI 0.5% CPU!
+   ==> Hệ thống mượt mà, độ trễ tiệm cận 0, đáp ứng tuyệt đối chuẩn Real-Time!
 ```
 
 ---
 
 <a name="ch16"></a>
-## CHUONG 16: 10 BAI TAP TANG DAN DO KHO
+## CHƯƠNG 16: 10 BÀI TẬP THỰC CHIẾN TĂNG DẦN ĐỘ KHÓ (LEVEL 1 → 10)
 
-### Level 1: Doc Vector Table
+> [!IMPORTANT]
+> **Hướng Dẫn:** Các bài tập dưới đây không cung cấp đáp án có sẵn. Bạn hãy tự tay debug, phân tích file `.map`, dùng GDB đọc thanh ghi và đo lường trên phần cứng/QEMU để rèn luyện tư duy Firmware Architect.
 
-```
-Problem:
-  Ban co firmware da build cho STM32F407.
-  Su dung GDB de doc va giai thich noi dung vector table.
+---
 
-Context:
-  - Firmware tai 0x08000000
-  - He thong dung TIM2 va UART1
+### 🟢 Level 1: Khám Phá Bảng Vector Table Thực Tế Qua GDB
+* **Problem:** Dùng GDB kết nối vào target đang chạy firmware STM32F4.
+* **Context:** Firmware đang chạy có bật ngắt TIM2 và USART1.
+* **Constraints:** Không được mở mã nguồn C, chỉ được dùng lệnh GDB.
+* **Expected Behavior:** Tìm ra địa chỉ chính xác của `TIM2_IRQHandler` và `USART1_IRQHandler`. Xác định giá trị Initial Stack Pointer nạp vào MSP.
+* **What You Should Investigate:** Lệnh `x/64xw 0x08000000`, `x/xw 0xE000ED08`, `info symbol <address>`.
 
-Constraints:
-  - Chi duoc dung GDB commands
-  - Khong duoc nhin source code
+---
 
-Expected Behavior:
-  - Liet ke 20 entries dau cua vector table
-  - Giai thich y nghia tung entry
-  - Xac dinh dia chi cua TIM2_IRQHandler va UART1_IRQHandler
-  - Xac dinh Initial Stack Pointer
+### 🟢 Level 2: Viết Trình Phục Vụ Ngắt Timer Bare-Metal Không Dùng HAL
+* **Problem:** Viết hàm ngắt `TIM6_DAC_IRQHandler` để đảo trạng thái LED sau mỗi 500 ms mà không sử dụng bất kỳ hàm thư viện nào của STM32Cube HAL.
+* **Context:** Board STM32F4 Discovery (Clock APB1 = 42 MHz, Timer Clock = 84 MHz).
+* **Constraints:** Phải tự cấu hình trực tiếp qua thanh ghi: `RCC->APB1ENR`, `TIM6->PSC`, `TIM6->ARR`, `TIM6->DIER`, `NVIC->ISER`.
+* **Expected Behavior:** LED nhấp nháy chính xác tần số 1 Hz. ISR thực thi dưới 15 chu kỳ xung nhịp.
+* **What You Should Investigate:** Cơ chế xóa cờ ngắt `TIM6->SR`, thứ tự bật ngắt trong NVIC.
 
-What You Should Investigate:
-  - x/20xw 0x08000000
-  - info symbol <address>
-  - arm-none-eabi-nm firmware.elf
-```
+---
 
-### Level 2: Viet ISR Dau Tien
+### 🟡 Level 3: Tự Động Bắt Lỗi Kẹt Trong `Default_Handler`
+* **Problem:** Firmware thỉnh thoảng bị kẹt trong `Default_Handler` sau khi chạy được vài phút.
+* **Context:** Dự án có tích hợp nhiều module ngoại vi nhưng một số ngắt chưa được viết hàm ISR.
+* **Constraints:** Phải sửa đổi hàm `Default_Handler` để khi có lỗi, nó tự động in Exception Number qua UART hoặc lưu vào RAM trước khi dừng.
+* **Expected Behavior:** Xác định được chính xác Exception Number nào là thủ phạm gây lỗi mà không cần mò mẫm.
+* **What You Should Investigate:** Đọc thanh ghi `IPSR` (`__get_IPSR()`), tra cứu số IRQ.
 
-```
-Problem:
-  Implement TIM6 interrupt de toggle LED (PA5) moi 500ms.
-  Khong duoc dung HAL_TIM_IRQHandler.
+---
 
-Context:
-  - STM32F407 Discovery board
-  - TIM6: Basic timer, chi co Update interrupt
-  - LED xanh o PA5
-  - Clock: 168MHz
+### 🟡 Level 4: Tái Định Vị Vector Table Vào SRAM Tại Runtime
+* **Problem:** Sau khi boot từ Flash, hãy copy toàn bộ bảng Vector Table vào vùng đầu SRAM (`0x20000000`), sau đó trỏ thanh ghi VTOR vào RAM.
+* **Context:** Yêu cầu hệ thống cần thay đổi con trỏ hàm ngắt động khi chạy các chế độ test khác nhau.
+* **Constraints:** Đảm bảo thỏa mãn quy tắc căn chỉnh địa chỉ (Alignment Rule) của VTOR. Không làm gián đoạn ngắt SysTick đang chạy.
+* **Expected Behavior:** Ghi đè con trỏ hàm `TIM2_IRQHandler` trong RAM và quan sát CPU thực thi hàm mới mà không cần nạp lại Flash.
+* **What You Should Investigate:** `memcpy`, `SCB->VTOR`, lệnh rào cản `__DSB()` và `__ISB()`.
 
-Constraints:
-  - Viết ISR tu zero, khong dung HAL wrapper
-  - ISR phai clear flag correctly
-  - LED toggle phai dung timing
+---
 
-What You Should Investigate:
-  - TIM6 clock source va prescaler calculation
-  - TIM6->DIER bit UIE
-  - NVIC_EnableIRQ(TIM6_DAC_IRQn)
-  - TIM6->SR bit UIF clear mechanism
-  - GPIOA ODR toggle
-```
+### 🟡 Level 5: Xây Dựng Trình Chẩn Đoán HardFault Chuyên Nghiệp
+* **Problem:** Viết một `HardFault_Handler` bằng Assembly kết hợp C để bóc tách toàn bộ khung thanh ghi Auto-stacking khi hệ thống bị crash.
+* **Context:** Thiết bị lắp ngoài hiện trường (không thể cắm cáp Debug JTAG/SWD), chỉ có thể lưu log vào bộ nhớ Flash/EEPROM.
+* **Constraints:** Phải phân biệt chính xác CPU đang dùng `MSP` hay `PSP` trước khi trích xuất giá trị `{R0-R3, R12, LR, PC, xPSR}`.
+* **Expected Behavior:** In ra được chính xác địa chỉ câu lệnh (PC) gây ra lỗi và mã lỗi trong thanh ghi `SCB->CFSR`.
+* **What You Should Investigate:** Kiểm tra Bit 2 của `EXC_RETURN` trong `LR`, đọc `SCB->CFSR`, `SCB->BFAR`.
 
-### Level 3: Debug Default_Handler
+---
 
-```
-Problem:
-  Firmware chay duoc nhung khi connect debugger: CPU dang trong vong lap tai
-  Default_Handler. Khong ro interrupt nao gay ra.
+### 🟠 Level 6: Xây Dựng Bootloader Tải Kép & Nhảy Ứng Dụng An Toàn
+* **Problem:** Viết Bootloader tại `0x08000000` và Application tại `0x08008000`. Khi nhấn nút, ở lại Bootloader; khi thả nút, nhảy vào App.
+* **Context:** Ứng dụng Application có sử dụng FreeRTOS và nhiều ngắt ngoại vi.
+* **Constraints:** Sau khi nhảy vào App, toàn bộ ngắt của App phải hoạt động 100% trơn tru, không bị ảnh hưởng bởi Bootloader.
+* **Expected Behavior:** Hoàn thành đầy đủ chuỗi 9 bước chuyển giao quyền: Reset NVIC, Reset SysTick, cập nhật MSP, nạp VTOR và nhảy Reset_Handler.
+* **What You Should Investigate:** Hàm `Jump_To_Application()`, file Linker Script của Application (`ORIGIN = 0x08008000`).
 
-Context:
-  - STM32F4, FreeRTOS
-  - He thong co SPI, UART, I2C, TIM
-  - Firmware chay khoang 30 giay roi "treo"
+---
 
-Constraints:
-  - Khong co source code cua Default_Handler (binary only)
-  - Chi co GDB va binary (.elf)
+### 🟠 Level 7: Thiết Kế Ring Buffer Lock-Free Tốc Độ Cao Cho UART RX
+* **Problem:** Nhận luồng dữ liệu UART liên tục ở tốc độ **921600 baud** mà không bị mất bất kỳ byte nào (Zero Loss), CPU load < 5%.
+* **Context:** Dữ liệu cảm biến truyền liên tục không ngừng nghỉ.
+* **Constraints:** Không dùng hàm khóa Critical Section trong hàm ngắt.
+* **Expected Behavior:** Sử dụng mô hình Single-Producer Single-Consumer (SPSC) Ring Buffer kết hợp rào cản bộ nhớ `__DMB()`.
+* **What You Should Investigate:** Bitwise index wrapping (`& (SIZE - 1)`), từ khóa `volatile`, kiểm tra tràn bộ đệm.
 
-What You Should Investigate:
-  - Doc IPSR de biet exception number dang active
-  - Tinh toan: exception number -> IRQ name
-  - Kiem tra NVIC ISER vs vector table
-  - Tim doan code gay ra interrupt
-```
+---
 
-### Level 4: Relocate Vector Table
+### 🔴 Level 8: Phân Tích & Sửa Lỗi Nghẽn Bộ Lập Lịch FreeRTOS Do Ngắt
+* **Problem:** Một hệ thống FreeRTOS có 1 Task điều khiển màn hình (Prio 2) và 1 Task xử lý mạng CAN (Prio 5). Khi gói tin CAN bay đến dồn dập, Task màn hình bị "đơ" hoàn toàn trong 2 giây.
+* **Context:** Kỹ sư trước đó đã viết hàm `CAN_RX_IRQHandler` gửi dữ liệu vào Queue nhưng không dùng `portYIELD_FROM_ISR()`.
+* **Constraints:** Phân tích bản chất tại sao việc thiếu `portYIELD_FROM_ISR` lại gây ra hiện tượng nghẽn lập lịch.
+* **Expected Behavior:** Tối ưu lại ISR để Task CAN (Prio 5) xử lý tức thời và trả lại quyền cho Task màn hình mượt mà.
+* **What You Should Investigate:** Cơ chế hoạt động của `xHigherPriorityTaskWoken` và ngắt `PendSV`.
 
-```
-Problem:
-  Implement chuc nang: Sau khi boot, copy vector table tu Flash vao RAM
-  va doi VTOR sang RAM. Sau do co the thay doi ISR handler runtime.
+---
 
-Context:
-  - Cortex-M4, STM32F4
-  - RAM: 128KB tai 0x20000000
-  - Vector table: 98 entries (16 core + 82 IRQ cua STM32F4)
-  - Can thay the SysTick_Handler runtime
+### 🔴 Level 9: Thiết Kế Hệ Thống Ngắt Cho Hộp Điều Khiển Động Cơ Ô Tô (ECU)
+* **Problem:** Thiết kế phân bổ toàn bộ mức ưu tiên (Priority Assignment Matrix) cho MCU STM32H7 (480 MHz) điều khiển xe điện:
+  - Ngắt bảo vệ ngắt mạch quá dòng Inverter (Yêu cầu phản ứng < 1 µs).
+  - Ngắt băm xung PWM điều khiển động cơ 20 kHz.
+  - Ngắt nhận bản tin CAN FD an toàn (100 µs).
+  - Ngắt định thời hệ thống FreeRTOS SysTick (1 ms).
+  - Ngắt ghi log chẩn đoán UART (10 ms).
+* **Constraints:** Xác định rõ `configMAX_SYSCALL_INTERRUPT_PRIORITY` nằm ở đâu và ngắt nào được phép gọi API FreeRTOS.
+* **What You Should Investigate:** Preemption Priority vs Sub-Priority, Zero-Latency Interrupts.
 
-Constraints:
-  - Alignment requirement cua VTOR
-  - Khong duoc break any existing interrupt
-  - Phai verify sau khi relocate
+---
 
-What You Should Investigate:
-  - VTOR alignment requirement
-  - memcpy vector table
-  - SCB->VTOR = new_address
-  - Kiem tra bang GDB sau khi relocate
-```
-
-### Level 5: Debug HardFault
-
-```
-Problem:
-  Firmware bi HardFault sau khoang 5 giay chay. Bug khong reproducible ngay
-  (xay ra sau thoi gian chay nhat dinh).
-
-Context:
-  - STM32F4, FreeRTOS
-  - 4 tasks: UART, CAN, ADC, MainControl
-  - HardFault xay ra ngau nhien
-
-Constraints:
-  - Khong the dung debugger (firmware chay tren device thuc)
-  - Chi co log qua UART
-
-What You Should Investigate:
-  - Implement HardFault handler de log: stacked PC, CFSR, HFSR, BFAR
-  - Luu log vao NvM truoc khi reset
-  - Phan tich PC: tim doan code gay fault
-  - Kiem tra stack usage (stack watermark FreeRTOS)
-```
-
-### Level 6: Bootloader + Application
-
-```
-Problem:
-  Implement bootloader don gian tai 0x08000000 va application tai 0x08010000.
-  Bootloader kiem tra button, neu nhan = o lai BL mode, neu khong = jump App.
-  App phai nhan duoc tat ca interrupt sau khi duoc jump vao tu BL.
-
-Context:
-  - STM32F407
-  - Button: PC13
-  - BL size: 64KB (0x08000000 - 0x0800FFFF)
-  - App size: 960KB (0x08010000 - 0x080FFFFF)
-
-Constraints:
-  - App linker script phai thay doi
-  - VTOR phai duoc relocate
-  - MSP phai duoc cap nhat
-  - Tat ca peripheral state phai sach truoc khi jump
-
-What You Should Investigate:
-  - BL linker script va App linker script
-  - bootloader_jump_to_app() implementation
-  - App phai co vector table dung dia chi
-  - Test: App interrupt co hoat dong sau jump?
-```
-
-### Level 7: Interrupt + DMA
-
-```
-Problem:
-  Doc 1000 mau ADC tai 100kHz su dung DMA. Khi buffer day, ISR phai
-  xu ly data va kich hoat DMA buffer tiep theo (ping-pong buffer).
-  Khong duoc mat mau nao.
-
-Context:
-  - STM32F4, ADC1, DMA2 Stream0
-  - Sample rate: 100kHz
-  - Buffer size: 1000 samples per buffer
-  - 2 buffers (ping-pong)
-  - Processing time < 5ms
-
-Constraints:
-  - DMA transfer complete interrupt
-  - Double buffering mandatory
-  - ISR time < 10us
-  - Khong the dung blocking operation trong ISR
-
-What You Should Investigate:
-  - DMA circular mode vs normal mode
-  - DMA half-transfer interrupt + full-transfer interrupt
-  - Ping-pong buffer swap trong ISR
-  - Memory barrier khi swap buffer pointer
-```
-
-### Level 8: Interrupt + RTOS
-
-```
-Problem:
-  He thong co UART RX interrupt va task xu ly protocol. Khi nhan 0xAA 0xBB 0xCC 0xDD,
-  task phai wakeup va xu ly trong 1ms. Hien tai co do tre 50ms.
-  Tim nguyen nhan va fix.
-
-Context:
-  - STM32F4, FreeRTOS
-  - UART 115200 baud
-  - Task priority: 5 (trung binh)
-  - Co 3 task khac priority: 8, 6, 3
-
-Constraints:
-  - Khong duoc thay doi protocol
-  - Response time phai < 5ms
-  - Khong duoc increase CPU load qua 50%
-
-What You Should Investigate:
-  - ISR -> Queue -> Task wakeup flow
-  - Task priority vs other tasks
-  - portYIELD_FROM_ISR usage
-  - FreeRTOS trace (Segger SystemView)
-  - Stack size cua task xu ly
-```
-
-### Level 9: Thiet Ke Interrupt Architecture
-
-```
-Problem:
-  Thiet ke interrupt system cho ECU xe dien:
-  - CAN Bus: 1Mbit/s, can xu ly trong 100us
-  - UART Debug: 921600 baud
-  - ADC Battery: 10kHz, 12 kenh
-  - PWM Motor Control: 20kHz PWM, ISR update duty cycle
-  - Safety Monitor: phai co response < 50us bat ky luc nao
-  - FreeRTOS: 5 tasks tu priority 1-5
-
-Context:
-  - STM32H7 (480MHz)
-  - Cac system clock: APB1=120MHz, APB2=240MHz
-  - 16-bit priority grouping
-
-Constraints:
-  - Safety Monitor khong duoc bi delay qua 50us
-  - CAN latency < 100us
-  - Motor PWM update phai chinh xac den 1us
-  - Tong CPU load < 60% (de lai margin)
-
-What You Should Investigate:
-  - Priority assignment cho tung IRQ
-  - configMAX_SYSCALL_INTERRUPT_PRIORITY setting
-  - CPU load budget analysis
-  - DMA usage cho ADC va UART
-  - Safety interrupt isolation
-```
-
-### Level 10: Debug Production Bug
-
-```
-Problem:
-  Firmware EV (Electric Vehicle) bi bao cao: Sau 2-3 gio hoat dong,
-  dieu khien motor bi mat response trong ~100ms, sau do phuc hoi.
-  Bug xay ra ngau nhien, kho reproduce. Khach hang report crash.
-  Firmware da ship, khong co debugger. Chi co black box log.
-
-Context:
-  - STM32H7, FreeRTOS
-  - Motor control: ISR moi 50us (20kHz)
-  - CAN Bus: Nhan lenh motor
-  - Safety Monitor: Giam sat tat ca
-  - Temperature sensor: Doc moi 10ms
-
-Constraints:
-  - Khong co debugger tren target
-  - Log chi 4KB vong trong RAM (CircularLog)
-  - Phai fix trong 48h
-  - Khong duoc lam slow down motor control (safety critical)
-
-What You Should Investigate:
-  - Tich hop runtime stack watermark monitoring
-  - Log trang thai interrupt truoc khi "mat response"
-  - Phan tich xem co interrupt starvation
-  - Kiem tra priority inversion co xay ra khong
-  - Kiem tra memory leak qua 2-3 gio
-  - Kiem tra watchdog co duoc kick trong ISR khong
-```
+### 🔴 Level 10: Điều Tra & Xử Lý Bug Bộ Nhớ Bí Ẩn Trên Thiết Bị Production
+* **Problem:** Xe điện xuất xưởng chạy thử ngoài đường thực tế: Cứ sau khoảng 3 đến 4 tiếng hoạt động liên tục thì xe bị mất tín hiệu chân ga trong 200 ms rồi tự phục hồi. Hiện tượng xảy ra hoàn toàn ngẫu nhiên.
+* **Context:** Không thể gắn Debugger. Chỉ có file Log ghi nhận trong bộ nhớ Flash vòng lặp (Blackbox Log).
+* **Constraints:** Lập luận và đưa ra 4 giả thuyết gốc rễ (Root Cause Hypothesis) liên quan đến: Interrupt Storm, Priority Inversion, Tràn Stack ngầm trong nested interrupts, và tranh chấp biến chia sẻ thiếu `volatile`/`__DMB()`.
+* **What You Should Investigate:** Xây dựng phương án chẩn đoán khoanh vùng và khắc phục triệt để.
 
 ---
 
 <a name="ch17"></a>
-## CHUONG 17: SENIOR MINDSET - UNDERSTANDING VS MEMORIZATION
+## CHƯƠNG 17: SENIOR MINDSET — THẤU HIỂU BẢN CHẤT THAY VÌ HỌC THUỘC
 
-### 17.1 10 Cap Junior Thinking vs Senior Thinking
+### 10 Cặp Tư Duy Đối Nghịch Giữa Junior và Senior:
 
-**Cap 1: Ve VTOR**
-```
-JUNIOR:
-"VTOR la thanh ghi chua dia chi vector table."
-
-SENIOR:
-"VTOR cho phep he thong thay doi base address cua exception vector table.
-Dieu nay quan trong trong bootloader/multi-image architecture,
-nhung relocation con lien quan den memory mapping (alignment 512-byte boundary),
-startup sequence (khi nao set VTOR - truoc hay sau enable interrupt),
-interrupt state (phai disable truoc khi relocate),
-va implications voi NVIC pending state (co the can clear pending truoc khi relocate)."
-```
-
-**Cap 2: Ve ISR**
-```
-JUNIOR:
-"ISR la function duoc goi khi interrupt xay ra."
-
-SENIOR:
-"ISR la exception handler chay o privilege Handler mode, duoc trigger boi hardware
-exception mechanism qua vector table lookup. ISR khac function binh thuong o:
-execution context (Handler vs Thread mode), stack su dung (MSP vs PSP),
-register luu tru (auto-stacking), return mechanism (EXC_RETURN vs binh thuong),
-va nhung gi co the goi (RTOS FromISR API, khong blocking, khong malloc).
-Thiet ke ISR dung = ISR ngan + defer work = thong luong cao + latency thap."
-```
-
-**Cap 3: Ve Enable Interrupt**
-```
-JUNIOR:
-"Toi enable NVIC la xong."
-
-SENIOR:
-"Enable interrupt la mot chuoi dieu kien: peripheral clock, peripheral event config,
-peripheral interrupt enable, NVIC enable, priority config, global interrupt enable,
-va vector table entry hop le. Miss bat ky dieu kien nao = interrupt khong chay.
-Debug methodology: check tung dieu kien theo thu tu, khong guess."
-```
-
-**Cap 4: Ve HardFault**
-```
-JUNIOR:
-"HardFault la loi kho hieu, thuong khoi dong lai."
-
-SENIOR:
-"HardFault la tin hieu diagnostics cua CPU. No cho biet: loai fault (CFSR),
-dia chi loi (BFAR/MMFAR), lenh gay fault (stacked PC), va stack state luc do.
-Implement HardFault handler de log tat ca thong tin nay truoc khi reset
-la dieu kien bat buoc cho bat ky production firmware nao."
-```
-
-**Cap 5: Ve Priority**
-```
-JUNIOR:
-"Priority cao thi so priority lon."
-
-SENIOR:
-"Priority trong ARM: so NHAT = cao nhat. FreeRTOS task priority: so LON = cao hon.
-IRQ priority va task priority la 2 he thong rieng biet, dung theo nghia nguoc nhau.
-configMAX_SYSCALL_INTERRUPT_PRIORITY la nguong bao ve RTOS critical sections -
-IRQ co priority so NHAT hon nguong nay KHONG the goi RTOS API.
-Priority grouping (PRIGROUP) quyet dinh so bit preemption vs sub-priority."
-```
-
-**Cap 6: Ve Stack**
-```
-JUNIOR:
-"Stack overflow la bi het RAM, them RAM vao la xong."
-
-SENIOR:
-"Stack overflow tren embedded co nhieu dang: ISR nested qua sau,
-recursion trong task, local variable lon, function call chain sau,
-float context save (26 regs thay vi 8). Tren Cortex-M, stack overflow
-khong co hardware protection (tru MPU). Nen dung FreeRTOS stack watermark
-monitoring va MPU stack guard. Stack size phai tinh cho worst-case,
-bao gom nested interrupt depth."
-```
-
-**Cap 7: Ve DMA va Interrupt**
-```
-JUNIOR:
-"DMA tu chay, interrupt bao hieu hoan thanh, the la xong."
-
-SENIOR:
-"DMA + interrupt la thiet ke system quan trong: DMA giam CPU load, nhung
-ISR van can xu ly dung luc (clear flag, re-arm DMA, swap buffer, signal task).
-Ping-pong buffer la pattern pho bien cho continuous streaming. Memory barrier
-(DMB) can thiet khi DMA va CPU truy cap cung buffer. Cache coherency (Cortex-M7
-co cache) la nguon loi tinh vi neu khong duoc quan ly."
-```
-
-**Cap 8: Ve Bootloader**
-```
-JUNIOR:
-"Bootloader jump vao Reset_Handler cua app la xong."
-
-SENIOR:
-"Bootloader jump vao app yeu cau: tat peripheral (khong de lai state),
-disable tat ca NVIC + clear pending, tat SysTick, cap nhat MSP tu app stack pointer,
-relocate VTOR sang app vector table, validate app (CRC, magic number),
-va jump vao Reset_Handler. Thieu bat ky buoc nao co the dan den app
-chay duoc nhung crash sau khi co interrupt dau tien."
-```
-
-**Cap 9: Ve Real-Time**
-```
-JUNIOR:
-"He thong real-time nghia la phai nhanh."
-
-SENIOR:
-"Real-time = deterministic, khong nhat thiet la nhanh. He thong real-time
-can: WCET biet truoc, priority assignment dung, interrupt latency xac dinh,
-schedulability analysis (utilization < 69% cho RMS), jitter nho cho critical tasks.
-ISR architecture anh huong den tat ca cac chi tieu nay. Mot ISR nang co the
-pha vo ca he thong real-time du CPU co 'sat' hon."
-```
-
-**Cap 10: Ve Debug**
-```
-JUNIOR:
-"Bug lien quan den interrupt kho debug, cu restart la no mat."
-
-SENIOR:
-"Bug interrupt co phuong phap debug he thong: IPSR cho biet exception dang active,
-CFSR/HFSR/BFAR cho biet loai fault, stacked PC cho biet lenh gay fault,
-logic analyzer cho thay IRQ timing, FreeRTOS trace cho thay context switch.
-Bug restart mat co nghia la: race condition khong reproducible (khong co volatile),
-bug phu thuoc timing (priority sai, jitter), hoac bug phu thuoc gia tri chua khoi tao."
-```
+| # | Chủ Đề | Tư Duy Junior (Bề Nổi / Học Vẹt) | Tư Duy Senior Architect (Bản Chất Hệ Thống) |
+|---|---|---|---|
+| 1 | **Vector Table** | "Là danh sách các hàm ngắt trong file startup." | "Là giao diện phần cứng kết nối giữa không gian địa chỉ bộ nhớ và cơ chế phân giải ngoại lệ của CPU. Được quản lý bởi Linker Script và có thể tái định vị linh hoạt bằng VTOR." |
+| 2 | **NVIC** | "Là hàm `HAL_NVIC_EnableIRQ()` trong thư viện." | "Là bộ điều phối phần cứng đa tầng trong lõi CPU chịu trách nhiệm phân xử ưu tiên, lồng ngắt (Nesting), nối đuôi ngắt (Tail-Chaining) và lọc ngưỡng khóa ngắt." |
+| 3 | **Hàm ISR** | "Là một hàm C bình thường được gọi khi có sự kiện." | "Là một Exception Handler chạy ở Handler Mode với đặc quyền cao nhất, sử dụng Main Stack Pointer (MSP), tự động lưu trữ 8 thanh ghi và thoát ngắt bằng mã EXC_RETURN." |
+| 4 | **Bật Ngắt** | "Chỉ cần gọi hàm Enable ngắt là xong." | "Là một chuỗi liên hoàn 7 mắt xích: Clock ➔ GPIO Pin ➔ Ngoại vi ➔ Cờ ngoại vi ➔ Mức ưu tiên ➔ Kênh NVIC ➔ Cờ ngắt toàn cục." |
+| 5 | **Priority** | "Số lớn là ưu tiên cao." | "Hiểu rõ quy ước ngược: Trong ARM, số càng nhỏ ưu tiên càng cao. Nắm vững ranh giới giữa Preemption Priority và Sub-Priority." |
+| 6 | **FreeRTOS & ISR** | "Gọi API nào cũng được miễn là code chạy." | "Tuyệt đối phân tách Handler Context và Thread Context. Luôn dùng API `...FromISR` và hiểu rõ vai trò điều phối trì hoãn của PendSV." |
+| 7 | **HardFault** | "Lỗi khó hiểu, nhấn nút Reset cho nhanh." | "Là công cụ chẩn đoán giá trị nhất của CPU. Bóc tách khung Stack, đọc các thanh ghi CFSR/HFSR/BFAR để tìm ra chính xác dòng code và nguyên nhân gây lỗi." |
+| 8 | **Độ Trễ Ngắt** | "Ngắt là chạy tức thời, không có độ trễ." | "Độ trễ ngắt là một hàm số xác định: Phụ thuộc chu kỳ lưu ngữ cảnh (12 cycles), trạng thái bus bộ nhớ, độ sâu ngắt lồng nhau và thời gian khóa Critical Section." |
+| 9 | **Bootloader Jump** | "Chỉ cần ép kiểu con trỏ hàm rồi gọi địa chỉ App." | "Là một quy trình chuyển giao quyền nghiêm ngặt: Dọn dẹp ngoại vi cũ, tắt NVIC, vô hiệu hóa SysTick, nạp lại MSP từ Vector App, cấu hình VTOR và kiểm tra tính toàn vẹn Secure Boot." |
+| 10 | **Tối Ưu Hóa** | "Code ngắn trong file C là tối ưu." | "Tối ưu hóa ở cấp độ vi kiến trúc: Đưa công việc nặng xuống Task (Bottom-Half), sử dụng DMA + Ring Buffer, tận dụng Tail-Chaining và đồng bộ rào cản bộ nhớ." |
 
 ---
 
 <a name="ch18"></a>
-## CHUONG 18: MASTER DEBUG CHECKLIST
+## CHƯƠNG 18: MASTER DEBUG CHECKLIST & TÀI LIỆU THAM KHẢO
 
-### 18.1 Checklist Debug Interrupt - 20 Buoc
-
-```
-PHASE 1: SETUP VERIFICATION (truoc khi code chay)
-  [ ] 1. Peripheral clock enable?
-  [ ] 2. GPIO/Pin config (alternate function)?
-  [ ] 3. Peripheral cau hinh dung?
-  [ ] 4. Peripheral interrupt enable (DIER, CR1, ...)?
-  [ ] 5. NVIC enable (NVIC_EnableIRQ)?
-  [ ] 6. NVIC priority set?
-  [ ] 7. ISR ten chinh xac (dung cap chu hoa)?
-  [ ] 8. ISR chua trong .c file duoc include trong build?
-  [ ] 9. Global interrupt enable (__enable_irq)?
-  [ ] 10. Vector table hop le tai dung dia chi?
-
-PHASE 2: RUNTIME VERIFICATION (khi dang chay)
-  [ ] 11. PRIMASK = 0 (khong bi mask)?
-  [ ] 12. BASEPRI khong mask priority cua IRQ?
-  [ ] 13. Peripheral flag duoc set khi event xay ra?
-  [ ] 14. ISR clear flag sau khi xu ly?
-  [ ] 15. Khong co priority inversion?
-
-PHASE 3: FAULT ANALYSIS (khi co loi)
-  [ ] 16. IPSR: Exception nao dang active?
-  [ ] 17. CFSR: Loai fault gi?
-  [ ] 18. Stacked PC: Lenh nao gay fault?
-  [ ] 19. Stack co du khong (SP vs stack_bottom)?
-  [ ] 20. VTOR tro dung vector table?
-```
-
-### 18.2 Quick Reference Commands
-
-```gdb
-# Xem vector table
-x/32xw 0x08000000
-
-# Xem VTOR
-x/xw 0xE000ED08
-
-# Xem CFSR (fault status)
-x/xw 0xE000ED28
-
-# Xem HFSR (hardfault status)
-x/xw 0xE000ED2C
-
-# Xem BFAR (bus fault address)
-x/xw 0xE000ED34
-
-# Xem IPSR (current exception)
-info registers xpsr
-
-# Xem stacked PC khi fault
-info registers sp
-# x/8xw <sp_value> -> element [6] la stacked PC
-
-# Tim symbol tai dia chi
-info symbol 0x08001234
-
-# Xem NVIC enable registers
-x/8xw 0xE000E100
-
-# Xem NVIC priority registers
-x/16xw 0xE000E400
-```
-
-### 18.3 Mental Model Tong The (ASCII Diagram)
+### 18.1 Master Checklist 20 Bước Chẩn Đoán Ngắt Chuyên Nghiệp
 
 ```
-+===========================================================================+
-|                    INTERRUPT SYSTEM OVERVIEW                              |
-+===========================================================================+
-|                                                                           |
-|  HARDWARE EVENT                                                           |
-|  (Timer, UART, GPIO, ADC...)                                              |
-|         |                                                                 |
-|         v IRQ Signal (Wire)                                               |
-|  +------+------+                                                          |
-|  |    NVIC     |  Hardware block trong CPU                                |
-|  | - Enable    |  Quan ly: enable/disable, priority                       |
-|  | - Priority  |  pending/active state                                    |
-|  | - Pending   |  Mask: PRIMASK, BASEPRI, FAULTMASK                      |
-|  | - Active    |                                                          |
-|  +------+------+                                                          |
-|         |                                                                 |
-|         v "exception_number" va nIRQ signal                               |
-|  +------+------+                                                          |
-|  |  CPU CORE   |  Hoan thanh lenh hien tai                                |
-|  |             |  Auto-push context (8 regs)                              |
-|  |  Exception  |  Tinh vector address:                                    |
-|  |  Mechanism  |  VTOR + exception_number*4                              |
-|  +------+------+                                                          |
-|         |                                                                 |
-|         v Vector address                                                  |
-|  +------+------+                                                          |
-|  | VECTOR TABLE|  Mang dia chi trong Flash/RAM                            |
-|  | (Flash)     |  [0] Stack Pointer value                                 |
-|  |             |  [1] Reset_Handler addr                                  |
-|  |             |  ...                                                     |
-|  |             |  [n] IRQn_Handler addr                                   |
-|  +------+------+                                                          |
-|         |                                                                 |
-|         v ISR address                                                     |
-|  +------+------+                                                          |
-|  |     ISR     |  Chay o Handler mode                                     |
-|  |             |  Clear peripheral flag                                   |
-|  |             |  Xu ly su kien hoac signal task                          |
-|  |             |  Return (EXC_RETURN)                                     |
-|  +------+------+                                                          |
-|         |                                                                 |
-|         v Auto-pop context                                                |
-|  MAIN CODE TIEP TUC (hoac RTOS task sau context switch)                   |
-|                                                                           |
-+===========================================================================+
+[GIAI ĐOẠN 1: THIẾT KẾ & LIÊN KẾT (BUILD TIME)]
+ [ ] 1. Mảng `.isr_vector` có lệnh `KEEP()` trong Linker Script chưa?
+ [ ] 2. Địa chỉ ORIGIN của Flash trong Linker Script có khớp với không gian nhớ phần cứng không?
+ [ ] 3. Tên hàm ISR trong file `.c` có khớp 100% từng ký tự hoa/thường với file startup không?
+ [ ] 4. Nếu dùng C++, hàm ISR đã được bọc trong khối `extern "C"` chưa?
+ [ ] 5. Các biến chia sẻ giữa ISR và Main Thread đã có từ khóa `volatile` chưa?
+
+[GIAI ĐOẠN 2: KHỞI TẠO HỆ THỐNG (RUNTIME INITIALIZATION)]
+ [ ] 6. Bus Clock của ngoại vi đã được kích hoạt trong thanh ghi `RCC` chưa?
+ [ ] 7. Các chân GPIO Alternate Function đã được cấu hình đúng Mode chưa?
+ [ ] 8. Cờ ngắt nội bộ ngoại vi (ví dụ `UIE` trong Timer, `RXNEIE` trong UART) đã bật chưa?
+ [ ] 9. Kênh ngắt trong NVIC (`NVIC->ISER`) đã được Enable chưa?
+ [ ] 10. Mức ưu tiên ngắt trong NVIC (`NVIC->IPR`) đã được thiết lập đúng chưa?
+ [ ] 11. Thanh ghi `SCB->VTOR` đã trỏ đúng vào địa chỉ của bảng Vector Table hiện tại chưa?
+ [ ] 12. Cờ ngắt toàn cục đã được mở (`__enable_irq()`, PRIMASK = 0) chưa?
+
+[GIAI ĐOẠN 3: THỰC THI HÀM ISR (IN-FLIGHT EXECUTION)]
+ [ ] 13. Hàm ISR đã có lệnh xóa cờ ngắt phần cứng của ngoại vi (Clear Interrupt Flag) chưa?
+ [ ] 14. Có lệnh đọc lại thanh ghi hoặc `__DSB()` để khắc phục độ trễ Write Buffer của Bus không?
+ [ ] 15. Trong FreeRTOS, các hàm gọi trong ISR có đúng là phiên bản `...FromISR` không?
+ [ ] 16. Đã gọi `portYIELD_FROM_ISR(xHigherPriorityTaskWoken)` ở cuối hàm ISR chưa?
+ [ ] 17. Mức ưu tiên của ngắt có thấp hơn hoặc bằng `configMAX_SYSCALL_INTERRUPT_PRIORITY` khi dùng RTOS API không?
+
+[GIAI ĐOẠN 4: CHẨN ĐOÁN SỰ CỐ & CRASH (FAULT RECOVERY)]
+ [ ] 18. Khi rơi vào `Default_Handler`, đã đọc thanh ghi `IPSR` để xác định Exception Number chưa?
+ [ ] 19. Khi rơi vào `HardFault`, đã trích xuất địa chỉ câu lệnh lỗi (Stacked PC) và đọc `SCB->CFSR` chưa?
+ [ ] 20. Dung lượng Stack (MSP / Task PSP) có đủ lớn để chứa các khung ngắt lồng nhau (Nested Stacking) không?
 ```
 
 ---
 
-## TAI LIEU THAM KHAO
+### 18.2 Sơ Đồ Khái Niệm Tổng Thể (Master Mental Model)
 
-- ARM Cortex-M4 Technical Reference Manual (DDI0439C)
-- ARMv7-M Architecture Reference Manual (DDI0403E)
-- ARM Cortex-M for Beginners (Joseph Yiu) - White Paper
-- FreeRTOS Reference Manual - https://www.freertos.org/Documentation/
-- STM32F4 Reference Manual (RM0090)
-- Embedded Systems: Real-Time Operating Systems for ARM Cortex-M (Jonathan Valvano)
-- MISRA-C:2012 Guidelines for the use of the C language
-- AN4838: Managing memory protection unit in STM32 MCUs
+```
++==================================================================================================+
+|                        SƠ ĐỒ TỔNG QUAN KIẾN TRÚC XỬ LÝ NGẮT EMBEDDED                             |
++==================================================================================================+
+                                                                                                    
+   [NGOẠI VI PHẦN CỨNG] ──────(Kéo tín hiệu điện áp IRQ Line)──────┐                               
+   (Timer, UART, CAN, ADC)                                         │                               
+                                                                   ▼                               
+                                           +─────────────────────────────────+                      
+                                           |   NVIC (INTERRUPT CONTROLLER)   |                      
+                                           | • Lọc kênh ngắt: NVIC->ISER     |                      
+                                           | • Phân xử mức ưu tiên: NVIC->IPR|                      
+                                           | • Quản lý Pending / Active      |                      
+                                           +─────────────────────────────────+                      
+                                                                   │                                
+                                               (Gửi Exception Number & nIRQ)                        
+                                                                   │                                
+                                                                   ▼                                
+                                           +─────────────────────────────────+                      
+                                           |     LÕI CPU (ARM CORTEX-M)      |                      
+                                           | • Kết thúc câu lệnh hiện tại    |                      
+                                           | • Auto-stacking 8 thanh ghi     |                      
+                                           | • Tra cứu SCB->VTOR             |                      
+                                           +─────────────────────────────────+                      
+                                                                   │                                
+                                        (Đọc địa chỉ con trỏ hàm 32-bit từ Flash)                   
+                                                                   │                                
+                                                                   ▼                                
+                                           +─────────────────────────────────+                      
+                                           |   BẢNG VECTOR TABLE TRONG FLASH |                      
+                                           | [0] Initial Stack Pointer (MSP) |                      
+                                           | [1] Reset_Handler Address       |                      
+                                           | ...                             |                      
+                                           | [N] Peripheral_IRQHandler Addr  |                      
+                                           +─────────────────────────────────+                      
+                                                                   │                                
+                                                     (Nhảy vào thực thi mã C)                       
+                                                                   │                                
+                                                                   ▼                                
+                                           +─────────────────────────────────+                      
+                                           |  HÀM PHỤC VỤ NGẮT (ISR IN C)    |                      
+                                           | • Xóa cờ ngắt phần cứng         |                      
+                                           | • Đẩy dữ liệu vào RingBuffer    |                      
+                                           | • Đánh thức RTOS Task (FromISR) |                      
+                                           | • Thoát ngắt bằng lệnh BX LR    |                      
+                                           +─────────────────────────────────+                      
+                                                                   │                                
+                                                 (Auto-unstacking & Khôi phục)                      
+                                                                   │                                
+                                                                   ▼                                
+                                           +─────────────────────────────────+                      
+                                           |   CHƯƠNG TRÌNH CHÍNH / RTOS     |                      
+                                           | • Task xử lý tiếp tục chạy      |                      
+                                           +─────────────────────────────────+                      
++==================================================================================================+
+```
 
 ---
 
-*Tai lieu nay duoc tao cho viec tu hoc va tham khao ky thuat. Tat ca code example chi mang tinh minh hoa - kiem tra ky truoc khi su dung trong production.*
+### 18.3 Tài Liệu Tham Khảo Kỹ Thuật (Official References)
+
+1. **ARM Limited:** *ARMv7-M Architecture Reference Manual* (DDI 0403E.e).
+2. **ARM Limited:** *Cortex-M4 Technical Reference Manual* (DDI 0439D).
+3. **Joseph Yiu:** *The Definitive Guide to ARM Cortex-M3 and Cortex-M4 Processors* (3rd Edition, Newnes).
+4. **STMicroelectronics:** *PM0214 Programming Manual — STM32F3/F4/F7/L4 Cortex-M4 programming manual*.
+5. **Real Time Engineers Ltd:** *FreeRTOS Reference Manual & Kernel Architecture Guide*.
+6. **MISRA C:2012:** *Guidelines for the use of the C language in critical systems*.
+7. **ISO 26262-6:** *Road vehicles — Functional safety — Part 6: Product development at the software level*.
+
+---
+
+*Tài liệu kỹ thuật chuyên sâu này được biên soạn cho mục đích nghiên cứu, đào tạo và phát triển hệ thống nhúng chất lượng cao. Bản quyền nội dung thuộc về Dự án Nghiên cứu & Phát triển Embedded Firmware Kiến trúc Chuyên sâu.*
