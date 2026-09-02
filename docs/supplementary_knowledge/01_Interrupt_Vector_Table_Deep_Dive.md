@@ -239,14 +239,99 @@ Do đó, Vector Table bắt buộc phải nằm tại địa chỉ `0x00000000` 
 
 ---
 
-### 2.3 Cấu Trúc Của Từng Entry Trong Vector Table
+### 2.3 Cấu Trúc Của Từng Entry Trong Vector Table — Cẩm Nang Dành Cho Người Mới Bắt Đầu
 
-Mỗi Entry là một số nguyên 32-bit (4 bytes):
-* **Entry [0] (Đặc Biệt):** Chứa giá trị **Initial Stack Pointer** (địa chỉ đỉnh RAM, ví dụ `0x20020000`). Đây là giá trị nạp trực tiếp vào thanh ghi SP, **không phải con trỏ hàm**.
-* **Entry [1 đến N]:** Chứa **địa chỉ con trỏ hàm của ISR kèm Thumb Bit**:
-  * Kiến trúc Cortex-M chỉ hỗ trợ tập lệnh **Thumb-2** (không hỗ trợ tập lệnh ARM 32-bit truyền thống).
-  * Tất cả con trỏ hàm trong Cortex-M bắt buộc phải có **Bit 0 (LSB) = 1** (Thumb Indicator Bit).
-  * Ví dụ: Hàm `Reset_Handler` nằm tại địa chỉ chẵn `0x08000108` trong Flash ➔ Giá trị ghi trong Entry [1] của Vector Table sẽ là `0x08000109`. Khi CPU fetch địa chỉ này, nó dùng bit 0 để bật chế độ Thumb và nhảy đến thực thi lệnh tại `0x08000108`. Nếu bit 0 bằng 0, CPU sẽ lập tức kích hoạt lỗi **UsageFault (INVSTATE)**!
+#### 🔰 2.3.1 "Entry" Là Gì? (Mental Model Dễ Hiểu)
+
+Nếu coi **Vector Table** là một cuốn **"Danh bạ điện thoại"** hoặc một **"Kệ tủ có đánh số ngăn"**:
+* Mỗi **"Entry"** (mục nhập / phần tử) chính là **một ô nhớ 32-bit (đúng 4 bytes)** nằm liên tiếp nhau trong bảng.
+* Trong lập trình C, nếu Vector Table là một mảng `uint32_t Vector_Table[N]`, thì mỗi `Vector_Table[i]` chính là một **Entry thứ `i`**.
+
+```
+VÍ DỤ TRỰC QUAN VỀ KHÁI NIỆM "ENTRY":
+
+    BẢNG VECTOR TABLE (CUỐN DANH BẠ ĐỊA CHỈ TRONG FLASH):
+    Địa chỉ Flash    Vị trí Entry      Nội dung chứa bên trong (4 bytes)       Ý nghĩa / Tác dụng
+    ┌────────────┬──────────────────┬───────────────────────────────────────┬──────────────────────────────────────────┐
+    │ 0x08000000 │    Entry [0]     │ 0x20020000 (Địa chỉ đỉnh RAM)         │ Nạp vào Main Stack Pointer (MSP) khi Boot │
+    ├────────────┼──────────────────┼───────────────────────────────────────┼──────────────────────────────────────────┤
+    │ 0x08000004 │    Entry [1]     │ 0x08000109 (Địa chỉ Reset_Handler)    │ Nạp vào Program Counter (PC) khi Boot    │
+    ├────────────┼──────────────────┼───────────────────────────────────────┼──────────────────────────────────────────┤
+    │ 0x08000008 │    Entry [2]     │ 0x08000215 (Địa chỉ NMI_Handler)      │ Nhảy tới khi có sự cố khẩn cấp (NMI)     │
+    ├────────────┼──────────────────┼───────────────────────────────────────┼──────────────────────────────────────────┤
+    │ 0x0800000C │    Entry [3]     │ 0x08000221 (Địa chỉ HardFault_Handler)│ Nhảy tới khi code bị crash (HardFault)   │
+    ├────────────┼──────────────────┼───────────────────────────────────────┼──────────────────────────────────────────┤
+    │    ...     │       ...        │                  ...                  │                   ...                    │
+    ├────────────┼──────────────────┼───────────────────────────────────────┼──────────────────────────────────────────┤
+    │ 0x080000B0 │    Entry [44]    │ 0x08001501 (Địa chỉ TIM2_IRQHandler)  │ Nhảy tới khi Timer 2 đếm tràn            │
+    └────────────┴──────────────────┴───────────────────────────────────────┴──────────────────────────────────────────┘
+```
+
+---
+
+#### 🎯 2.3.2 Tác Dụng Của Từng Entry Là Gì?
+Khi có một sự kiện phần cứng xảy ra (ví dụ: cấp nguồn, lỗi chia cho 0, hoặc Timer đếm tràn), **CPU không hề biết mã xử lý (code C) của bạn nằm ở dòng nào hay file nào trong bộ nhớ Flash rộng lớn hàng Megabyte**.
+
+Tác dụng của từng Entry là đóng vai trò như một **"Tấm biển chỉ đường trực tiếp" (Direct Pointer)**:
+1. Mỗi loại ngắt/ngoại lệ được phần cứng gắn chết với một **Số thứ tự ngoại lệ (Exception Number)** cố định.
+2. CPU chỉ cần nhìn vào số thứ tự này, tra đúng **Entry số đó**, lấy địa chỉ ghi bên trong và nhảy thẳng tới hàm thực thi mà **không cần chạy bất kỳ lệnh `if / else` hay `switch / case` nào**.
+
+---
+
+#### ⏱️ 2.3.3 CPU Sử Dụng Từng Entry Khi Nào Và Như Thế Nào?
+
+```
+CÔNG THỨC PHẦN CỨNG CPU TỰ ĐỘNG TÍNH TOÁN ĐỊA CHỈ ENTRY:
+Địa chỉ ô nhớ của Entry = VTOR + (Exception_Number × 4 bytes)
+```
+
+CPU sẽ tự động đọc Entry trong các thời điểm cụ thể:
+
+| Loại Sự Kiện | Thời Điểm CPU Đọc Entry | Entry Được Sử Dụng | Hành Động Cụ Thể Của Phần Cứng CPU |
+|---|---|---|---|
+| **Vừa bật nguồn / Nhấn nút Reset** | Ngay tại chu kỳ xung nhịp đầu tiên khi cấp nguồn. | **Entry [0] & Entry [1]** | 1. Đọc Entry [0] $\rightarrow$ Nạp thẳng vào thanh ghi **MSP** (Chuẩn bị bộ nhớ Stack).<br>2. Đọc Entry [1] $\rightarrow$ Nạp thẳng vào thanh ghi **PC** (Nhảy vào chạy `Reset_Handler`). |
+| **Code bị lỗi phần cứng** | Khi code bị chia cho 0, truy cập ô nhớ cấm, hoặc tràn stack. | **Entry [3] (HardFault)**<br>hoặc **[4, 5, 6]** | CPU ngưng chạy code thường, đọc Entry tương ứng và nhảy vào hàm bẫy lỗi để cô lập sự cố. |
+| **Hệ điều hành RTOS chuyển Task** | Khi hết lượt chạy (SysTick) hoặc có Task ưu tiên cao hơn thức dậy. | **Entry [14] (PendSV)**<br>& **Entry [15] (SysTick)** | CPU đọc Entry [14]/[15] để chạy mã nguồn đổi ngữ cảnh (Context Switching) của FreeRTOS / AUTOSAR OS. |
+| **Ngoại vi hoàn thành tác vụ** | Khi có dữ liệu UART bay tới, Timer đếm tràn, hoặc nút bấm GPIO được nhấn. | **Entry [16 + IRQn]**<br>*(Ví dụ TIM2 là IRQ 28 $\rightarrow$ Entry 44)* | CPU tạm dừng code chính, tra Entry [44] lấy địa chỉ hàm `TIM2_IRQHandler`, chạy xử lý xong rồi quay về. |
+
+---
+
+#### 🔬 2.3.4 Phân Tích Cấu Trúc Chi Tiết: 2 Loại Entry Trong Bảng
+
+Mọi Entry trong Vector Table đều chiếm đúng **32-bit (4 bytes)**, nhưng được chia làm **2 loại mang bản chất hoàn toàn khác nhau**:
+
+```
+CẤU TRÚC PHẦN CỨNG CỦA 2 LOẠI ENTRY:
+
+1. ENTRY [0] — ĐỈNH NGĂN XẾP (INITIAL STACK POINTER):
+   Bit [31:0] : Chứa GIÁ TRỊ ĐỊA CHỈ Ô NHỚ ĐỈNH RAM (Ví dụ 0x20020000).
+   ⚠️ LƯU Ý  : Đây là GIÁ TRỊ THÔ (RAW VALUE), TUYỆT ĐỐI KHÔNG PHẢI CON TRỎ HÀM!
+
+2. ENTRY [1 ĐẾN N] — CON TRỎ HÀM PHỤC VỤ NGẮT (ISR FUNCTION POINTER):
+    31                                                     1   0
+   ┌────────────────────────────────────────────────────────┬───┐
+   │         Địa chỉ thực tế của hàm ISR trong Flash        │ 1 │  <-- Luôn luôn là Bit 1 (Thumb Bit)
+   └────────────────────────────────────────────────────────┴───┘
+   • Bit [31:1] : Địa chỉ bắt đầu của hàm mã máy (luôn luôn là địa chỉ chẵn chia hết cho 2 hoặc 4).
+   • Bit [0]    : THUMB INDICATOR BIT (BẮT BUỘC PHẢI BẰNG 1).
+```
+
+##### 1. Entry [0] — Initial Main Stack Pointer (MSP)
+* **Bản chất:** Là một giá trị địa chỉ vùng nhớ RAM (thường là địa chỉ cuối cùng của SRAM, ví dụ `0x20020000`).
+* **Tại sao CPU cần Entry này đầu tiên?**  
+  Trong ngôn ngữ C, khi CPU thực thi bất kỳ hàm nào (kể cả hàm `main` hay hàm con), CPU đều cần bộ nhớ Stack để: lưu biến cục bộ, lưu địa chỉ trả về của hàm, và truyền tham số. Nếu chưa có Stack Pointer, CPU không thể chạy bất kỳ dòng code C nào. Vì vậy, phần cứng ARM Cortex-M được thiết kế để tự động nạp SP từ Entry [0] trước cả khi nạp con trỏ lệnh PC từ Entry [1].
+
+##### 2. Entry [1 đến N] — Exception / Interrupt Handler Function Pointers
+* **Bản chất:** Là các **con trỏ hàm (Function Pointers)** trỏ tới địa chỉ của các hàm xử lý ngắt (`Reset_Handler`, `HardFault_Handler`, `SysTick_Handler`, `TIM2_IRQHandler`,...).
+* **Giải mã "Bí ẩn Thumb Bit (LSB = 1)" cho Newbie:**
+  * Lõi ARM Cortex-M chỉ hỗ trợ tập lệnh **Thumb-2** (các lệnh 16-bit và 32-bit thu gọn), **không hỗ trợ tập lệnh ARM 32-bit cổ điển**.
+  * Trong kiến trúc ARM, để CPU biết cần giải mã mã máy theo tập lệnh Thumb, địa chỉ nhảy tới bắt buộc phải có **Bit 0 (LSB) được set lên 1**.
+  * *Ví dụ thực tế:*  
+    Hàm `Reset_Handler` được biên dịch nằm tại địa chỉ ô nhớ chẵn `0x08000108` trong Flash. Khi nạp vào Entry [1] của Vector Table, trình biên dịch (Compiler/Linker) sẽ tự động cộng thêm 1 thành `0x08000109`.  
+    Khi CPU đọc `0x08000109`:
+    - CPU dùng **Bit 0 = 1** để kích hoạt cờ Thumb state (`T-bit` trong thanh ghi trạng thái EPSR).
+    - CPU bỏ bit 0 đi và nhảy tới thực thi lệnh tại địa chỉ chẵn `0x08000108`.
+  * 🛑 *Hậu quả nếu mất Thumb Bit (Bit 0 = 0):* CPU sẽ lầm tưởng đây là tập lệnh ARM 32-bit cổ điển, phát hiện kiến trúc Cortex-M không hỗ trợ và lập tức kích hoạt lỗi **UsageFault (INVSTATE)** làm sập hệ thống ngay lập tức!
 
 ---
 
