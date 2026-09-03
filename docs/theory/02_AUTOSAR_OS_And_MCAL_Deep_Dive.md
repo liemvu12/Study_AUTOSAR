@@ -28,8 +28,8 @@
 ## Mục Lục
 0. [Bức Tranh Toàn Cảnh: Mạng Lưới 100+ ECU & Hệ Sinh Thái Linh Kiện Điện Tử Trên Xe Hơi](#0-bức-tranh-toàn-cảnh-mạng-lưới-100-ecu--hệ-sinh-thái-linh-kiện-điện-tử-trên-xe-hơi)
 1. [Mô Hình Hai Loại Tác Vụ Cốt Lõi: Basic Task vs Extended Task (Kèm Mã Nguồn Gốc)](#1-mô-hình-hai-loại-tác-vụ-cốt-lõi-basic-task-vs-extended-task-kèm-mã-nguồn-gốc)
-2. [Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C](#2-bản-chất-4-cấp-độ-tuân-thủ-conformance-classes-bcc1-bcc2-ecc1-ecc2-qua-mã-nguồn-c)
-3. [Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU](#3-phân-tích-task-autostart-schm_startup--chuỗi-function-call-function-khởi-tạo-task-khi-boot-ecu)
+2. [Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU](#2-phân-tích-task-autostart-schm_startup--chuỗi-function-call-function-khởi-tạo-task-khi-boot-ecu)
+3. [Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C](#3-bản-chất-4-cấp-độ-tuân-thủ-conformance-classes-bcc1-bcc2-ecc1-ecc2-qua-mã-nguồn-c)
 4. [Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)](#4-hiện-tượng-đảo-ngược-độ-ưu-tiên--giao-thức-priority-ceiling-protocol-pcp)
 5. [Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2](#5-phân-cấp-ngắt-phần-cứng-isr-category-1-vs-isr-category-2)
 6. [Cơ Chế Định Thời: Counter, Alarm & Schedule Table](#6-cơ-chế-định-thời-counter-alarm--schedule-table)
@@ -40,15 +40,6 @@
 11. [Bảng So Sánh AUTOSAR OS vs FreeRTOS Chi Tiết](#11-bảng-so-sánh-autosar-os-vs-freertos-chi-tiết)
 12. [🛠️ Hands-On Exercises Thực Chiến](#12-️-hands-on-exercises-thực-chiến)
 13. [Bộ Câu Hỏi Phỏng Vấn (Q&A 3 Levels)](#13-bộ-câu-hỏi-phỏng-vấn-qa-3-levels)
-4. [Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2](#4-phân-cấp-ngắt-phần-cứng-isr-category-1-vs-isr-category-2)
-5. [Cơ Chế Định Thời: Counter, Alarm & Schedule Table](#5-cơ-chế-định-thời-counter-alarm--schedule-table)
-6. [Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)](#6-hệ-thống-hàm-hook-quản-trị-trạng-thái-hook-routines)
-7. [Tầng Trừu Tượng Vi Điều Khiển (MCAL Layer Architecture & SWS Patterns)](#7-tầng-trừu-tượng-vi-điều-khiển-mcal-layer-architecture--sws-patterns)
-8. [Phân Tích Chi Tiết 7 Module MCAL Cốt Lõi (Kèm API & Struct)](#8-phân-tích-chi-tiết-7-module-mcal-cốt-lõi-kèm-api--struct-trong-paraias)
-9. [Cơ Chế Bắt Lỗi Phát Triển (Default Error Tracer - DET) & Common Pitfalls](#9-cơ-chế-bắt-lỗi-phát-triển-default-error-tracer---det--common-pitfalls)
-10. [Bảng So Sánh AUTOSAR OS vs FreeRTOS Chi Tiết](#10-bảng-so-sánh-autosar-os-vs-freertos-chi-tiết)
-11. [🛠️ Hands-On Exercises Thực Chiến](#11-️-hands-on-exercises)
-12. [Bộ Câu Hỏi Phỏng Vấn (Q&A 3 Levels)](#12-bộ-câu-hỏi-phỏng-vấn-qa-3-levels)
 
 ---
 
@@ -272,11 +263,69 @@ TASK(SchM_Startup)
 }
 ```
 
-##### 2️⃣ Bước 2: Ngắt SysTick gọi `SignalCounter()` & kích hoạt Action trong [`counter.c`](../../as/com/as.infrastructure/system/kernel/askar/kernel/counter.c#L24-L65) và [`Os_Cfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L267-L270)
-* Ngắt phần cứng Timer (như SysTick trong [`portable.c: L136`](../../as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c#L136) hoặc Mcu Timer trong [`Mcu.c: L135`](../../as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c#L135)) gọi:
-  ```c
-  SignalCounter(0); /* hoặc SignalCounter(COUNTER_ID_OsClock) */
-  ```
+##### 2️⃣ Bước 2: Chuỗi Ngắt Phần Cứng Timer Đánh Thức `SignalCounter()` & Cơ Chế Phân Định Ngắt (Core Exception vs External IRQ tisr_pc)
+
+> 💡 **Bản chất phần cứng & Câu hỏi phân định sâu:**  
+> *"Hàm ngắt phần cứng Timer thực chất là hàm nào trong mã nguồn? Nó được đăng ký ở đâu trong Vector Table? Tại sao nó không đi qua `knl_isr_handler` và mảng con trỏ hàm `tisr_pc` như ngắt ngoại vi thông thường?"*
+
+###### 🔬 1. Giải Phẫu Đường Đi Của Ngắt Lõi SysTick (Core Exception 15) Trong Mã Nguồn Thực Tế:
+Trong kiến trúc ARM Cortex-M của vi điều khiển ô tô, nhịp thời gian hệ điều hành (OS Tick) được điều khiển bởi bộ đếm **SysTick Timer** tích hợp sẵn trong nhân CPU. SysTick là một **Ngoại lệ nội tại của lõi CPU (Core Exception)** mang mã số **Exception 15**, hoàn toàn độc lập với các ngắt ngoại vi thông thường (External IRQs từ 16 trở đi):
+
+```
++===================================================================================================+
+|               CHUỖI GỌI HÀM TỪ PHẦN CỨNG SYSTICK ĐẾN BỘ ĐẾM COUNTER TRONG ASCORE                 |
++===================================================================================================+
+
+[1. PHẦN CỨNG BẬT BỘ ĐẾM SYSTICK TRONG MCAL]
+   Mcu_DistributePllClock() (as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c: L128-L130)
+   ├── SysTickPeriodSet(McuE_GetSystemClock() / 1000);  // Nạp chu kỳ 1ms
+   ├── SysTickIntEnable();                              // Kích hoạt ngắt Exception 15 trong NVIC
+   └── SysTickEnable();                                 // Kích hoạt bộ đếm
+        │
+        ▼ (Mỗi khi đếm hết 1ms, phần cứng NVIC kích hoạt Exception 15)
+[2. BẢNG VECTOR TABLE TRỎ VÀO ENTRY 15]
+   __vector_table[15] (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L64)
+   └── .word knl_system_tick   <-- Gắn cứng địa chỉ hàm hợp ngữ knl_system_tick (Địa chỉ map: 0x00012586)
+        │
+        ▼
+[3. HÀM WRAPPER HỢP NGỮ XỬ LÝ NGẮT]
+   knl_system_tick (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S: L226-L230)
+   ├── bl EnterISR                  // Chuyển ngăn xếp sang ISR Stack, tăng biến l_nested_isr_cnt
+   ├── bl knl_system_tick_handler   // Gọi trực tiếp hàm C xử lý Tick (Địa chỉ map: 0x00012248)
+   └── b  ExitISR                   // Thoát ngắt, kiểm tra cướp quyền (Preemption)
+        │
+        ▼
+[4. HÀM C ĐIỀU HÀNH NHỊP TICK CỦA KERNEL]
+   knl_system_tick_handler() (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c: L132-L141)
+   └── if (knl_dispatch_started) {
+           OsTick();                // Tăng bộ đếm tick toàn cục
+           SignalCounter(0);        // <=== GỌI HÀM KÍCH HOẠT COUNTER CỦA OS! (Địa chỉ map: 0x00010f1c)
+       }
++===================================================================================================+
+```
+
+###### ⚖️ 2. So Sánh Phân Định Rõ Ràng: Ngắt SysTick vs Ngắt Ngoại Vi Đi Qua `knl_isr_handler` & `tisr_pc`:
+
+Kỹ sư thường thắc mắc: *"Tại sao ngắt SysTick lại không đi qua hàm `knl_isr_handler` và bảng con trỏ `tisr_pc`?"* — Câu trả lời nằm ở thiết kế phần cứng vi điều khiển:
+
+| Tiêu Chí So Sánh | Ngắt Nhịp Hệ Thống (SysTick Timer) | Ngắt Ngoại Vi Khác (CAN, UART, Timer Ngoại Vi) |
+| :--- | :--- | :--- |
+| **Bản Chất Ngắt** | **Core Exception 15** (Ngoại lệ nội tại của nhân CPU ARM). | **External Interrupt (IRQ 0+)** từ ngoại vi phần cứng ngoài lõi. |
+| **Vị Trí Vector Table** | Nằm cố định tại **Entry [15]** (`startup.S: L64`). | Nằm từ **Entry [16] trở đi** (`startup.S: L67-L110`). |
+| **Hàm Đăng Ký Assembly** | Gắn thẳng con trỏ `.word knl_system_tick`. | Toàn bộ các vector 16+ đều trỏ chung vào `.word knl_isr_process`. |
+| **Đường Đi Xử Lý** | `knl_system_tick` ──► Gọi trực tiếp `knl_system_tick_handler()` ──► `SignalCounter(0)`. **Cực nhanh, tối ưu chu kỳ CPU!** | `knl_isr_process` ──► Đọc thanh ghi `IPSR` lấy `intno` ──► Gọi `knl_isr_handler(intno)`. |
+| **Cơ Chế Tra Bảng `tisr_pc`** | **KHÔNG DÙNG** (Vì `intno = 15 <= 15`). | **CÓ DÙNG**: Hàm `knl_isr_handler` kiểm tra `if (intno > 15)` rồi gọi hàm đăng ký `tisr_pc[intno - 16]()`. |
+| **Khi Nào Timer Dùng `tisr_pc`?** | Không bao giờ. | **Khi ECU không dùng SysTick mà dùng Hardware General Purpose Timer (GPT)** như Timer0 hoặc PIT trên chip MPC56xx! Lúc này GPT Timer được cấu hình là ISR Category 2 trong ARXML, hàm ISR của nó nằm trong `tisr_pc` và chính hàm đó sẽ gọi `SignalCounter(0)`. |
+
+###### 📁 3. Bằng Chứng Thực Tế 100% Trong File Map (`lm3s6965evb.map`):
+Khi biên dịch dự án `ascore`, file bản đồ liên kết bộ nhớ minh chứng tuyệt đối chuỗi gọi hàm này đã được nạp vào vi điều khiển:
+```text
+Offset 0x0000003C (Entry 15): .word knl_system_tick
+Địa chỉ 0x00012586: knl_system_tick         (trong portableS.o)
+Địa chỉ 0x00012248: knl_system_tick_handler (trong portable.o)
+Địa chỉ 0x00010f1c: SignalCounter           (trong counter.o)
+```
+
 * Trong kernel [`as/com/as.infrastructure/system/kernel/askar/kernel/counter.c: L24-L65`](../../as/com/as.infrastructure/system/kernel/askar/kernel/counter.c#L24-L65):
   ```c
   /* as/com/as.infrastructure/system/kernel/askar/kernel/counter.c */
@@ -387,171 +436,13 @@ Task A (Prio 2): [── Chạy A dở dang ─────────┘      
 
 ---
 
-## 2. Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C
-
-### 2.1 ❓ Bản Chất Kỹ Nghệ: Thứ Gì Tuân Thủ Và Tại Sao Phải Phân Chia?
-* **Thứ gì tuân thủ?**
-  1. **Nhân hệ điều hành RTOS (`askar`, `trampoline`):** Mã nguồn C của Kernel phải cài đặt chính xác các thuật toán lập lịch, cấu trúc dữ liệu theo đúng đặc tả chuẩn ISO 17356-3.
-  2. **File Cấu hình sinh ra (`Os_Cfg.h`, `Os_Cfg.c`):** Toolchain đọc file ARXML và sinh ra các cờ tiền xử lý (`#define`) phù hợp với cấp độ được chọn.
-* **Tại sao phân chia 4 cấp độ?** Nhằm tối ưu hóa triệt để phần cứng (**Hardware Scalability**):
-  * Một chip vi điều khiển nhỏ 8-bit/16-bit chỉ có **1 KB RAM** (cảm biến lốp TPMS, công tắc cửa) $
-ightarrow$ Dùng **BCC1** để toàn bộ OS chỉ chiếm $<500	ext{ Bytes RAM}$.
-  * Một ECU 32-bit cao cấp (BMS, VCU, ADAS) có **512 KB - vài MB RAM** $
-ightarrow$ Dùng **ECC2** để tận dụng tối đa cơ chế đa nhiệm Event-Driven và hàng đợi Task FIFO.
-
----
-
-### 2.2 🔬 So Sánh Cấu Trúc Mã Nguồn C Của 4 Cấp Độ Trong Kernel `askar`:
-
-Bảng dưới đây chỉ ra chính xác cách 4 cấp độ được cấu hình trong `Os_Cfg.h` và cách mã nguồn C của Kernel thay đổi tương ứng:
-
-| Cấp Độ Tuân Thủ | Cờ Cấu Hình Trong `Os_Cfg.h` | Cấu Trúc Dữ Liệu Task (`TaskConstType` / `TaskVarType`) | Thuật Toán Scheduler (`sched-bubble.c`) | Quản Lý Bộ Nhớ Stack |
-| :--- | :--- | :--- | :--- | :--- |
-| 🟢 **BCC1** *(Basic Class 1)* | `/* Không define EXTENDED_TASK */`<br>`/* Không define MULTIPLY_TASK_PER_PRIORITY */`<br>`/* Không define MULTIPLY_TASK_ACTIVATION */` | • `pEventVar` **không tồn tại** (tiết kiệm ROM/RAM).<br>• `activation` **không tồn tại**.<br>• `event.c` **bị loại bỏ 100% khi biên dịch**. | • Hàng đợi Ready là mảng Bitmap đơn giản $O(1)$.<br>• Mỗi Priority có đúng 1 Task duy nhất. | • Cho phép **1 Stack dùng chung** (`Task_SharedStack`) cho tất cả các Task. |
-| 🟡 **BCC2** *(Basic Class 2)* | `/* Không define EXTENDED_TASK */`<br>`#define MULTIPLY_TASK_PER_PRIORITY`<br>`#define MULTIPLY_TASK_ACTIVATION` | • `pEventVar` **không tồn tại**.<br>• Bật biến đếm `uint8 activation` trong `TaskVarType`.<br>• Bật biến `uint8 maxActivation` trong `TaskConstType`. | • Hàng đợi Ready dùng cơ chế FIFO Heap / Ring Buffer.<br>• Priority được mã hóa kèm số thứ tự kích hoạt: `(((prio)<<3) | (--PrioSeqVal[prio]))`. | • Dùng chung Stack cho các Basic Task không ngắt lẫn nhau. |
-| 🟠 **ECC1** *(Extended Class 1)* | `#define EXTENDED_TASK`<br>`/* Không define MULTIPLY_TASK_PER_PRIORITY */`<br>`/* Không define MULTIPLY_TASK_ACTIVATION */` | • Bật con trỏ `EventVarType* pEventVar`.<br>• Bật đầy đủ `event.c` (`WaitEvent`, `SetEvent`, `ClearEvent`). | • Lập lịch ưu tiên tĩnh, mỗi mức Priority chỉ có đúng 1 Task. | • Basic Task có thể chung Stack, nhưng Extended Task **bắt buộc có Dedicated Stack riêng**. |
-| 🔴 **ECC2** *(Extended Class 2)* | `#define EXTENDED_TASK`<br>`#define MULTIPLY_TASK_PER_PRIORITY`<br>`#define MULTIPLY_TASK_ACTIVATION` | • Bật đầy đủ `pEventVar` cho Extended Tasks.<br>• Bật đầy đủ `maxActivation` và `activation` cho Basic Tasks. | • Đầy đủ hàng đợi FIFO đa mức ưu tiên kết hợp máy trạng thái 4 trạng thái. | • Toàn bộ các Extended Task có Dedicated Stack riêng. |
-
----
-
-### 2.3 📂 Trích Dẫn Mã C Của 4 Cấp Độ Từ Mã Nguồn Gốc:
-
-#### 1. Cấu trúc Task thay đổi theo Cờ Cấu hình ([`kernel_internal.h: L280-L345`](../../as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L280-L345)):
-```c
-/* as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h */
-
-typedef struct
-{
-    void* pStack;
-    uint32_t stackSize;
-    TaskMainEntryType entry;
-    
-    #ifdef EXTENDED_TASK
-    /* CHỈ CÓ TRONG ECC1 VÀ ECC2: Quản lý con trỏ sự kiện Set/Wait */
-    EventVarType* pEventVar;
-    #endif
-    
-    PriorityType initPriority;
-    PriorityType runPriority;
-    
-    #ifdef MULTIPLY_TASK_ACTIVATION
-    /* CHỈ CÓ TRONG BCC2 VÀ ECC2: Giới hạn số lần kích hoạt gối đầu */
-    uint8 maxActivation;
-    #endif
-} TaskConstType;
-
-typedef struct TaskVar
-{
-    TaskContextType context;
-    PriorityType priority;
-    const TaskConstType* pConst;
-    
-    #ifdef MULTIPLY_TASK_ACTIVATION
-    /* CHỈ CÓ TRONG BCC2 VÀ ECC2: Đếm số yêu cầu kích hoạt đang xếp hàng */
-    uint8 activation;
-    #endif
-    
-    volatile StatusType state; /* SUSPENDED, READY, RUNNING, WAITING */
-    ResourceType currentResource;
-} TaskVarType;
-```
-
-#### 2. Mã Nguồn Cấu Hình Thực Tế Của Dự Án `ascore` Đang Chạy Ở Chuẩn **ECC2** ([`Os_Cfg.h: L40-L72`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h#L40-L72)):
-```c
-/* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h */
-
-#define OS_STATUS EXTENDED
-#define EXTENDED_TASK               /* Bật tính năng Extended Task -> Nhóm ECC */
-#define MULTIPLY_TASK_PER_PRIORITY  /* Cho phép nhiều Task chung 1 Priority -> Cấp 2 */
-#define MULTIPLY_TASK_ACTIVATION    /* Cho phép kích hoạt lặp gối đầu -> Cấp 2 */
-```
-
----
-
-### 2.4 🔬 Giải Thích Chi Tiết Thuật Toán Scheduler & Quản Trị Bộ Nhớ Stack Trong Mã Nguồn C:
-
-Trong mã nguồn của nhân hệ điều hành `askar`, sự khác nhau giữa 4 cấp độ tuân thủ được cài đặt ở mức vi kiến trúc mã nguồn C như sau:
-
----
-
-#### 🅰️ 1. Thuật Toán Lập Lịch (Scheduler Algorithm — File: [`sched-bubble.c: L37-L120`](../../as/com/as.infrastructure/system/kernel/askar/kernel/sched-bubble.c#L37-L120)):
-
-```
-┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│                     THUẬT TOÁN ĐIỀU PHỐI HÀNG ĐỢI READY (BINARY HEAP SCHEDULER)                 │
-├────────────────────────────────────────────────────────────────────────────────────────────────┤
-│ 1. CẤP ĐỘ 1 (BCC1 / ECC1 — 1 Task/Priority):                                                   │
-│    • NEW_PRIORITY(prio) = prio  ──► So sánh trực tiếp giá trị Priority (O(1)).                │
-│                                                                                                │
-│ 2. CẤP ĐỘ 2 (BCC2 / ECC2 — Nhiều Task chung Priority):                                         │
-│    • NEW_PRIORITY(prio) = (prio << SEQUENCE_SHIFT) | (--PrioSeqVal[prio] & SEQUENCE_MASK)     │
-│    • Nhúng bộ đếm thứ tự kích hoạt giảm dần vào các bits thấp nhất.                            │
-│    • Task nào gọi ActivateTask() trước ──► Sequence cao hơn ──► Nằm ở đỉnh Heap ──► Chạy trước!│
-└────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-* **Mã nguồn thực tế thuật toán phân xử thứ tự FIFO (`sched-bubble.c: L37-L73`):**
-  ```c
-  /* as/com/as.infrastructure/system/kernel/askar/kernel/sched-bubble.c */
-
-  #ifdef MULTIPLY_TASK_PER_PRIORITY
-  /* Dịch trái độ ưu tiên 3 bits và nhúng số thứ tự kích hoạt PrioSeqVal vào 3 bits cuối */
-  #define NEW_PRIORITY(prio) (((uint16)(prio)<<SEQUENCE_SHIFT)|((--PrioSeqVal[prio])&SEQUENCE_MASK))
-  #define REAL_PRIORITY(prio) Sched_RealPriority(prio)
-  #else
-  #define NEW_PRIORITY(prio) (prio)
-  #define REAL_PRIORITY(prio) (prio)
-  #endif
-  ```
-* **Cách thức vận hành Binary Heap (`Sched_BubbleUp` & `Sched_BubbleDown`):**  
-  Khi `ActivateTask(TaskNmInd)` và `ActivateTask(SchM_Startup)` cùng có Priority 7 được kích hoạt:
-  * Task kích hoạt trước nhận giá trị `NEW_PRIORITY = (7 << 3) | 7 = 63`.
-  * Task kích hoạt sau nhận giá trị `NEW_PRIORITY = (7 << 3) | 6 = 62`.
-  * Hàm `Sched_BubbleUp()` đẩy phần tử có giá trị 63 lên đỉnh mảng `ReadyQueue.heap[0]`. Khi Scheduler gọi `Sched_GetReady()`, Task kích hoạt trước được nhả ra chạy trước, đảm bảo **100% nguyên tắc hàng đợi FIFO** của chuẩn OSEK!
-
----
-
-#### 🅱️ 2. Cơ Chế Quản Trị Bộ Nhớ Stack (RAM Management — File: [`Os_Cfg.c: L30-L37`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L30-L37)):
-
-* **Nhóm BCC (BCC1 / BCC2) — Cơ Chế Dùng Chung Một Ngăn Xếp (Single Shared Stack):**
-  * *Tại sao Basic Task có thể dùng chung Stack?*  
-    Vì Basic Task không có lệnh `WaitEvent()` (không bao giờ ngủ giữa chừng). Khi một Basic Task chạy, nó thực thi từ đầu đến cuối rồi gọi `TerminateTask()` $
-ightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải phóng hoàn toàn. Con trỏ Stack Pointer (SP) quay trở về đáy ngăn xếp.
-  * *Hiệu quả tiết kiệm RAM:* Hệ thống 10 Basic Tasks không cần 10 mảng RAM mà chỉ cần **1 mảng Stack duy nhất** bằng kích thước của Task lớn nhất ($pprox 512	ext{ Bytes}$).
-* **Nhóm ECC (ECC1 / ECC2) — Cơ Chế Ngăn Xếp Riêng Biệt (Dedicated Stacks):**
-  * *Tại sao Extended Task bắt buộc phải có Stack riêng?*  
-    Khi Extended Task gọi `WaitEvent()`, nó chuyển sang trạng thái `WAITING` và nhường CPU cho Task khác. Toàn bộ các biến cục bộ (Local Variables) và thanh ghi CPU của nó **phải được bảo lưu nguyên vẹn trên Stack**. Nếu dùng chung Stack, Task khác chạy xen vào sẽ ghi đè và làm hỏng (corrupt) bộ nhớ của Task đang ngủ!
-  * *Minh chứng trong mã C sinh ra ([`Os_Cfg.c: L30-L37`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L30-L37)):*
-    ```c
-    /* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c */
-    
-    /* Mỗi Extended Task được cấp phát riêng một mảng RAM độc lập */
-    static uint32_t TaskApp_Stack[(2048*OS_STK_SIZE_SCALER+sizeof(uint32_t)-1)/sizeof(uint32_t)];
-    static EventVarType TaskApp_EventVar;
-    
-    static uint32_t TaskNmInd_Stack[(2048*OS_STK_SIZE_SCALER+sizeof(uint32_t)-1)/sizeof(uint32_t)];
-    static EventVarType TaskNmInd_EventVar;
-    ```
-
----
-
-### 2.5 📂 Thư Mục Chứng Minh Thực Chiến & Hướng Dẫn Cấu Hình 4 Cấp Độ Trong Mã Nguồn:
-
-Để xem toàn bộ mã nguồn cấu hình mẫu XML, các file `.h`/`.c` sinh ra và phân tích sâu thuật toán lập lịch cho từng cấp độ, xem bộ tài liệu chuyên biệt tại:
-* 📑 [**`00_CONFORMANCE_CLASSES_MASTER_PROOF.md`**](02_conformance_classes_proof/00_CONFORMANCE_CLASSES_MASTER_PROOF.md): Tổng quan cơ chế tính toán cấp độ của Toolchain `GenOS.py`.
-* 🟢 [**`01_BCC1_Proof_And_Config.md`**](02_conformance_classes_proof/01_BCC1_Proof_And_Config.md): Cấu hình ARXML, Single Shared Stack, loại bỏ 100% `event.c` cho vi điều khiển < 1KB RAM.
-* 🟡 [**`02_BCC2_Proof_And_Config.md`**](02_conformance_classes_proof/02_BCC2_Proof_And_Config.md): Cấu hình nhiều Task trùng Priority, Hàng đợi kích hoạt `activation`, thuật toán FIFO Sequence Shift trong `sched-bubble.c`.
-* 🟠 [**`03_ECC1_Proof_And_Config.md`**](02_conformance_classes_proof/03_ECC1_Proof_And_Config.md): Cấu hình Extended Task với `WaitEvent()`, Dedicated Stack.
-* 🔴 [**`04_ECC2_Proof_And_Config.md`**](02_conformance_classes_proof/04_ECC2_Proof_And_Config.md): Bằng chứng mã nguồn cấu hình thực tế của dự án `ascore` (6 Tasks thỏa mãn trọn vẹn chuẩn ECC2).
-
----
-## 3. Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU
+## 2. Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU
 
 > ❓ **Câu hỏi:** *Task bình thường với Task Autostart `SchM_Startup` có gì khác nhau? Các Task này được khởi tạo và kích hoạt bằng code như thế nào khi ECU khởi động?*
 
 ---
 
-### 3.1 📊 So Sánh 4 Loại Task Thực Tế Trong Dự Án `as`:
+### 2.1 📊 So Sánh 4 Loại Task Thực Tế Trong Dự Án `as`:
 
 Trong file cấu hình sinh ra [`as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c), có 4 loại Task với vai trò và cơ chế kích hoạt hoàn toàn khác nhau:
 
@@ -564,7 +455,7 @@ Trong file cấu hình sinh ra [`as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c`
 
 ---
 
-### 3.2 🌳 Chuỗi Gọi Hàm Function-Call-Function Khởi Tạo Và Thực Thi Task Khi Boot ECU:
+### 2.2 🌳 Chuỗi Gọi Hàm Function-Call-Function Khởi Tạo Và Thực Thi Task Khi Boot ECU:
 
 Dưới đây là chuỗi thực thi thực tế 100% trong mã nguồn C từ khi gọi `StartOS()` đến khi CPU nhảy vào thực thi `TASK(SchM_Startup)`:
 
@@ -613,7 +504,7 @@ Dưới đây là chuỗi thực thi thực tế 100% trong mã nguồn C từ k
 
 ---
 
-### 3.3 🔬 Case Study Thực Chiến: Vòng Đời & Chuỗi Gọi Hàm Của `TaskIdle` (Mã Nguồn Gốc 100%)
+### 2.3 🔬 Case Study Thực Chiến: Vòng Đời & Chuỗi Gọi Hàm Của `TaskIdle` (Mã Nguồn Gốc 100%)
 
 > ❓ **Câu hỏi kỹ nghệ:** *Khi `SchM_Startup` hoàn thành nhiệm vụ và gọi `TerminateTask()`, hệ điều hành sẽ chuyển sang chạy cái gì? `TaskIdle` được cấu hình, khởi tạo, nhận CPU và bị ngắt quyền (preempt) như thế nào theo mã nguồn C gốc?*
 
@@ -765,6 +656,167 @@ TASK(TaskIdle)
   * Nhân OS gọi `Sched_GetReady()`, lấy lại `TaskIdle` từ hàng đợi Ready, khôi phục thanh ghi CPU từ `TaskIdle_Stack` và tiếp tục vòng lặp `for(;;)` của `TaskIdle` ngay tại vị trí bị ngắt trước đó!
 
 ---
+
+## 3. Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C
+
+### 3.1 ❓ Bản Chất Kỹ Nghệ: Thứ Gì Tuân Thủ Và Tại Sao Phải Phân Chia?
+* **Thứ gì tuân thủ?**
+  1. **Nhân hệ điều hành RTOS (`askar`, `trampoline`):** Mã nguồn C của Kernel phải cài đặt chính xác các thuật toán lập lịch, cấu trúc dữ liệu theo đúng đặc tả chuẩn ISO 17356-3.
+  2. **File Cấu hình sinh ra (`Os_Cfg.h`, `Os_Cfg.c`):** Toolchain đọc file ARXML và sinh ra các cờ tiền xử lý (`#define`) phù hợp với cấp độ được chọn.
+* **Tại sao phân chia 4 cấp độ?** Nhằm tối ưu hóa triệt để phần cứng (**Hardware Scalability**):
+  * Một chip vi điều khiển nhỏ 8-bit/16-bit chỉ có **1 KB RAM** (cảm biến lốp TPMS, công tắc cửa) $
+ightarrow$ Dùng **BCC1** để toàn bộ OS chỉ chiếm $<500	ext{ Bytes RAM}$.
+  * Một ECU 32-bit cao cấp (BMS, VCU, ADAS) có **512 KB - vài MB RAM** $
+ightarrow$ Dùng **ECC2** để tận dụng tối đa cơ chế đa nhiệm Event-Driven và hàng đợi Task FIFO.
+
+---
+
+### 3.2 🔬 So Sánh Cấu Trúc Mã Nguồn C Của 4 Cấp Độ Trong Kernel `askar`:
+
+Bảng dưới đây chỉ ra chính xác cách 4 cấp độ được cấu hình trong `Os_Cfg.h` và cách mã nguồn C của Kernel thay đổi tương ứng:
+
+| Cấp Độ Tuân Thủ | Cờ Cấu Hình Trong `Os_Cfg.h` | Cấu Trúc Dữ Liệu Task (`TaskConstType` / `TaskVarType`) | Thuật Toán Scheduler (`sched-bubble.c`) | Quản Lý Bộ Nhớ Stack |
+| :--- | :--- | :--- | :--- | :--- |
+| 🟢 **BCC1** *(Basic Class 1)* | `/* Không define EXTENDED_TASK */`<br>`/* Không define MULTIPLY_TASK_PER_PRIORITY */`<br>`/* Không define MULTIPLY_TASK_ACTIVATION */` | • `pEventVar` **không tồn tại** (tiết kiệm ROM/RAM).<br>• `activation` **không tồn tại**.<br>• `event.c` **bị loại bỏ 100% khi biên dịch**. | • Hàng đợi Ready là mảng Bitmap đơn giản $O(1)$.<br>• Mỗi Priority có đúng 1 Task duy nhất. | • Cho phép **1 Stack dùng chung** (`Task_SharedStack`) cho tất cả các Task. |
+| 🟡 **BCC2** *(Basic Class 2)* | `/* Không define EXTENDED_TASK */`<br>`#define MULTIPLY_TASK_PER_PRIORITY`<br>`#define MULTIPLY_TASK_ACTIVATION` | • `pEventVar` **không tồn tại**.<br>• Bật biến đếm `uint8 activation` trong `TaskVarType`.<br>• Bật biến `uint8 maxActivation` trong `TaskConstType`. | • Hàng đợi Ready dùng cơ chế FIFO Heap / Ring Buffer.<br>• Priority được mã hóa kèm số thứ tự kích hoạt: `(((prio)<<3) | (--PrioSeqVal[prio]))`. | • Dùng chung Stack cho các Basic Task không ngắt lẫn nhau. |
+| 🟠 **ECC1** *(Extended Class 1)* | `#define EXTENDED_TASK`<br>`/* Không define MULTIPLY_TASK_PER_PRIORITY */`<br>`/* Không define MULTIPLY_TASK_ACTIVATION */` | • Bật con trỏ `EventVarType* pEventVar`.<br>• Bật đầy đủ `event.c` (`WaitEvent`, `SetEvent`, `ClearEvent`). | • Lập lịch ưu tiên tĩnh, mỗi mức Priority chỉ có đúng 1 Task. | • Basic Task có thể chung Stack, nhưng Extended Task **bắt buộc có Dedicated Stack riêng**. |
+| 🔴 **ECC2** *(Extended Class 2)* | `#define EXTENDED_TASK`<br>`#define MULTIPLY_TASK_PER_PRIORITY`<br>`#define MULTIPLY_TASK_ACTIVATION` | • Bật đầy đủ `pEventVar` cho Extended Tasks.<br>• Bật đầy đủ `maxActivation` và `activation` cho Basic Tasks. | • Đầy đủ hàng đợi FIFO đa mức ưu tiên kết hợp máy trạng thái 4 trạng thái. | • Toàn bộ các Extended Task có Dedicated Stack riêng. |
+
+---
+
+### 3.3 📂 Trích Dẫn Mã C Của 4 Cấp Độ Từ Mã Nguồn Gốc:
+
+#### 1. Cấu trúc Task thay đổi theo Cờ Cấu hình ([`kernel_internal.h: L280-L345`](../../as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L280-L345)):
+```c
+/* as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h */
+
+typedef struct
+{
+    void* pStack;
+    uint32_t stackSize;
+    TaskMainEntryType entry;
+    
+    #ifdef EXTENDED_TASK
+    /* CHỈ CÓ TRONG ECC1 VÀ ECC2: Quản lý con trỏ sự kiện Set/Wait */
+    EventVarType* pEventVar;
+    #endif
+    
+    PriorityType initPriority;
+    PriorityType runPriority;
+    
+    #ifdef MULTIPLY_TASK_ACTIVATION
+    /* CHỈ CÓ TRONG BCC2 VÀ ECC2: Giới hạn số lần kích hoạt gối đầu */
+    uint8 maxActivation;
+    #endif
+} TaskConstType;
+
+typedef struct TaskVar
+{
+    TaskContextType context;
+    PriorityType priority;
+    const TaskConstType* pConst;
+    
+    #ifdef MULTIPLY_TASK_ACTIVATION
+    /* CHỈ CÓ TRONG BCC2 VÀ ECC2: Đếm số yêu cầu kích hoạt đang xếp hàng */
+    uint8 activation;
+    #endif
+    
+    volatile StatusType state; /* SUSPENDED, READY, RUNNING, WAITING */
+    ResourceType currentResource;
+} TaskVarType;
+```
+
+#### 2. Mã Nguồn Cấu Hình Thực Tế Của Dự Án `ascore` Đang Chạy Ở Chuẩn **ECC2** ([`Os_Cfg.h: L40-L72`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h#L40-L72)):
+```c
+/* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h */
+
+#define OS_STATUS EXTENDED
+#define EXTENDED_TASK               /* Bật tính năng Extended Task -> Nhóm ECC */
+#define MULTIPLY_TASK_PER_PRIORITY  /* Cho phép nhiều Task chung 1 Priority -> Cấp 2 */
+#define MULTIPLY_TASK_ACTIVATION    /* Cho phép kích hoạt lặp gối đầu -> Cấp 2 */
+```
+
+---
+
+### 3.4 🔬 Giải Thích Chi Tiết Thuật Toán Scheduler & Quản Trị Bộ Nhớ Stack Trong Mã Nguồn C:
+
+Trong mã nguồn của nhân hệ điều hành `askar`, sự khác nhau giữa 4 cấp độ tuân thủ được cài đặt ở mức vi kiến trúc mã nguồn C như sau:
+
+---
+
+#### 🅰️ 1. Thuật Toán Lập Lịch (Scheduler Algorithm — File: [`sched-bubble.c: L37-L120`](../../as/com/as.infrastructure/system/kernel/askar/kernel/sched-bubble.c#L37-L120)):
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                     THUẬT TOÁN ĐIỀU PHỐI HÀNG ĐỢI READY (BINARY HEAP SCHEDULER)                 │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ 1. CẤP ĐỘ 1 (BCC1 / ECC1 — 1 Task/Priority):                                                   │
+│    • NEW_PRIORITY(prio) = prio  ──► So sánh trực tiếp giá trị Priority (O(1)).                │
+│                                                                                                │
+│ 2. CẤP ĐỘ 2 (BCC2 / ECC2 — Nhiều Task chung Priority):                                         │
+│    • NEW_PRIORITY(prio) = (prio << SEQUENCE_SHIFT) | (--PrioSeqVal[prio] & SEQUENCE_MASK)     │
+│    • Nhúng bộ đếm thứ tự kích hoạt giảm dần vào các bits thấp nhất.                            │
+│    • Task nào gọi ActivateTask() trước ──► Sequence cao hơn ──► Nằm ở đỉnh Heap ──► Chạy trước!│
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+* **Mã nguồn thực tế thuật toán phân xử thứ tự FIFO (`sched-bubble.c: L37-L73`):**
+  ```c
+  /* as/com/as.infrastructure/system/kernel/askar/kernel/sched-bubble.c */
+
+  #ifdef MULTIPLY_TASK_PER_PRIORITY
+  /* Dịch trái độ ưu tiên 3 bits và nhúng số thứ tự kích hoạt PrioSeqVal vào 3 bits cuối */
+  #define NEW_PRIORITY(prio) (((uint16)(prio)<<SEQUENCE_SHIFT)|((--PrioSeqVal[prio])&SEQUENCE_MASK))
+  #define REAL_PRIORITY(prio) Sched_RealPriority(prio)
+  #else
+  #define NEW_PRIORITY(prio) (prio)
+  #define REAL_PRIORITY(prio) (prio)
+  #endif
+  ```
+* **Cách thức vận hành Binary Heap (`Sched_BubbleUp` & `Sched_BubbleDown`):**  
+  Khi `ActivateTask(TaskNmInd)` và `ActivateTask(SchM_Startup)` cùng có Priority 7 được kích hoạt:
+  * Task kích hoạt trước nhận giá trị `NEW_PRIORITY = (7 << 3) | 7 = 63`.
+  * Task kích hoạt sau nhận giá trị `NEW_PRIORITY = (7 << 3) | 6 = 62`.
+  * Hàm `Sched_BubbleUp()` đẩy phần tử có giá trị 63 lên đỉnh mảng `ReadyQueue.heap[0]`. Khi Scheduler gọi `Sched_GetReady()`, Task kích hoạt trước được nhả ra chạy trước, đảm bảo **100% nguyên tắc hàng đợi FIFO** của chuẩn OSEK!
+
+---
+
+#### 🅱️ 2. Cơ Chế Quản Trị Bộ Nhớ Stack (RAM Management — File: [`Os_Cfg.c: L30-L37`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L30-L37)):
+
+* **Nhóm BCC (BCC1 / BCC2) — Cơ Chế Dùng Chung Một Ngăn Xếp (Single Shared Stack):**
+  * *Tại sao Basic Task có thể dùng chung Stack?*  
+    Vì Basic Task không có lệnh `WaitEvent()` (không bao giờ ngủ giữa chừng). Khi một Basic Task chạy, nó thực thi từ đầu đến cuối rồi gọi `TerminateTask()` $
+ightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải phóng hoàn toàn. Con trỏ Stack Pointer (SP) quay trở về đáy ngăn xếp.
+  * *Hiệu quả tiết kiệm RAM:* Hệ thống 10 Basic Tasks không cần 10 mảng RAM mà chỉ cần **1 mảng Stack duy nhất** bằng kích thước của Task lớn nhất ($pprox 512	ext{ Bytes}$).
+* **Nhóm ECC (ECC1 / ECC2) — Cơ Chế Ngăn Xếp Riêng Biệt (Dedicated Stacks):**
+  * *Tại sao Extended Task bắt buộc phải có Stack riêng?*  
+    Khi Extended Task gọi `WaitEvent()`, nó chuyển sang trạng thái `WAITING` và nhường CPU cho Task khác. Toàn bộ các biến cục bộ (Local Variables) và thanh ghi CPU của nó **phải được bảo lưu nguyên vẹn trên Stack**. Nếu dùng chung Stack, Task khác chạy xen vào sẽ ghi đè và làm hỏng (corrupt) bộ nhớ của Task đang ngủ!
+  * *Minh chứng trong mã C sinh ra ([`Os_Cfg.c: L30-L37`](../../as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L30-L37)):*
+    ```c
+    /* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c */
+    
+    /* Mỗi Extended Task được cấp phát riêng một mảng RAM độc lập */
+    static uint32_t TaskApp_Stack[(2048*OS_STK_SIZE_SCALER+sizeof(uint32_t)-1)/sizeof(uint32_t)];
+    static EventVarType TaskApp_EventVar;
+    
+    static uint32_t TaskNmInd_Stack[(2048*OS_STK_SIZE_SCALER+sizeof(uint32_t)-1)/sizeof(uint32_t)];
+    static EventVarType TaskNmInd_EventVar;
+    ```
+
+---
+
+### 3.5 📂 Thư Mục Chứng Minh Thực Chiến & Hướng Dẫn Cấu Hình 4 Cấp Độ Trong Mã Nguồn:
+
+Để xem toàn bộ mã nguồn cấu hình mẫu XML, các file `.h`/`.c` sinh ra và phân tích sâu thuật toán lập lịch cho từng cấp độ, xem bộ tài liệu chuyên biệt tại:
+* 📑 [**`00_CONFORMANCE_CLASSES_MASTER_PROOF.md`**](02_conformance_classes_proof/00_CONFORMANCE_CLASSES_MASTER_PROOF.md): Tổng quan cơ chế tính toán cấp độ của Toolchain `GenOS.py`.
+* 🟢 [**`01_BCC1_Proof_And_Config.md`**](02_conformance_classes_proof/01_BCC1_Proof_And_Config.md): Cấu hình ARXML, Single Shared Stack, loại bỏ 100% `event.c` cho vi điều khiển < 1KB RAM.
+* 🟡 [**`02_BCC2_Proof_And_Config.md`**](02_conformance_classes_proof/02_BCC2_Proof_And_Config.md): Cấu hình nhiều Task trùng Priority, Hàng đợi kích hoạt `activation`, thuật toán FIFO Sequence Shift trong `sched-bubble.c`.
+* 🟠 [**`03_ECC1_Proof_And_Config.md`**](02_conformance_classes_proof/03_ECC1_Proof_And_Config.md): Cấu hình Extended Task với `WaitEvent()`, Dedicated Stack.
+* 🔴 [**`04_ECC2_Proof_And_Config.md`**](02_conformance_classes_proof/04_ECC2_Proof_And_Config.md): Bằng chứng mã nguồn cấu hình thực tế của dự án `ascore` (6 Tasks thỏa mãn trọn vẹn chuẩn ECC2).
+
+---
+
+## 4. Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
 📖 **PCP** (*Priority Ceiling Protocol*): Giao thức trần ưu tiên hệ điều hành.

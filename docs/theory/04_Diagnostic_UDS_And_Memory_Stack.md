@@ -44,11 +44,18 @@
    - [5.2 3 Loại Khối Bộ Nhớ NVRAM Block Types (Native, Redundant, Dataset)](#52-3-loại-khối-bộ-nhớ-nvram-block-types-native-redundant-dataset)
    - [5.3 Chu Trình Đọc/Ghi Bất Đồng Bộ (NvM_WriteBlock)](#53-chu-trình-đọcghi-bất-đồng-bộ-nvm_readall-nvm_writeall-nvm_writeblock)
    - [5.4 Cơ Chế Giả Lập Flash EEPROM (Fee: Virtual Sectors, Wear Leveling, Garbage Collection)](#54-cơ-chế-giả-lập-flash-eeprom-fee-virtual-sectors-wear-leveling-garbage-collection)
-6. [Thực Chiến & Hands-On Exercise](#6-thực-chiến--hands-on-exercise)
-7. [Các Cạm Bẫy Phổ Biến (Common Pitfalls)](#7-các-cạm-bẫy-phổ-biến-common-pitfalls)
-8. [Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp](#8-bằng-chứng-mã-nguồn--định-nghĩa-giao-tiếp-trong-paraias)
-9. [Đúc Kết Kỹ Nghệ & Bảng Tra Cứu APIs](#9-đúc-kết-kỹ-nghệ--bảng-tra-cứu-apis)
-10. [Bộ Câu Hỏi Phỏng Vấn (Interview Questions)](#10-bộ-câu-hỏi-phỏng-vấn)
+6. [Kiến Trúc Bootloader Ô Tô (asboot), Ứng Dụng Chính (ascore) & Vùng Lưu Trữ Firmware Dự Phòng (FOTA / Anti-Brick)](#6-kiến-trúc-bootloader-ô-tô-asboot-ứng-dụng-chính-ascore--vùng-lưu-trữ-firmware-dự-phòng-fota--anti-brick)
+   - [6.0 Bản Chất Kỹ Nghệ: Nạp Bàn Thí Nghiệm (JTAG/SWD/QEMU) vs Nạp Xe Thật (UDS Bootloader) & Bản Chất Việc Sửa Linker Script](#60-bản-chất-kỹ-nghệ-nạp-bàn-thí-nghiệm-jtagswdqemu-vs-nạp-xe-thật-uds-bootloader--bản-chất-việc-sửa-linker-script)
+   - [6.1 So Sánh Bản Chất Kỹ Nghệ: asboot vs ascore vs Vùng Lưu Trữ Dự Phòng](#61-so-sánh-bản-chất-kỹ-nghệ-asboot-vs-ascore-vs-vùng-lưu-trữ-dự-phòng)
+   - [6.2 Giải Phẫu Cấu Trúc Module Của asboot Trong Dự Án as](#62-giải-phẫu-cấu-trúc-module-của-asboot-trong-dự-án-as)
+   - [6.3 Chu Trình Nạp Flash Chuẩn UDS ISO 14229 & BSW Integration](#63-chu-trình-nạp-flash-chuẩn-uds-iso-14229--bsw-integration)
+   - [6.4 Vùng Lưu Trữ Firmware Dự Phòng & 2 Kiến Trúc Chống Brick ECU](#64-vùng-lưu-trữ-firmware-dự-phòng--2-kiến-trúc-chống-brick-ecu)
+   - [6.5 Cơ Chế Bàn Giao Quyền Thực Thi & Tái Định Vị Vector Table](#65-cơ-chế-bàn-giao-quyền-thực-thi--tái-định-vị-vector-table)
+7. [Thực Chiến & Hands-On Exercise](#7-thực-chiến--hands-on-exercise)
+8. [Các Cạm Bẫy Phổ Biến (Common Pitfalls)](#8-các-cạm-bẫy-phổ-biến-common-pitfalls)
+9. [Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp](#9-bằng-chứng-mã-nguồn--định-nghĩa-giao-tiếp-trong-paraias)
+10. [Đúc Kết Kỹ Nghệ & Bảng Tra Cứu APIs](#10-đúc-kết-kỹ-nghệ--bảng-tra-cứu-apis)
+11. [Bộ Câu Hỏi Phỏng Vấn (Interview Questions)](#11-bộ-câu-hỏi-phỏng-vấn)
 
 ---
 
@@ -481,7 +488,254 @@ graph LR
 
 ---
 
-## 6. Thực Chiến & Hands-On Exercise
+## 6. Kiến Trúc Bootloader Ô Tô (`asboot`), Ứng Dụng Chính (`ascore`) & Vùng Lưu Trữ Firmware Dự Phòng (FOTA / Anti-Brick)
+
+### 6.0 Bản Chất Kỹ Nghệ: Nạp Bàn Thí Nghiệm (JTAG/SWD/QEMU) vs Nạp Xe Thật (UDS Bootloader) & Bản Chất Việc Sửa Linker Script
+
+> 💡 **Câu hỏi kỹ nghệ bản chất:**  
+> *"Nạp qua cáp JTAG/SWD trên bàn thí nghiệm là gì? Tại sao khi chạy trên máy ảo QEMU ta lại tạm thời loại bỏ `asboot` và nạp thẳng `ascore`? Và tại sao khi làm như thế ta bắt buộc phải sửa file Linker Script (`linker.lds`)?"*
+
+#### 1. "Nạp Qua Cáp JTAG/SWD Trên Bàn Thí Nghiệm" Nghĩa Là Gì?
+* **Trên bàn thí nghiệm (Lab Bench / R&D Desk):** Kỹ sư cầm trên tay bo mạch phát triển (Development Board) hoặc một ECU mẫu đã được mở nắp vỏ. Trên mạch có các chân hàn kim loại nhỏ gọi là header nạp (`SWDIO`, `SWCLK`, `NRST`, `GND` hoặc JTAG `TMS`, `TCK`, `TDI`, `TDO`). Kỹ sư cắm một mạch nạp phần cứng vật lý (như ST-Link, J-Link, Lauterbach Trace32, PE Micro) trực tiếp vào các chân này và nối cáp USB vào máy tính.
+  - **Đặc quyền của JTAG/SWD:** Mạch nạp có quyền lực tối thượng can thiệp thẳng vào phần cứng của chip vi điều khiển: Nó cưỡng bức CPU dừng chạy (Halt Core), điều khiển bus bộ nhớ ghi xóa Flash trực tiếp, và nạp từng byte file nhị phân vào Flash chỉ trong 1-2 giây.
+* **Trên máy ảo QEMU:** Khi bạn chạy lệnh `qemu-system-arm -M lm3s6965evb -kernel stm32f107vc.exe`, QEMU đóng vai trò **chính là một cỗ máy nạp JTAG/SWD ảo siêu tốc**! QEMU đọc thẳng file nhị phân ELF từ ổ cứng máy tính và nạp thô dữ liệu trực tiếp vào bộ nhớ RAM/Flash mô phỏng, rồi đặt con trỏ lệnh Program Counter (PC) của CPU ảo vào hàm khởi động. **Hoàn toàn không cần đường truyền mạng CAN và không cần giao thức nạp chẩn đoán nào!**
+
+#### 2. Tại Sao Trên Xe Thật (Production Vehicle) Lại TUYỆT ĐỐI KHÔNG THỂ Dùng JTAG/SWD?
+* **ECU trên xe thật đã được đóng gói kín trong hộp nhôm đúc nguyên khối chống nước và bụi bẩn theo tiêu chuẩn IP67 / IP69K**, lắp đặt sâu trong khoang máy, dưới ghế lái, hoặc bên trong khối pack pin cao áp của xe điện.
+* **Hoàn toàn không có chân cắm JTAG/SWD nào thò ra ngoài vỏ hộp!** Nếu muốn cắm JTAG, người thợ sửa xe hoặc kỹ sư sẽ phải tháo dỡ linh kiện xe, dùng tuốc-nơ-vít cạy keo silicon chống nước, tháo nắp hộp nhôm làm rách gioăng cao su bảo vệ (gây mất bảo hành của hãng và nguy cơ chập cháy do nước lọt vào).
+* **Giao tiếp vật lý duy nhất giữa hộp ECU với thế giới bên ngoài là Giắc Cắm Bó Dây Điện Của Xe (Wiring Harness Connector)**. Giắc này chỉ dẫn ra 2 dây cấp nguồn (12V / GND) và các cặp dây mạng truyền thông trong xe: **CAN High / CAN Low**, LIN, hoặc Automotive Ethernet nối về cổng chẩn đoán OBD-II dưới vô lăng.
+* **HỆ QUẢ:** Khi xe xuất xưởng chạy ngoài đường hoặc đưa vào xưởng dịch vụ bảo hành (Gara), **cách duy nhất để nạp lại phần mềm là gửi các gói tin dữ liệu nhị phân qua cổng chẩn đoán OBD-II (mạng CAN/Ethernet) vào một chương trình nạp có sẵn trong chip: đó chính là Bootloader (`asboot`)!**
+
+```
++---------------------------------------------------------------------------------------------------+
+|               SO SÁNH 2 PHƯƠNG THỨC NẠP FIRMWARE TRONG VÒNG ĐỜI KỸ NGHỆ Ô TÔ                      |
++---------------------------------------------------------------------------------------------------+
+
+[PHƯƠNG THỨC 1: BÀN THÍ NGHIỆM / MÁY ẢO QEMU (DEVELOPMENT MODE)]
+   Máy tính Dev ──(Cáp USB ST-Link / J-Link / QEMU Kernel)──► Bơm thẳng mã máy vào Flash CPU
+   • Ưu điểm: Nhanh như chớp (1-2 giây), debug từng dòng lệnh C qua GDB, không cần giao thức.
+   • Nhược điểm: Chỉ dùng được khi mạch mở nắp trên bàn lab; xe đã lắp ráp hoàn chỉnh KHÔNG THỂ dùng!
+
+[PHƯƠNG THỨC 2: XE THẬT NGOÀI GARA / DÂY CHUYỀN LẮP RÁP (PRODUCTION MODE)]
+   Máy chẩn đoán (Tester) ──(Cổng OBD-II / Cáp CAN Bus)──► [asboot] ──(Ghi Flash nội bộ)──► [ascore]
+   • Ưu điểm: Nạp qua giắc điện ngoài xe mà không cần mở vỏ hộp ECU; Hỗ trợ nâng cấp từ xa qua 4G (FOTA).
+   • Nhược điểm: Phải tuân theo chu trình đóng gói UDS ($10 02, $27, $34, $36, $37), tốn 1-3 phút.
++---------------------------------------------------------------------------------------------------+
+```
+
+#### 3. Bản Chất Cốt Lõi: Tại Sao Tạm Bỏ `asboot` Để Nạp `ascore` Vào QEMU/Board Lại Phải Sửa File Linker Script (`linker.lds`)?
+Đây là câu hỏi chạm đến bản chất sâu sắc nhất về **kiến trúc phần cứng vi điều khiển ARM Cortex-M**:
+
+##### ⚙️ Cơ Chế Phần Cứng CPU Khi Bật Nguồn (Power-On Reset):
+Lõi CPU ARM Cortex-M được đúc sẵn trong silicon một hành vi vật lý bất biến: Khi có xung nguồn điện, phần cứng **luôn luôn đọc 8 bytes đầu tiên tại địa chỉ mặc định `0x00000000`** (hoặc địa chỉ Flash vật lý ánh xạ tương đương `0x08000000` trên dòng chip STM32):
+* `0x00000000`: Nạp vào thanh ghi con trỏ ngăn xếp `MSP` (Main Stack Pointer).
+* `0x00000004`: Nạp vào thanh ghi con trỏ lệnh `PC` (Program Counter) để nhảy đến lệnh C đầu tiên.
+
+##### 🚗 Trường Hợp 1: Chế Độ Xe Thật (Production Mode — Chạy Kèm Bootloader `asboot`):
+* `asboot` được biên dịch bằng [`linker-boot.lds`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-boot.lds) với cấu hình: `FLASH.ORIGIN = 0x08000000`. Khi cấp nguồn, CPU đọc địa chỉ `0x08000000` và chạy thẳng vào hàm `reset_handler` của Bootloader.
+* `ascore` được biên dịch bằng [`linker-app.lds`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/linker.lds) với cấu hình: `FLASH.ORIGIN = 0x08010000` (được đẩy lùi 64KB để nhường đất cho `asboot`). Toàn bộ bảng Vector Table và mã lệnh của `ascore` bắt đầu từ `0x08010000`.
+* Khi cấp nguồn, CPU **không thể tự chạy `ascore` ngay**, mà `asboot` sẽ chạy trước, kiểm tra an toàn CRC, sau đó `asboot` mới thực thi lệnh ghi thanh ghi `SCB->VTOR = 0x08010000` và nhảy vào `ascore`.
+
+##### 🧪 Trường Hợp 2: Chế Độ Thí Nghiệm / QEMU Debug Nhanh (Loại Bỏ `asboot`, Chỉ Nạp `ascore` — Standalone Mode):
+* Trong quá trình học tập hoặc phát triển tính năng mới (ví dụ viết logic điều khiển xe, kiểm thử ma trận truyền thông CAN), bạn muốn sửa code và kiểm tra kết quả ngay trong 2 giây. Bạn không muốn mỗi lần chạy thử lại phải giả lập toàn bộ tiến trình nạp chẩn đoán UDS phiền phức của Bootloader.
+* Vì vậy, bạn quyết định **chỉ biên dịch và nạp duy nhất file `ascore`** vào máy ảo QEMU hoặc nạp trực tiếp qua ST-Link.
+* 💥 **CHUYỆN GÌ XẢY RA NẾU BẠN KHÔNG SỬA FILE LINKER SCRIPT?**
+  - Nếu bạn vẫn để `ascore` biên dịch với `ORIGIN = 0x08010000` (hoặc `0x00010000` trên QEMU): Toàn bộ code `ascore` nằm tít ở địa chỉ `0x08010000`.
+  - Trong khi đó, tại gốc bộ nhớ `0x08000000` (nơi CPU phần cứng sẽ đọc đầu tiên), do không có `asboot` được nạp vào, vùng nhớ này **HOÀN TOÀN TRỐNG RỖNG** (chứa toàn số `0xFFFFFFFF` hoặc `0x00000000`).
+  - Khi bật máy ảo QEMU, CPU đọc tại `0x00000000`, nạp vào PC giá trị `0xFFFFFFFF` ➔ **Hệ thống bị treo cứng và sập ngay lập tức (HardFault Crash) trước khi kịp chạy bất kỳ dòng code nào!**
+* ✅ **VÌ SAO PHẢI SỬA FILE `linker.lds`?**
+  - Để giải quyết vấn đề trên, bạn sửa file `linker.lds`: Đổi `ORIGIN = 0x08010000` (hoặc `0x00010000`) lùi về gốc **`ORIGIN = 0x08000000`** (hoặc `0x00000000` trên QEMU).
+  - Khi liên kết (Link), bảng Vector Table của `ascore` được đặt **ngay tại vị trí xuất phát đầu tiên của phần cứng CPU**!
+  - Khi QEMU bật lên, CPU đọc ngay tại gốc `0x00000000` thấy đúng Entry [0] (`knl_system_stack_top`) và Entry [1] (`reset_handler`) của `ascore`.
+  - `ascore` lập tức tự khởi động, gọi [`EcuM_Init()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/main.c) tự cấu hình ngoại vi từ con số 0, bật hệ điều hành `askar` và chạy mượt mà mà **hoàn toàn không cần đến sự hiện diện của Bootloader!**
+
+---
+
+Trong sản xuất phần mềm ECU ô tô thực tế theo chuẩn AUTOSAR, bộ nhớ Flash của vi điều khiển được phân vùng thành 3 thực thể có vai trò, kiến trúc và vòng đời hoàn toàn khác biệt:
+
+```
++===================================================================================================+
+|               CẤU TRÚC PHÂN BỔ BỘ NHỚ FLASH THỰC TẾ TRONG DỰ ÁN AS (STM32F107VC)                  |
++===================================================================================================+
+
+Địa chỉ Flash
+0x08040000 +-------------------------------------------------------------------------------------+  <-- HẾT FLASH VẬT LÝ (256 KB)
+           | 3. VÙNG LƯU TRỮ DỰ PHÒNG (BACKUP / INACTIVE BANK / OTA STAGING SLOT)                |
+           | • Không chứa mã lệnh thực thi trực tiếp khi xe chạy bình thường                    |
+           | • Lưu bản sao Firmware an toàn (Golden Image) hoặc gói cập nhật FOTA mới tải về     |
+           | • Dung lượng: 64 KB – 128 KB                                                        |
+0x08010000 +-------------------------------------------------------------------------------------+
+           | 2. APPLICATION CORE FIRMWARE (`ascore`)                                             |  (Biên dịch bởi `linker-app.lds`)
+           | • Bảng Vector Table của App (VTOR trỏ tại 0x08010000)                               |
+           | • Hệ điều hành AUTOSAR OS (`askar` ECC2, 6 Tasks đa nhiệm tiền định)                 |
+           | • Toàn bộ ngăn xếp BSW: ComStack (Can, CanIf, PduR, Com), Diag (Dcm, Dem), NvM/Fee   |
+           | • Tầng trừu tượng RTE và các Software Component (SWC) điều khiển xe                 |
+           | • Dung lượng: 128 KB – 192 KB                                                       |
+0x08000000 +-------------------------------------------------------------------------------------+  <-- ĐỊA CHỈ NHẢY (APP_START_ADDR)
+           | 1. BOOTLOADER FIRMWARE (`asboot`)                                                   |  (Biên dịch bởi `linker-boot.lds`)
+           | • Bảng Vector Table mặc định của MCU (Nạp tại 0x08000000)                           |
+           | • Primary Bootloader (`pbl_core.c`) & Flash Bootloader Engine (`bl_core.c`)          |
+           | • UDS Flash Reprogramming Kernel ($10 02, $27, $34, $36, $37, $31)                  |
+           | • Driver Flash vật lý độc lập (Polling mode, không dùng OS)                        |
+           | • Dung lượng: 32 KB – 64 KB                                                         |
+0x08000000 +-------------------------------------------------------------------------------------+  <-- GỐC FLASH VẬT LÝ
+```
+
+---
+
+### 6.1 So Sánh Bản Chất Kỹ Nghệ: `asboot` vs `ascore` vs `Vùng Lưu Trữ Dự Phòng`
+
+| Tiêu Chí Kỹ Nghệ | Bootloader Firmware (`asboot`) | Application Firmware (`ascore`) | Vùng Lưu Trữ Dự Phòng (Backup Slot) |
+|---|---|---|---|
+| **Định Nghĩa** | Khối chương trình khởi động tối giản, độc lập, nạp cố định tại gốc bộ nhớ Flash. | Phần mềm điều khiển nghiệp vụ chính thức của ECU ô tô (Operational SW). | Phân vùng Flash tĩnh dùng để chứa bản sao dữ liệu hoặc firmware thứ 2. |
+| **Vị Trí Flash** | Gốc Flash (`0x08000000` trên STM32 / `0x00000000` trên QEMU LM3S). | Vùng giữa Flash (`0x08010000` trên STM32 / `0x00010000` trên LM3S). | Vùng cuối Flash (`0x08040000`+) hoặc chip External SPI Flash. |
+| **Hệ Điều Hành** | **KHÔNG DÙNG OS** (Chạy vòng lặp tuần tự Polling đơn luồng). | **CÓ OS** (AUTOSAR OS `askar` chuẩn ECC2, đa nhiệm tiền định). | **KHÔNG** (Chỉ là vùng dữ liệu nhị phân thô, không thực thi). |
+| **Tầng MCAL & BSW** | Chỉ gồm Driver tối thiểu: CAN Polling + Flash Programming. | Ngăn xếp BSW hoàn chỉnh 6 tầng: CAN, LIN, ETH, NvM, Fee, Dem, Dcm, RTE. | Không có. |
+| **Thời Điểm Kích Hoạt** | 5ms đến 20ms đầu sau Power-On Reset hoặc khi nhận lệnh UDS `$10 02`. | Suốt toàn bộ vòng đời vận hành bình thường của xe (Drive Cycle). | Không bao giờ được CPU trực tiếp nhảy vào thực thi lệnh. |
+| **Mục Đích Xây Dựng** | Cứu hộ ECU khi App hỏng; Tiếp nhận nạp Flash UDS; Xác thực an toàn (Secure Boot). | Thực thi logic điều khiển xe (BMS đo pin, VCU điều khiển mô tơ, BCM mở cửa). | Chống biến ECU thành "cục gạch" (Anti-brick) khi FOTA lỗi; Hỗ trợ Rollback. |
+
+---
+
+### 6.2 Giải Phẫu Cấu Trúc Module Của `asboot` Trong Dự Án `as`
+
+Toàn bộ mã nguồn của Bootloader nằm tại thư mục [`as/com/as.infrastructure/boot/common/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/):
+
+```
+as/com/as.infrastructure/boot/common/
+├── bootloader.h    <-- Định nghĩa macro log, cấp bảo mật BL_SECURITY_LEVEL_PRGS (0x02)
+├── pbl_core.c      <-- Primary Bootloader: Kiểm tra cờ nạp, gọi Flash erase/write qua XCP
+├── bl_core.c       <-- Flash Bootloader Engine: Quản lý danh sách blMemoryList[], UDS CheckMemory, Jump App
+├── bl_sessec.c     <-- Session & Security: Xử lý Programming Session ($10 02) và thuật toán Seed/Key ($27)
+├── main.c          <-- Hàm main() của Bootloader: Khởi tạo CAN, cấu hình Timer 1000ms chờ nạp
+└── miniblt.h       <-- Định nghĩa cấu trúc khung gói nạp mini bootloader
+```
+
+#### 1. Module Quản Lý Bộ Nhớ Flash: `bl_core.c` ([`bl_core.c: L73-L79`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/bl_core.c#L73-L79))
+Bootloader quản lý các phân vùng Flash thông qua mảng cấu trúc tĩnh `blMemoryList[]`. Khi máy chẩn đoán gửi yêu cầu xóa hoặc ghi Flash, hàm `Dcm_CheckMemory()` sẽ đối chiếu địa chỉ để đảm bảo Tester không ghi đè vào chính vùng Bootloader:
+
+```c
+/* as/com/as.infrastructure/boot/common/bl_core.c */
+static BL_MemoryInfoType blMemoryList[] = {
+    /* STM32F107VC  */ { 0x00010000, 0x00040000, 0xFF, 0x04|0x02|0x01 }, /* Vùng nạp ascore (192KB) */
+    /* VERSATILEPB  */ { 0x00040000, 0x08000000, 0xFF, 0x04|0x02|0x01 },
+    /* MPC56XX      */ { 0x00020000, 0x00180000, 0xFF, 0x04|0x02|0x01 },
+    /* FLASH DRIVER */ { 0x00000000, 0x00001000, 0xFD, 0x04|0x02|0x01 }, /* Vùng RAM chứa Flash Driver */
+};
+```
+
+#### 2. Module Bảo Mật Seed & Key: `bl_sessec.c` ([`bl_sessec.c: L29-L65`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/bl_sessec.c#L29-L65))
+Để ngăn ngừa việc nạp phần mềm trái phép vào xe, `asboot` yêu cầu mở khóa bảo mật trước khi cho phép xóa Flash:
+- Khi nhận `$27 01`, `BL_GetProgramSessionSeed()` sinh ra một số ngẫu nhiên 4-byte từ nhịp `GetOsTick()`.
+- Máy chẩn đoán tính toán Key dựa trên thuật toán bí mật và gửi lại qua `$27 02`.
+- `BL_CompareProgramSessionKey()` so khớp `u32KeyExpected = bl_prgs_seed ^ 0x94586792`. Nếu khớp, cờ bảo mật được mở và dừng bộ đếm `BL_StopAppTimer()` để không tự nhảy vào App!
+
+---
+
+### 6.3 Chu Trình Nạp Flash Chuẩn UDS ISO 14229 & BSW Integration
+
+Một chu kỳ nạp lại phần mềm (Flash Reprogramming) cho ECU ô tô từ máy chẩn đoán (Tester) diễn ra qua chuỗi 8 bước nghiêm ngặt:
+
+```
++===================================================================================================+
+|               CHU KỲ NẠP FLASH UDS HOÀN CHỈNH TỪ TESTER ĐẾN ASBOOT QUA MẠNG CAN                   |
++===================================================================================================+
+
+    MÁY CHẨN ĐOÁN (TESTER)                                 HỘP ĐIỀU KHIỂN ECU (ASBOOT)
+             │                                                          │
+   [1] Gửi:  │── 0x10 02 (DiagnosticSessionControl: ProgrammingSession) ──►│ Chuyển sang phiên nạp
+       Nhận: │◄── 0x50 02 (Positive Response) ──────────────────────────│ Khóa các Task thông thường
+             │                                                          │
+   [2] Gửi:  │── 0x27 01 (SecurityAccess: Request Seed) ───────────────►│ Sinh số ngẫu nhiên `Seed`
+       Nhận: │◄── 0x67 01 [Seed 4 bytes] ───────────────────────────────│ Lưu `bl_prgs_seed` vào RAM
+             │                                                          │
+   [3] Gửi:  │── 0x27 02 [Key 4 bytes = Seed ^ 0x94586792] ────────────►│ So sánh khóa `u32KeyExpected`
+       Nhận: │◄── 0x67 02 (Security Unlocked OK) ───────────────────────│ Dừng Timer nhảy App
+             │                                                          │
+   [4] Gửi:  │── 0x31 01 FF 00 [StartAddr, Length] (Erase Flash Routine) ─►│ Gọi `eraseFlash()` trong bl_core
+       Nhận: │◄── 0x71 01 FF 00 (Flash Erased Successfully) ────────────│ Xóa sạch phân vùng ascore
+             │                                                          │
+   [5] Gửi:  │── 0x34 [Format, Addr: 0x08010000, Size: 128KB] ─────────►│ `RequestDownload`: Kiểm tra
+       Nhận: │◄── 0x74 [MaxNumberOfBlockLength: 4096 bytes] ────────────│ Cấp phát bộ đệm nhận dữ liệu
+             │                                                          │
+   [6] Gửi:  │── 0x36 01 [4096 bytes dữ liệu nhị phân] ─────────────────►│ `TransferData`: Ghi vào Flash
+       Nhận: │◄── 0x76 01 (Block 1 Write OK) ───────────────────────────│ Gọi `FLASH_DRIVER_WRITE()`
+             │   (Lặp lại bước 6 cho đến khi truyền hết file Hex)      │
+             │                                                          │
+   [7] Gửi:  │── 0x37 (RequestTransferExit) ────────────────────────────►│ `RequestTransferExit`
+       Nhận: │◄── 0x77 (Transfer Closed OK) ────────────────────────────│ Đóng phiên truyền dữ liệu
+             │                                                          │
+   [8] Gửi:  │── 0x31 01 02 02 [CRC32 Checksum mong đợi] ───────────────►│ `CheckMemory`: Tính CRC Flash
+       Nhận: │◄── 0x71 01 02 02 (Integrity Verification PASSED) ────────│ Khớp CRC32 -> Cho phép Boot
+             │                                                          │
+   [9] Gửi:  │── 0x11 01 (ECUReset: Hard Reset) ────────────────────────►│ CPU Reset vật lý
+             │                                                          ▼
+                                                                Nhảy vào `ascore` mới!
++===================================================================================================+
+```
+
+---
+
+### 6.4 Vùng Lưu Trữ Firmware Dự Phòng & 2 Kiến Trúc Chống Brick ECU
+
+#### ❓ Tại sao trong ngành ô tô bắt buộc phải có Vùng Lưu Trữ Dự Phòng?
+Khi nâng cấp phần mềm từ xa qua sóng di động (**FOTA — Firmware Over-The-Air**), xe có thể đang chạy vào hầm mất sóng 4G, hoặc ắc quy 12V bị sụt nguồn giữa chừng đúng lúc đang xóa Flash (bước 4). Nếu hệ thống chỉ có 1 vùng nhớ duy nhất chứa `ascore`, hành động xóa Flash dở dang sẽ làm ECU **bị hỏng hoàn toàn (Bricked ECU)**, xe không thể khởi động lại để chạy về gara.
+
+Tiêu chuẩn an toàn chức năng **ISO 26262** và quy định an ninh mạng **UN ECE R156** bắt buộc các ECU trung tâm (Gateway, VCU, ADAS) phải triển khai một trong hai kiến trúc sau:
+
+#### 🌟 Kiến Trúc 1: A/B Dual-Bank Swapping (Phần Cứng Hỗ Trợ Độc Lập)
+*Áp dụng trên các dòng vi điều khiển ô tô cao cấp: Infineon AURIX TC3xx, STM32H7, NXP S32K3, Renesas RH850.*
+- Bộ nhớ Flash vật lý được chia đôi thành 2 Bank phần cứng hoàn toàn độc lập: **Bank A** và **Bank B**.
+- **Cơ chế hoạt động:**
+  1. Xe đang vận hành bình thường trên đường bằng Firmware tại **Bank A**.
+  2. Module FOTA tải bản Firmware mới qua mạng 4G và ghi trực tiếp vào **Bank B** (Background Download). Quá trình này hoàn toàn không làm gián đoạn việc lái xe của tài xế!
+  3. Sau khi tải xong, ECU tính toán chữ ký số RSA/SHA256 trên Bank B.
+  4. Khi tài xế dừng xe, về số P và tắt khóa điện, Bootloader chỉ cần ghi 1 bit vào thanh ghi điều khiển Flash của MCU (`FLASH_OPTCR.SWAP_BANK = 1`).
+  5. Phần cứng MCU tự động đảo địa chỉ: Bank B lập tức biến thành gốc `0x08000000`, Bank A trở thành vùng dự phòng. **Thời gian chuyển giao chỉ mất 0.1 giây (Zero Downtime)!**
+  6. **Cơ chế Rollback:** Nếu Bank B khởi động bị lỗi làm Watchdog Reset 3 lần liên tiếp, Bootloader tự động xóa bit `SWAP_BANK` để đảo ngược lại Bank A an toàn.
+
+#### 🌟 Kiến Trúc 2: Single-Bank Staging Slot + Golden Image Recovery
+*Áp dụng trên các dòng vi điều khiển chỉ có 1 Bank Flash vật lý (như STM32F107VC trong dự án `as`).*
+- Bộ nhớ Flash chia thành 3 phân vùng: `asboot` (`0x08000000`), `ascore` (`0x08010000`), và **Vùng Dự Phòng Staging Slot** (`0x08040000`).
+- **Cơ chế hoạt động:**
+  1. Dữ liệu nạp mới được ghi toàn bộ vào **Staging Slot**.
+  2. Bootloader kiểm tra toàn vẹn CRC32 của Staging Slot. Nếu sai lệch do rớt mạng, hủy bỏ ngay lập tức — phân vùng `ascore` hiện tại vẫn nguyên vẹn 100%.
+  3. Nếu CRC32 hợp lệ, `asboot` mới bắt đầu sao chép dữ liệu từ Staging Slot đè sang phân vùng `ascore`.
+  4. Nếu trong quá trình chép đè bị mất nguồn điện, `asboot` phát hiện cờ `UpdateInProgress = TRUE` khi có điện trở lại và **tự động phục hồi lại từ bản sao an toàn (Golden Image)** được lưu trong chip nhớ ngoài SPI Flash / eMMC.
+
+---
+
+### 6.5 Cơ Chế Bàn Giao Quyền Thực Thi & Tái Định Vị Vector Table
+
+Trong file [`bl_core.c: L402-L416`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/bl_core.c#L402-L416), hàm `BL_TestJumpToApplicatin()` kích hoạt hàm liên kết `application_main()` để chuyển quyền sang `ascore`. Để quá trình chuyển giao này diễn ra an toàn tuyệt đối mà không bị crash hệ thống, chuỗi thao tác phần cứng sau bắt buộc phải được thực thi:
+
+```
+[BƯỚC 1: ĐÓNG BĂNG NGOẠI VI]
+Vô hiệu hóa toàn bộ ngắt trong NVIC: `NVIC->ICER[i] = 0xFFFFFFFF`.
+Xóa sạch toàn bộ cờ ngắt đang chờ: `NVIC->ICPR[i] = 0xFFFFFFFF`.
+Dừng hoàn toàn bộ đếm nhịp SysTick: `SysTick->CTRL = 0`.
+     │
+     ▼
+[BƯỚC 2: TÁI ĐỊNH VỊ VECTOR TABLE SANG ASCORE]
+Ghi địa chỉ bắt đầu của `ascore` vào thanh ghi VTOR:
+`SCB->VTOR = 0x08010000;`  (Trên STM32) hoặc `0x00010000;` (Trên QEMU).
+     │
+     ▼
+[BƯỚC 3: THIẾT LẬP LẠI ĐỈNH NGĂN XẾP MAIN STACK POINTER (MSP)]
+Đọc 4 bytes đầu tiên tại Entry [0] của ascore và gán vào thanh ghi SP:
+`__set_MSP(*((uint32_t*)0x08010000));`
+     │
+     ▼
+[BƯỚC 4: NHẢY VÀO RESET_HANDLER CỦA ASCORE]
+Đọc con trỏ hàm tại Entry [1] của ascore (địa chỉ hàm `reset_handler` trong startup.S):
+`pFunction app_entry = (pFunction)(*((uint32_t*)0x08010004));`
+Thực thi lệnh rào cản pipeline và nhảy:
+`__DSB(); __ISB();`
+`app_entry();`  ➔ `ascore` bắt đầu chạy chu trình EcuM_Init() từ con số 0!
+```
+
+---
+
+## 7. Thực Chiến & Hands-On Exercise
 
 🛠️ **Hands-On Exercise: Dùng CANoe/PCAN gửi UDS frame đọc DTC và parse response**
 **Yêu cầu:** Kết nối máy tính (cài đặt phần mềm CANoe hoặc PCAN-Explorer) với mạng CAN của xe qua cổng OBD-II.
@@ -503,7 +757,7 @@ Xe điện (EV) đang đi trên cao tốc, tài xế thấy báo lỗi hệ th�
 
 ---
 
-## 7. Các Cạm Bẫy Phổ Biến (Common Pitfalls)
+## 8. Các Cạm Bẫy Phổ Biến (Common Pitfalls)
 
 1. ⚠️ **NRC 0x78 Loop:** ECU trả về NRC 0x78 (Response Pending) liên tục mà không có điểm dừng khi thao tác NvM bị kẹt hoặc phần cứng Fls bị lỗi không thể hoàn thành lệnh, làm Tester bị treo vô hạn, ảnh hưởng đến quy trình sản xuất End-Of-Line. ✅ *Khắc phục: Phải cấu hình thông số DcmDspMaxNumOf0x78 trong DCM để giới hạn số vòng lặp tối đa, quá giới hạn thì abort và trả về NRC `0x22` hoặc `0x10`.*
 2. 💀 **Seed=0 Vulnerability:** Thuật toán sinh random trong chip (TRNG - True Random Number Generator) bị lỗi khởi tạo, lúc nào cũng sinh ra `Seed = 0x00000000`. Hacker bắt được gói, dễ dàng tìm được khóa bí mật (SecretKey) nếu thuật toán là hàm toán học đơn giản. ✅ *Khắc phục: Luôn kiểm tra Seed sinh ra, nếu bằng 0 phải sinh lại. Hơn nữa, tích hợp các chuẩn mã hóa HSM (Hardware Security Module) hoặc AES-128 để mã hóa Seed-Key.*
@@ -513,9 +767,9 @@ Xe điện (EV) đang đi trên cao tốc, tài xế thấy báo lỗi hệ th�
 
 ---
 
-## 8. Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp
+## 9. Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp
 
-### 8.1 Cấu Trúc Khối Dữ Liệu NvM: `NvM.h`
+### 9.1 Cấu Trúc Khối Dữ Liệu NvM: `NvM.h`
 **File:** `com/as.infrastructure/include/NvM.h`
 
 ```c
@@ -556,7 +810,7 @@ Std_ReturnType NvM_JobFinished_BMS_Config(uint8 ServiceId, NvM_RequestResultType
 }
 ```
 
-### 8.2 Báo Cáo Lỗi Từ Ứng Dụng Lên DEM: `Dem.h`
+### 9.2 Báo Cáo Lỗi Từ Ứng Dụng Lên DEM: `Dem.h`
 **File:** `com/as.infrastructure/include/Dem.h`
 
 ```c
@@ -600,7 +854,34 @@ void BMS_MonitorTemperature(void) {
 
 ---
 
-## 9. Đúc Kết Kỹ Nghệ & Bảng Tra Cứu APIs
+### 9.3 Cấu Trúc Khối Nạp Flash Của Bootloader: `bl_core.c` & `bl_sessec.c`
+**File:** `com/as.infrastructure/boot/common/bl_core.c`
+
+```c
+/* Định nghĩa phân vùng bộ nhớ được phép lập trình Flash */
+static BL_MemoryInfoType blMemoryList[] = {
+    /* STM32F107VC  */ { 0x00010000, 0x00040000, 0xFF, 0x04|0x02|0x01 }, /* ascore */
+    /* MPC56XX      */ { 0x00020000, 0x00180000, 0xFF, 0x04|0x02|0x01 },
+    /* FLASH DRIVER */ { 0x00000000, 0x00001000, 0xFD, 0x04|0x02|0x01 },
+};
+
+/* Hàm kiểm tra tính hợp lệ của địa chỉ nạp từ Tester */
+boolean Dcm_CheckMemory(uint8 attr, uint8 memoryIdentifier, uint32 memoryAddress, uint32 length);
+
+/* Hàm chuyển giao quyền thực thi sang application_main() */
+Std_ReturnType BL_TestJumpToApplicatin(uint8 *inBuffer, uint8 *outBuffer, Dcm_NegativeResponseCodeType *errorCode) {
+    imask_t imask;
+    Irq_Save(imask);
+    application_main(); /* Nhảy vào ascore */
+    Irq_Restore(imask);
+    *errorCode = DCM_E_REQUEST_OUT_OF_RANGE;
+    return E_NOT_OK;
+}
+```
+
+---
+
+## 10. Đúc Kết Kỹ Nghệ & Bảng Tra Cứu APIs
 
 ```
 [BẢNG TỔNG KẾT VAI TRÒ DIAGNOSTIC & MEMORY STACK TRONG AUTOSAR CLASSIC]
@@ -630,7 +911,7 @@ void BMS_MonitorTemperature(void) {
 
 ---
 
-## 10. Bộ Câu Hỏi Phỏng Vấn (Interview Questions)
+## 11. Bộ Câu Hỏi Phỏng Vấn (Interview Questions)
 
 **Q1:** Sự khác biệt cốt lõi giữa hàm `NvM_WriteBlock` và `NvM_WriteAll` là gì? Khi nào dùng cái nào?
 > *Trả lời:* `NvM_WriteBlock` là hàm lưu 1 block dữ liệu cụ thể một cách bất đồng bộ, thường được gọi bởi SWC khi đang chạy bình thường để lưu ngay một dữ liệu quan trọng. Trái lại, `NvM_WriteAll` là hàm lưu đồng loạt toàn bộ các block RAM bị thay đổi (có cờ Block Changed) xuống Flash. Nó chỉ được gọi một lần duy nhất bởi BSW Manager (`EcuM`) trong pha Shutdown Phase lúc tắt máy. Dùng WriteBlock liên tục quá nhiều sẽ làm mòn Flash, còn dùng WriteAll thì phải đảm bảo ECU không bị ngắt điện đột ngột trước khi quá trình ghi hàng loạt hoàn tất (cần Power Hold Relay).
@@ -646,3 +927,10 @@ void BMS_MonitorTemperature(void) {
 
 **Q4:** NRC 0x78 (Response Pending) được gửi trong hoàn cảnh nào? Làm sao để Tester không bị treo vô hạn?
 > *Trả lời:* NRC 0x78 được gửi bởi module DCM khi nó đã nhận một Request hợp lệ, nhưng quá trình thực thi cần nhiều thời gian hơn P2 timeout (ví dụ: đang gọi NvM_WriteBlock để ghi DID xuống Flash, thao tác I/O này mất hàng trăm ms). DCM sẽ phát NRC 0x78 để "xin" Tester cấp thêm thời gian P2*. Để ngăn chặn vòng lặp 0x78 vô tận khi phần cứng Flash bị treo, ta phải cấu hình thuộc tính `DcmDspMaxNumOf0x78` (số lần phát NRC 0x78 tối đa). Nếu vượt quá số lần này mà Job chưa xong, DCM tự động abort tác vụ và trả về NRC 0x10 hoặc 0x22 (General Reject), giải phóng kết nối cho Tester.
+
+**Q5:** Trong kiến trúc ECU ô tô, tại sao `asboot` lại không sử dụng hệ điều hành RTOS/AUTOSAR OS mà chạy theo mô hình Polling tuần tự?
+> *Trả lời:* Bootloader là thành phần cứu hộ an toàn mức thấp nhất (Safety-critical / Fail-safe recovery). Nếu tích hợp RTOS vào Bootloader, kích thước mã máy sẽ phình to (vượt ngưỡng 32-64KB của sector đầu Flash), thời gian khởi động (Startup latency) bị kéo dài vượt quá mức cho phép (yêu cầu xe phải phản hồi CAN trong vòng 20-50ms), và tiềm ẩn nguy cơ Deadlock hoặc Stack Overflow trong nhân OS khi Flash bị lỗi. Chạy Polling đơn luồng đảm bảo tính đơn giản tuyệt đối (Deterministic execution), dễ dàng chứng minh chứng chỉ an toàn ISO 26262 ASIL-D.
+
+**Q6:** Trình bày cơ chế chống Brick ECU khi thực hiện nâng cấp FOTA qua kiến trúc Dual-Bank Flash A/B Swapping?
+> *Trả lời:* Trong kiến trúc Dual-Bank, bộ nhớ Flash chia thành Bank A (đang chạy) và Bank B (dự phòng). Firmware mới được ghi ngầm vào Bank B trong lúc xe vẫn chạy bình thường trên Bank A. Sau khi nạp xong, hệ thống kiểm tra chữ ký số RSA/SHA256 trên Bank B. Khi đỗ xe và tắt máy, Bootloader cấu hình thanh ghi phần cứng MCU tráo đổi địa chỉ (`SWAP_BANK`), biến Bank B thành địa chỉ gốc để khởi động App mới. Nếu App mới bị lỗi khiến Watchdog reset liên tục (vượt quá `MAX_BOOT_ATTEMPTS`), Bootloader phát hiện và tự động xóa cờ `SWAP_BANK` để Rollback quay trở lại Bank A, đảm bảo xe không bao giờ bị "chết đứng" ngoài đường.
+

@@ -6,7 +6,36 @@
 
 ---
 
-## 📅 NGÀY 28/08/2026 (HÔM NAY) — THAY ĐỔI SO VỚI HÔM QUA (27/08/2026)
+## 📅 NGÀY 03/09/2026 (HÔM NAY) — THAY ĐỔI SO VỚI NGÀY 28/08/2026
+
+> 🎯 **Trọng tâm hôm nay:**  
+> • Bổ sung và tinh chỉnh chuyên sâu tài liệu chuyên khảo nâng cao trong phân vùng kiến thức bổ trợ (`docs/supplementary_knowledge/`):  
+>   - Chuyên đề toàn diện 18 chương về **Interrupt Vector Table (IVT), NVIC & Hệ Điều Hành AUTOSAR OS (`askar`)**:
+>     + Tinh chỉnh 100% tài liệu bám sát phục vụ mục tiêu học tập dự án `Study_AUTOSAR` (`as`), loại bỏ hoàn toàn các nội dung lan man ngoài lề (FreeRTOS, x86, RISC-V, STM32Cube HAL).
+>     + Phân tích mã nguồn Assembly Startup thực tế (`startup.S`), Linker Script (`linker.lds`, `linker-app.lds`, `linker-boot.lds`), file ánh xạ (`lm3s6965evb.map`).
+>     + Bóc tách chu trình xử lý ngắt 3 tầng trong `as`: `__vector_table` ──► Assembly Wrapper `portableS.S` (`knl_isr_process`, `EnterISR`, `ExitISR`) ──► C Dispatcher `portable.c` (`knl_isr_handler`, bảng con trỏ hàm phát sinh `tisr_pc[]`) ──► MCAL Driver (`Can_RxIsr`).
+>     + Làm rõ tam giác vàng ngoại lệ AUTOSAR OS: SVCall (`knl_start_dispatch` #11), SysTick (`knl_system_tick` #15), PendSV (`knl_dispatch_entry` #14), và 4 cấp độ khóa ngắt OSEK/AUTOSAR.
+>     + Kiến trúc Bootloader ô tô `asboot` và chuyển giao quyền sang Application `ascore` (9 bước nhảy chuẩn UDS ISO 14229 & VTOR relocation).
+>     + So sánh kiến trúc ngắt các dòng vi điều khiển ô tô chuyên dụng: ARM Cortex-M (NVIC) vs Infineon AURIX TriCore (BIV, CSA, IR) vs Renesas RH850 (INTBP, INTC) vs Cortex-A (GIC, AUTOSAR Adaptive).
+>     + Vòng đời khởi tạo 5 giai đoạn: Hardware Vector Table ──► `reset_handler` ──► `EcuM_Init` (MCAL `Mcu_Init`, `Port_Init`, `Can_Init`) ──► `StartOS` ──► `SchM_Startup`.
+>     + Mẫu thiết kế BSW Top-Half/Bottom-Half (`Can_RxIsr` ──► `CanIf` ──► `SetEvent` ──► `Task_Communication` ──► `PduR` ──► `Com`) và hàng đợi vòng lock-free `cirq_buffer.c`.
+>     + Bộ bài tập 10 cấp độ thực chiến trên QEMU `lm3s6965evb`, Senior Mindset và Master Debug Checklist cho kỹ sư AUTOSAR BSW Integration.
+
+### 📄 Tệp & Thư Mục Tạo Mới Hôm Nay (Created Today):
+1. `docs/supplementary_knowledge/` (Thư mục kiến thức bổ trợ kỹ nghệ nhúng nâng cao)
+2. `docs/supplementary_knowledge/01_Interrupt_Vector_Table_Deep_Dive.md` (Chuyên đề chuyên sâu 18 chương về Interrupt Vector Table, NVIC & Hệ Điều Hành AUTOSAR OS)
+3. docs/supplementary_knowledge/02_CPU_Registers_And_Instruction_Execution.md (Chuyên đề toàn diện 24 chương về CPU, Register Model, Instruction Execution, Stack Frame, Debugging và RTOS/AUTOSAR Context Switching)
+
+### 📝 Tệp Chỉnh Sửa Hôm Nay (Modified Today):
+1. `docs/supplementary_knowledge/01_Interrupt_Vector_Table_Deep_Dive.md` (Rà soát toàn diện và chuẩn hóa 18 chương phục vụ dự án Study_AUTOSAR; Bổ sung Mục 3.5 chuyên sâu về bản chất "Gán địa chỉ vào Vector Table" vs "Kích hoạt ngắt thủ công", giải phẫu mô hình 3 Tầng Cầu Dao Bảo Vệ phần cứng, phân loại chi tiết các Core Exception bắt buộc phải bật thủ công, và dẫn chứng 3 ví dụ thực tế vị trí gán vector vs vị trí kích hoạt trong repo as: SysTick, Core Faults SCB->SHCSR, và CAN Controller NVIC)
+2. `docs/theory/04_Diagnostic_UDS_And_Memory_Stack.md` (Bổ sung Mục 6 chuyên sâu về Kiến trúc Bootloader ô tô asboot, Ứng dụng chính ascore, và Vùng Lưu Trữ Firmware Dự Phòng FOTA / Anti-Brick; Bổ sung Mục 6.0 cắt nghĩa bản chất nạp bàn thí nghiệm JTAG/SWD/QEMU vs xe thật UDS Bootloader và lý do bắt buộc phải sửa ORIGIN trong file linker.lds khi chạy standalone ascore; Phân tích mã nguồn thật pbl_core.c, bl_core.c, bl_sessec.c; Chu trình nạp Flash UDS 8 bước; Cơ chế A/B Dual-Bank Swapping và Safe State Rollback)
+3. `docs/theory/02_AUTOSAR_OS_And_MCAL_Deep_Dive.md` (Tái cấu trúc sư phạm chuyên đề 02: Hoán đổi vị trí Mục 2 và Mục 3 để đẩy Chuỗi khởi động SchM_Startup và TaskIdle lên ngay sau Basic/Extended Task; Khôi phục tiêu đề Mục 4 PCP và làm sạch mục lục trùng lặp; Bổ sung phân tích chi tiết Bước 2 về ngắt phần cứng Timer: bóc tách chuỗi gọi hàm từ NVIC SysTick Entry [15] -> knl_system_tick -> knl_system_tick_handler -> SignalCounter(0); So sánh phân định bản chất Core Exception 15 vs External IRQs đi qua knl_isr_handler & bảng tisr_pc; Dẫn chứng địa chỉ thực tế từ file map và kiểm thử QEMU thực chiến)
+4. `CHECKPOINT.md` (Cập nhật nhật ký theo dõi ngày 03/09/2026)
+5. `docs/CHECKPOINT.md` (Cập nhật nhật ký theo dõi ngày 03/09/2026)
+
+---
+
+## 📅 NGÀY 28/08/2026
 
 > 🎯 **Trọng tâm hôm nay:**  
 > • Nâng cấp chuyên sâu **Chuyên đề 02 (AUTOSAR OS & MCAL)**:  
