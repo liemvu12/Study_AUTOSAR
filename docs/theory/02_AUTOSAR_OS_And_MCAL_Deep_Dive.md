@@ -908,38 +908,57 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
 
 #### 🅰️ CASE STUDY 1: DÒNG CHẢY ISR CATEGORY 1 (NGẮT PHẦN CỨNG TRỰC TIẾP KHÔNG QUA OS)
 
-> 💡 **Đặc tính kỹ nghệ:** Dành cho các ngắt yêu cầu phản ứng tức thời ở tần số cao (ví dụ: ngắt Fault bảo vệ ngắn mạch cầu H Inverter, ngắt lấy mẫu ADC dòng điện động cơ, hoặc ngoại lệ vi điều khiển như `hard_fault_handler`).
+> 💡 **Đặc tính kỹ nghệ:** Dành cho các tác vụ ngắt yêu cầu phản hồi tức thời ở tần số cao với độ trễ cực tiểu (**Zero OS Overhead**), điển hình trong dự án `as`:
+> 1. **Ngắt ngoại vi phần cứng khẩn cấp:** Ngắt ngắt cầu H / quá dòng bảo vệ động cơ Inverter (`PWMFaultIntRegister` trong DriverLib LM3S [`as/com/as.infrastructure/arch/lm3s/DriverLib/src/pwm.c: L879-L895`](../../as/com/as.infrastructure/arch/lm3s/DriverLib/src/pwm.c#L879-L895) & [`interrupt.c: L181-L220`](../../as/com/as.infrastructure/arch/lm3s/DriverLib/src/interrupt.c#L181-L220)).
+> 2. **Ngoại lệ phần cứng trực tiếp (Core Exception):** Ngắt xử lý lỗi nghiêm trọng `hard_fault_handler` được ánh xạ trực tiếp từ Vector Table Entry [3] trong [`startup.S: L52`](../../as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S#L52) và cài đặt tại [`portable.c: L177-L180`](../../as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c#L177-L180).
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
 │  ⚡ DÒNG CHẢY ISR CATEGORY 1 NGUYÊN BẢN (DIRECT HARDWARE INTERRUPT — ZERO OS OVERHEAD):       │
+│  [Ví Dụ Thực Tế Trong as: Ngắt Bảo Vệ Quá Dòng Inverter PWM0_Fault_ISR & Core Fault Handler]   │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-1. [PHẦN CỨNG NGOẠI VI PHÁT TÍN HIỆU NGẮT]
-   Cảm biến / Timer / Chân ngoại vi kéo mức điện áp ──► Kích hoạt đường ngắt phần cứng vào NVIC.
+1. [PHẦN CỨNG NGOẠI VI PHÁT TÍN HIỆU NGẮT KHẨN CẤP]
+   Cảm biến dòng / Chân Fault ngoại vi kéo mức tích cực ──► NVIC nhận tín hiệu ngắt phần cứng (vd: INT_PWM_FAULT / Vector 26).
         │
-        ▼ (Khối NVIC của ARM Cortex-M tự động push {R0-R3, R12, LR, PC, xPSR} trong 12 clock cycles)
-2. [BẢNG VECTOR NGẮT PHẦN CỨNG (VECTOR TABLE)]
-   __vector_table (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L52)
+        ▼ (Khối NVIC của ARM Cortex-M tự động push {R0-R3, R12, LR, PC, xPSR} xuống MSP trong 12 chu kỳ xung nhịp)
+2. [BẢNG VECTOR NGẮT PHẦN CỨNG (VECTOR TABLE) TRỎ TRỰC TIẾP]
+   • Cách 1 (Đăng ký động vào RAM Vector qua IntRegister của DriverLib):
+     PWMFaultIntRegister(PWM0_BASE, PWM0_Fault_ISR) (lm3s/DriverLib/src/pwm.c: L879)
+     └──► Gọi IntRegister(INT_PWM_FAULT, PWM0_Fault_ISR) (lm3s/DriverLib/src/interrupt.c: L182)
+          ──► Gán trực tiếp con trỏ hàm: g_pfnRAMVectors[INT_PWM_FAULT] = PWM0_Fault_ISR;
+   • Cách 2 (Vector tĩnh Core Exception trong nhân askar):
+     __vector_table (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L52)
+     └──► Entry [03]: .word hard_fault_handler (Trỏ thẳng vào hàm C, KHÔNG qua knl_isr_process)
         │
-        └── [DÒNG 52]: Con trỏ ngắt trỏ TRỰC TIẾP vào hàm C của Driver
-            ──► KHÔNG qua hàm bọc (Wrapper), KHÔNG gọi EnterISR(), KHÔNG đổi CallLevel.
+        └──► ĐẶC ĐIỂM: Hoàn toàn BỎ QUA hàm bọc OS Wrapper (knl_isr_process),
+             KHÔNG gọi EnterISR(), KHÔNG đổi sang knl_system_stack_top, KHÔNG đổi CallLevel.
                 │
                 ▼
 3. [DRIVER / MCAL C-HANDLER THỰC THI TRỰC TIẾP]
-   Fast_Cat1_ISR_Handler()  (Mã nguồn C tầng MCAL)
-        │
-        ├── 1. Đọc thanh ghi phần cứng (Hardware Registers)
-        ├── 2. Thực thi xử lý khẩn cấp (Ví dụ: Set chân GPIO ngắt dòng Inverter < 100ns)
-        ├── 3. Xóa cờ ngắt phần cứng trong thanh ghi ngoại vi (Clear Interrupt Pending Flag)
-        └── 4. ❌ TUYỆT ĐỐI KHÔNG GỌI OS API (Không SetEvent, Không ActivateTask, Không Schedule)
+   • Trường Hợp PWM Fault (Mã C MCAL Driver / DriverLib):
+     void PWM0_Fault_ISR(void)
+     {
+         /* a. Đọc thanh ghi phần cứng kiểm tra trạng thái lỗi */
+         uint32_t status = HWREG(PWM0_BASE + PWM_O_FAULTVAL);
+         /* b. Ngắt khẩn cấp ngõ ra điều khiển cầu H Inverter (< 100ns) */
+         HWREG(PWM0_BASE + PWM_O_ENABLE) &= ~(PWM_ENABLE_PWM0EN | PWM_ENABLE_PWM1EN);
+         /* c. Xóa cờ ngắt phần cứng PWM */
+         HWREG(PWM0_BASE + PWM_O_FAULTVAL) = status;
+         /* d. ❌ TUYỆT ĐỐI CẤM GỌI OS API (Không SetEvent, Không ActivateTask, Không Schedule) */
+     }
+   • Trường Hợp Core Fault (portable.c: L177):
+     void __naked hard_fault_handler(void) {
+         __asm__ volatile("mov r0, sp");
+         __asm__ volatile("b dump_hard_fault_stack"); /* In thông tin Register Dump và dừng CPU */
+     }
                 │
                 ▼
-4. [LỆNH THOÁT NGẮT PHẦN CỨNG]
-   Thực thi lệnh Assembly: BX LR (EXC_RETURN = 0xFFFFFFF9)
+4. [LỆNH THOÁT NGẮT PHẦN CỨNG BẰNG HỢP NGỮ THUẦN]
+   Thực thi lệnh Assembly: BX LR (với EXC_RETURN = 0xFFFFFFF9 hoặc 0xFFFFFFFD)
         │
-        └── Phần cứng NVIC tự động POP {R0-R3, R12, LR, PC, xPSR} khỏi Stack
-            ──► CPU quay lại ngay dòng lệnh của Task đang chạy trước đó với 0 chu kỳ trễ từ OS!
+        └── Phần cứng NVIC tự động POP {R0-R3, R12, LR, PC, xPSR} khỏi Stack (MSP)
+            ──► CPU quay lại ngay lập tức câu lệnh của Task đang chạy trước đó với 0 chu kỳ trễ từ OS!
 ```
 
 ---
@@ -1022,7 +1041,7 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
 
 #### 📊 Bảng So Sánh Chi Tiết Cơ Chế Thực Thi Mã Nguồn:
 
-| Tiêu Chí Kỹ Thuật | ISR Category 1 (`Fast_Cat1_ISR`) | ISR Category 2 (`knl_isr_process` $\rightarrow$ `Can_RxIsr`) |
+| Tiêu Chí Kỹ Thuật | ISR Category 1 (`PWM0_Fault_ISR` / `hard_fault_handler`) | ISR Category 2 (`knl_isr_process` $\rightarrow$ `Can_RxIsr`) |
 | :--- | :--- | :--- |
 | **Bảng Vector Ngắt (`startup.S`)** | Trỏ trực tiếp đến địa chỉ hàm C MCAL. | Trỏ vào nhãn OS Wrapper `knl_isr_process`. |
 | **Thao Tác Stack** | Tận dụng Stack hiện tại của CPU. | Tự động đổi con trỏ SP sang `knl_system_stack_top`. |
