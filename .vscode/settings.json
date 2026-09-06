@@ -1,0 +1,16 @@
+{
+    // Cho phép VS Code tìm kiếm (Ctrl+Shift+F) xuyên qua các thư mục trong .gitignore (như as/build/)
+    "search.useIgnoreFiles": false,
+
+    // Loại trừ các file nhị phân nặng khỏi kết quả tìm kiếm để tối ưu tốc độ
+    "search.exclude": {
+        "**/*.o": true,
+        "**/*.obj": true,
+        "**/*.exe": true,
+        "**/*.s19": true,
+        "**/*.elf": true,
+        "**/*.bin": true,
+        "**/.git": true,
+        "**/.sconsign.dblite": true
+    }
+}
