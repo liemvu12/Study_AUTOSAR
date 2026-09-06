@@ -1097,6 +1097,8 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
                 └── 3. Gọi con trỏ hàm User Rx Indication đã cấu hình:
                     ((CanIf_FuncTypeCanSpecial)(entry->CanIfUserRxIndication))(channel, pduId, CanSduPtr, CanDlc, CanId)
                     └──► Nhảy vào: CanIf_OsekNmUserRxIndication(...) (OsekNm_Cfg.c: L159)
+                         (💡 Cơ chế mapping: GenCanIf.py: L369 sinh ra .CanIfUserRxIndication = CanIf_OsekNmUserRxIndication
+                             từ cấu hình autosar.arxml: L184 với UserNotification="CanIf_OsekNmUser")
                             │
                             ▼
 6. [TẦNG BSW OSEK NM — GIẢI MÃ BẢN TIN QUẢN TRỊ MẠNG & GỌI SETEVENT]
