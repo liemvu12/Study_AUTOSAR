@@ -671,7 +671,86 @@ ightarrow$ Dùng **ECC2** để tận dụng tối đa cơ chế đa nhiệm Eve
 
 ---
 
-### 3.2 🔬 So Sánh Cấu Trúc Mã Nguồn C Của 4 Cấp Độ Trong Kernel `askar`:
+### 3.2 📊 Bảng So Sánh Toàn Diện Về Định Nghĩa & Đặc Tính Chức Năng (BCC1 vs BCC2 vs ECC1 vs ECC2):
+
+Bảng dưới đây chuẩn hóa các tiêu chí định nghĩa, giới hạn chức năng và hành vi của 4 cấp độ tuân thủ theo đúng đặc tả chuẩn **ISO 17356-3 (OSEK/VDX OS 2.2.3)** và **AUTOSAR OS Specification Release 4.x**:
+
+| Tiêu Chí So Sánh (Specification Criteria) | 🟢 BCC1 *(Basic Class 1)* | 🟡 BCC2 *(Basic Class 2)* | 🟠 ECC1 *(Extended Class 1)* | 🔴 ECC2 *(Extended Class 2)* |
+| :--- | :--- | :--- | :--- | :--- |
+| **1. Định nghĩa chuẩn (Full Specification Name)** | **Basic Conformance Class 1** | **Basic Conformance Class 2** | **Extended Conformance Class 1** | **Extended Conformance Class 2** |
+| **2. Loại Task được phép hỗ trợ (Supported Tasks)** | **Chỉ Basic Tasks** | **Chỉ Basic Tasks** | **Cả Basic Tasks & Extended Tasks** | **Cả Basic Tasks & Extended Tasks** |
+| **3. Số Task trên mỗi mức ưu tiên (Tasks per Priority)** | **Chỉ 1 Task duy nhất** ($O(1)$) | **Nhiều Task** có thể chung mức ưu tiên | **Chỉ 1 Task duy nhất** ($O(1)$) | **Nhiều Task** có thể chung mức ưu tiên |
+| **4. Cơ chế giải quyết trùng ưu tiên** | Không có (Mỗi mức Priority là duy nhất) | **Hàng đợi FIFO** (Task nào kích hoạt trước chạy trước) | Không có (Mỗi mức Priority là duy nhất) | **Hàng đợi FIFO** (Task nào kích hoạt trước chạy trước) |
+| **5. Số lần kích hoạt gối đầu (Multiple Activations per Task)** | **Chỉ 1 lần** (Gọi `ActivateTask` khi Task đang bận sẽ trả về lỗi `E_OS_LIMIT`) | **Nhiều lần ($> 1$)** (Xếp hàng đợi theo tham số `maxActivation`) | **Chỉ 1 lần** (Cho cả Basic và Extended Tasks) | **Nhiều lần ($> 1$)** cho Basic Tasks (Extended Tasks luôn bằng 1) |
+| **6. Cơ chế Sự kiện (Event Mechanism & Synchronization)** | ❌ **Không hỗ trợ** (Cấm tuyệt đối gọi `WaitEvent()`) | ❌ **Không hỗ trợ** (Cấm tuyệt đối gọi `WaitEvent()`) | ✅ **Hỗ trợ đầy đủ** (`SetEvent`, `WaitEvent`, `ClearEvent`) | ✅ **Hỗ trợ đầy đủ** (`SetEvent`, `WaitEvent`, `ClearEvent`) |
+| **7. Không gian trạng thái của Task (State Machine)** | **3 trạng thái:**<br>`SUSPENDED` $\rightarrow$ `READY` $\rightarrow$ `RUNNING` | **3 trạng thái:**<br>`SUSPENDED` $\rightarrow$ `READY` $\rightarrow$ `RUNNING` | **4 trạng thái:**<br>`SUSPENDED` $\rightarrow$ `READY` $\rightarrow$ `RUNNING` $\leftrightarrow$ `WAITING` | **4 trạng thái:**<br>`SUSPENDED` $\rightarrow$ `READY` $\rightarrow$ `RUNNING` $\leftrightarrow$ `WAITING` |
+| **8. Cơ chế Ngăn xếp (Stack Allocation Strategy)** | **Single Shared Stack**: Toàn bộ Task dùng chung **1 vùng Stack duy nhất** $= \max(\text{Stack}_{Task})$. Cực kỳ tiết kiệm RAM! | **Shared Stack**: Có thể dùng chung Stack cho các Task không tiếm quyền nhau. | **Dedicated Stack**: Extended Task **bắt buộc có Stack riêng**; Basic Task có thể chia sẻ Stack. | **Dedicated Stack**: Toàn bộ Extended Task **bắt buộc có Stack riêng độc lập**. |
+| **9. Chi phí RAM / ROM tối thiểu của OS Kernel** | • **RAM:** Cực nhỏ ($< 500\text{ Bytes}$)<br>• **ROM:** Cực nhỏ ($< 4\text{ KB}$) | • **RAM:** Nhỏ ($1 - 4\text{ KB}$)<br>• **ROM:** Nhỏ ($4 - 8\text{ KB}$) | • **RAM:** Vừa ($4 - 16\text{ KB}$)<br>• **ROM:** Vừa ($8 - 16\text{ KB}$) | • **RAM:** Lớn ($> 16\text{ KB} - \text{vài MB}$)<br>• **ROM:** Lớn ($> 32\text{ KB}$) |
+| **10. Khối lượng mã nguồn Kernel (Code Footprint)** | Loại bỏ 100% module `event.c`, Scheduler chỉ là bitmap đơn giản. | Loại bỏ `event.c`, nhưng bổ sung mảng quản lý hàng đợi kích hoạt và FIFO. | Bật đầy đủ module `event.c`, cấp phát con trỏ sự kiện cho từng Task. | Đầy đủ toàn bộ module: `event.c`, Binary Heap Scheduler, Multi-activation arrays. |
+| **11. Phân khúc vi điều khiển & ECU thực tế trên xe hơi** | **MCU 8/16-bit (RAM < 2KB):**<br>• Cảm biến áp suất lốp TPMS<br>• Nút bấm cửa, công tắc gạt mưa LIN slave | **MCU 16/32-bit (RAM 4-16KB):**<br>• Hộp điều khiển cửa xe (DCM)<br>• Điều khiển đèn xe (Lighting)<br>• Motor nâng kính xe | **MCU 32-bit tầm trung (RAM 16-64KB):**<br>• Điều hòa nhiệt độ ô tô (HVAC)<br>• Bảng đồng hồ taplo cơ bản<br>• Hộp Body Control Module (BCM) | **MCU 32-bit cao cấp / Multi-core:**<br>• Quản lý Pin xe điện (BMS)<br>• Bộ điều khiển xe điện (VCU)<br>• Động cơ Inverter / Phanh ABS-ESP<br>*(Cấu hình thực tế của dự án `ascore`!)* |
+| **12. Quan hệ bao hàm (Inclusion Hierarchy)** | Là nền tảng cơ bản nhất (**Base Subset**). | Mở rộng từ **BCC1** (thêm Multi-Prio & Multi-Act). | Mở rộng từ **BCC1** (thêm Extended Task & Events). | Là cấp độ tối thượng, chứa trọn vẹn mọi tính năng của cả 3 cấp trên (**Superset**). |
+
+---
+
+#### 🗺️ Sơ Đồ Trực Quan 1: Quan Hệ Bao Hàm & Tính Tương Thích Ngược (Inclusion Hierarchy):
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│             SƠ ĐỒ PHÂN CẤP BAO HÀM 4 CẤP ĐỘ TUÂN THỦ (INCLUSION HIERARCHY)                    │
+├────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                │
+│   ┌────────────────────────────────────────────────────────────────────────────────────────┐   │
+│   │                        🔴 ECC2 (Extended Conformance Class 2)                          │   │
+│   │   • Hỗ trợ trọn vẹn: Basic Tasks + Extended Tasks                                      │   │
+│   │   • Nhiều Task chung Priority (FIFO) + Kích hoạt lặp (Multiple Activation > 1)         │   │
+│   │                                                                                        │   │
+│   │   ┌───────────────────────────────────┐    ┌───────────────────────────────────┐       │   │
+│   │   │  🟡 BCC2 (Basic Class 2)          │    │  🟠 ECC1 (Extended Class 1)       │       │   │
+│   │   │  • Chỉ Basic Tasks                │    │  • Basic + Extended Tasks         │       │   │
+│   │   │  • Nhiều Task chung Priority      │    │  • Chỉ 1 Task / Priority          │       │   │
+│   │   │  • Multi-Activation > 1           │    │  • Chỉ 1 Activation / Task        │       │   │
+│   │   │  • Không hỗ trợ Event             │    │  • Có hỗ trợ WaitEvent()          │       │   │
+│   │   │                                   │    │                                   │       │   │
+│   │   │   ┌───────────────────────────┐   │    │                                   │       │   │
+│   │   │   │ 🟢 BCC1 (Basic Class 1)   │   │    │                                   │       │   │
+│   │   │   │ • Chỉ Basic Tasks         │───┼────┘ (Kế thừa nền tảng từ BCC1)        │       │   │
+│   │   │   │ • 1 Task / Priority       │   │                                        │       │   │
+│   │   │   │ • 1 Activation / Task     │   │                                        │       │   │
+│   │   │   │ • Dùng chung 1 Stack      │   │                                        │       │   │
+│   │   │   └───────────────────────────┘   │                                        │       │   │
+│   │   └───────────────────────────────────┘    └───────────────────────────────────┘       │   │
+│   └────────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                                                                                │
+│   📌 NGUYÊN TẮC VÀNG: Ứng dụng chạy được trên BCC1 thì LUÔN chạy được trên BCC2, ECC1 và ECC2! │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+#### 🔄 Sơ Đồ Trực Quan 2: So Sánh Vòng Đời Trạng Thái (Task State Models):
+
+```
+  [BCC1 & BCC2: MÔ HÌNH 3 TRẠNG THÁI]                 [ECC1 & ECC2: MÔ HÌNH 4 TRẠNG THÁI]
+  (Chỉ Basic Task - Không thể ngủ chờ)                (Có Extended Task - Cho phép WaitEvent)
+
+        ┌─────────────┐                                     ┌─────────────┐
+        │  SUSPENDED  │                                     │  SUSPENDED  │
+        └──────┬──────┘                                     └──────┬──────┘
+       Activate│ ▲ Terminate                               Activate│ ▲ Terminate
+               ▼ │                                                 ▼ │
+        ┌─────────────┐                                     ┌─────────────┐      SetEvent()
+        │    READY    │                                     │    READY    │◄─────────────────┐
+        └──────┬──────┘                                     └──────┬──────┘                  │
+       Dispatch│ ▲ Preempt                                 Dispatch│ ▲ Preempt               │
+               ▼ │                                                 ▼ │                       │
+        ┌─────────────┐                                     ┌─────────────┐  WaitEvent()   ┌─┴───────────┐
+        │   RUNNING   │                                     │   RUNNING   ├───────────────►│   WAITING   │
+        └─────────────┘                                     └─────────────┘                └─────────────┘
+```
+
+---
+
+### 3.3 🔬 So Sánh Cấu Trúc Mã Nguồn C Của 4 Cấp Độ Trong Kernel `askar`:
 
 Bảng dưới đây chỉ ra chính xác cách 4 cấp độ được cấu hình trong `Os_Cfg.h` và cách mã nguồn C của Kernel thay đổi tương ứng:
 
@@ -684,7 +763,7 @@ Bảng dưới đây chỉ ra chính xác cách 4 cấp độ được cấu hì
 
 ---
 
-### 3.3 📂 Trích Dẫn Mã C Của 4 Cấp Độ Từ Mã Nguồn Gốc:
+### 3.4 📂 Trích Dẫn Mã C Của 4 Cấp Độ Từ Mã Nguồn Gốc:
 
 #### 1. Cấu trúc Task thay đổi theo Cờ Cấu hình ([`kernel_internal.h: L280-L345`](../../as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L280-L345)):
 ```c
@@ -738,7 +817,7 @@ typedef struct TaskVar
 
 ---
 
-### 3.4 🔬 Giải Thích Chi Tiết Thuật Toán Scheduler & Quản Trị Bộ Nhớ Stack Trong Mã Nguồn C:
+### 3.5 🔬 Giải Thích Chi Tiết Thuật Toán Scheduler & Quản Trị Bộ Nhớ Stack Trong Mã Nguồn C:
 
 Trong mã nguồn của nhân hệ điều hành `askar`, sự khác nhau giữa 4 cấp độ tuân thủ được cài đặt ở mức vi kiến trúc mã nguồn C như sau:
 
@@ -805,7 +884,7 @@ ightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải
 
 ---
 
-### 3.5 📂 Thư Mục Chứng Minh Thực Chiến & Hướng Dẫn Cấu Hình 4 Cấp Độ Trong Mã Nguồn:
+### 3.6 📂 Thư Mục Chứng Minh Thực Chiến & Hướng Dẫn Cấu Hình 4 Cấp Độ Trong Mã Nguồn:
 
 Để xem toàn bộ mã nguồn cấu hình mẫu XML, các file `.h`/`.c` sinh ra và phân tích sâu thuật toán lập lịch cho từng cấp độ, xem bộ tài liệu chuyên biệt tại:
 * 📑 [**`00_CONFORMANCE_CLASSES_MASTER_PROOF.md`**](02_conformance_classes_proof/00_CONFORMANCE_CLASSES_MASTER_PROOF.md): Tổng quan cơ chế tính toán cấp độ của Toolchain `GenOS.py`.
