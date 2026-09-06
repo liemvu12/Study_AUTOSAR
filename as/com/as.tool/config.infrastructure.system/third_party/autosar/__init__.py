@@ -1,3 +1,9 @@
+import collections
+import collections.abc
+for _attr in ('Iterable', 'Mapping', 'MutableMapping', 'Sequence', 'MutableSequence', 'Callable'):
+    if not hasattr(collections, _attr):
+        setattr(collections, _attr, getattr(collections.abc, _attr))
+
 from autosar.workspace import Workspace
 import autosar.component
 import autosar.behavior

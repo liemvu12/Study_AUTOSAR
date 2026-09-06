@@ -32,7 +32,10 @@ class Win32Spawn:
 
         import subprocess
 
-        newargs = ' '.join(args[1:])
+        clean_args = []
+        for a in args[1:]:
+            clean_args.append(a.strip('"'))
+        newargs = subprocess.list2cmdline(clean_args)
         cmdline = cmd + " " + newargs
 
         # Make sure the env is constructed by strings
@@ -473,13 +476,14 @@ def Download(url, tgt=None):
         return True
     if(not os.path.exists(tgt)):
         print('Downloading from %s to %s'%(url, tgt))
-        ret = RunCommand('curl %s -o %s'%(url,tgt), False)
+        ret = RunCommand('curl "%s" -o "%s"'%(url,tgt), False)
         if((ret != 0) or (not IsProperType(tgt))):
             tf = url.split('/')[-1]
             RMFile(tf)
             print('temporarily saving to %s'%(os.path.abspath(tf)))
-            RunCommand('wget %s'%(url))
-            RunCommand('mv -v %s %s'%(tf, tgt))
+            RunCommand('wget "%s"'%(url))
+            if(os.path.exists(tf)):
+                shutil.move(tf, tgt)
 
 def AddPackage(url, ** parameters):
     global Env
@@ -507,9 +511,14 @@ def Package(url, ** parameters):
         flag = '%s/.unzip.done'%(pkg)
         if(not os.path.exists(flag)):
             try:
-                RunCommand('cd %s && unzip ../%s'%(pkg, pkgBaseName))
+                import zipfile
+                with zipfile.ZipFile(tgt, 'r') as zip_ref:
+                    zip_ref.extractall(pkg)
             except Exception as e:
-                print('WARNING:',e)
+                try:
+                    RunCommand('unzip "%s" -d "%s"'%(tgt, pkg))
+                except Exception as e2:
+                    print('WARNING:',e2)
             MKFile(flag,'url')
     elif(pkgBaseName.endswith('.rar')):
         tgt = '%s/%s'%(download, pkgBaseName)
@@ -612,17 +621,22 @@ def MKSymlink(src,dst):
     adst = os.path.abspath(dst)
 
     if(not os.path.exists(dst)):
+        try:
+            os.symlink(asrc, adst, target_is_directory=os.path.isdir(asrc))
+            return
+        except Exception:
+            pass
         if(IsPlatformWindows()):
-            RunSysCmd('del %s'%(adst))
-            if((sys.platform == 'msys') and
-               (os.getenv('MSYS') == 'winsymlinks:nativestrict')):
-                RunCommand('ln -fs %s %s'%(asrc,adst))
-            elif(os.path.isdir(asrc)):
-                RunCommand('mklink /D %s %s'%(adst,asrc))
+            if(os.path.isdir(asrc)):
+                RunCommand('mklink /J "%s" "%s"'%(adst,asrc))
             else:
-                RunCommand('mklink %s %s'%(adst,asrc))
+                try:
+                    RunCommand('mklink /H "%s" "%s"'%(adst,asrc))
+                except Exception:
+                    import shutil
+                    shutil.copyfile(asrc, adst)
         else:
-            RunSysCmd('rm -f %s'%(adst))
+            RunSysCmd('rm -f "%s"'%(adst))
             os.symlink(asrc,adst)
 
 def SrcRemove(src, remove):
@@ -1001,6 +1015,19 @@ def SelectCompilerArmNoneEabi():
     Env['AS']='arm-none-eabi-as'
     Env['LINK']='arm-none-eabi-ld'
     Env['S19'] = 'arm-none-eabi-objcopy -O srec --srec-forceS3 --srec-len 32'
+    which_gcc = shutil.which('arm-none-eabi-gcc')
+    if(which_gcc):
+        cpl = os.path.dirname(os.path.dirname(os.path.abspath(which_gcc)))
+        gcc_lib_dirs = glob.glob('%s/lib/gcc/arm-none-eabi/*'%(cpl))
+        if(gcc_lib_dirs):
+            Env.Append(LIBPATH=[gcc_lib_dirs[0]])
+        Env.Append(LIBPATH=['%s/arm-none-eabi/lib'%(cpl)])
+        Env['CC']='arm-none-eabi-gcc -std=gnu99'
+        Env['CXX']='arm-none-eabi-g++'
+        Env['AS']='arm-none-eabi-gcc -c'
+        Env['LINK']='arm-none-eabi-ld'
+        Env['S19'] = 'arm-none-eabi-objcopy -O srec --srec-forceS3 --srec-len 32'
+        return
     if(IsPlatformWindows()):
         gccarm = 'https://launchpad.net/gcc-arm-embedded/5.0/5-2016-q3-update/+download/gcc-arm-none-eabi-5_4-2016q3-20160926-win32.zip'
     else:
@@ -1237,7 +1264,7 @@ def PreProcess(cfgdir, fil):
         return filR
     filC = filR + '.h'
     MKSymlink(fil,filC)
-    cmd = 'gcc -E --include %s/asmconfig.h %s'%(cfgdir, filC)
+    cmd = 'gcc -E --include "%s/asmconfig.h" "%s"'%(cfgdir, filC)
     err, txt = RunSysCmd(cmd)
     if(0 == err):
         raise Exception('gcc preprocessing %s failed:\n%s'%(fil, txt))
@@ -1281,7 +1308,7 @@ def Building(target, sobjs, env=None):
     cfgdir = '%s/config'%(BDIR)
     MKDir(cfgdir)
     env.Append(CPPPATH=['%s'%(cfgdir)])
-    env.Append(ASFLAGS='-I%s'%(cfgdir))
+    env.Append(ASFLAGS=['-I%s'%(cfgdir)])
 
     if('PACKAGES' in env):
         for p in env['PACKAGES']:

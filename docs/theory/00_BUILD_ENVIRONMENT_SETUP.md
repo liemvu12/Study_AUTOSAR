@@ -315,15 +315,16 @@ scons --board=posix
 
 Bạn hãy chạy tuần tự các lệnh sau trên PowerShell/WSL2 để đảm bảo môi trường đã hoàn toàn sẵn sàng.
 
-| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái |
+| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái Thực Tế |
 | :--- | :--- | :--- | :--- |
-| `python --version` | Win / WSL | `Python 3.9.x` (hoặc 3.10.x) | [ ] |
-| `pip --version` | Win / WSL | `pip 2x.x from ... (python 3.9)` | [ ] |
-| `scons --version` | Win / WSL | `SCons by Steven Knight... v4.x.x` | [ ] |
-| `arm-none-eabi-gcc --version` | Win | `arm-none-eabi-gcc (GNU Arm Embedded Toolchain...) 10.x` | [ ] |
-| `gcc --version` | WSL2 | `gcc (Ubuntu 11.x.x) 11.x` | [ ] |
-| `python -c "import lxml, jinja2; print('OK')"` | Win / WSL | `OK` (Không có lỗi báo đỏ) | [ ] |
-| `wsl -l -v` | Win | Có Ubuntu đang chạy (Running / Version 2) | [ ] |
+| `python --version` | Win | `Python 3.12.3` | [x] Đã cấu hình & hoạt động |
+| `pip --version` | Win | `pip 25.2 from Python 3.12` | [x] Đã cấu hình & hoạt động |
+| `scons --version` | Win | `SCons v4.11.1 (Steven Knight et al.)` | [x] Đã cài đặt & hoạt động |
+| `arm-none-eabi-gcc --version` | Win | `Arm GNU Toolchain 14.2.Rel1 (14.2.1)` | [x] Đã cài đặt qua winget & thêm vào PATH |
+| `qemu-system-arm --version` | Win | `QEMU emulator version 11.1.0` | [x] Đã cài đặt qua winget & thêm vào PATH |
+| `gcc --version` | Win (MSYS2) | `gcc.exe (Rev6, MSYS2) 13.2.0` | [x] Đã cấu hình MSYS2 PATH & unzip |
+| `python -c "import lxml, jinja2, serial, SCons; print('OK')"` | Win | `OK` (Không có lỗi báo đỏ) | [x] Đã cài đủ dependencies & polyfill collections |
+| `$env:BOARD="stm32f107vc"; scons` | Win | `scons: done building targets.` | [x] Đã build thành công firmware .exe & .s19 |
 
 ---
 

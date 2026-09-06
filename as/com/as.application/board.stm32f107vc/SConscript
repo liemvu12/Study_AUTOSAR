@@ -62,8 +62,8 @@ if(asenv['RELEASE']=='asboot'):
     lds = '%s/script/linker-boot.lds'%(cwd)
 else:
     lds = '%s/script/linker-app.lds'%(cwd)
-asenv.Append(LINKFLAGS='-static -T %s'%(lds))
-asenv.Append(LINKFLAGS='-Map %s/stm32f107vc.map'%(BDIR))
+asenv.Append(LINKFLAGS=['-static', '-T', lds])
+asenv.Append(LINKFLAGS=['-Map', '%s/stm32f107vc.map'%(BDIR)])
 
 asenv.Append(CPPPATH=['%s/common'%(cwd)])
 

@@ -31,11 +31,11 @@ if(IsPlatformWindows()):
 else:
     cmd ='gcc -D__LINUX__'
 for src in srcs:
-    cmd += ' %s'%(src)
-cmd += ' -I%s/fatfs/source'%(cwd)
-cmd += ' -I%s/com/as.infrastructure/include'%(ASROOT)
+    cmd += ' "%s"'%(src)
+cmd += ' "-I%s/fatfs/source"'%(cwd)
+cmd += ' "-I%s/com/as.infrastructure/include"'%(ASROOT)
 cmd += ' -DUSE_DET -DUSE_FATFS -DFATFS_NATIVE_TOOL'
-cmd += ' -std=gnu99 -o %s/fatfs.exe'%(cwd)
+cmd += ' -std=gnu99 -o "%s/fatfs.exe"'%(cwd)
 MKObject(srcs,'%s/fatfs.exe'%(cwd),cmd, False)
 
 Return('objs')
