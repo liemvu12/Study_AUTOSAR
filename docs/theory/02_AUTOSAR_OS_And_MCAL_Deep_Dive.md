@@ -1094,11 +1094,12 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
         └── scheduleRxIndication(Hrh, CanId, CanDlc, CanSduPtr) (CanIf.c: L317)
                 ├── 1. Khớp phần mềm: (CanId & CanIfCanRxPduCanIdMask) == 0x400 (PDU OSEK_NM_RX trong autosar.arxml: L184)
                 ├── 2. Kiểm tra kiểu User: entry->CanIfRxUserType == CANIF_USER_TYPE_CAN_SPECIAL (GenCanIf.py: L351)
-                └── 3. Gọi con trỏ hàm User Rx Indication đã cấu hình:
+                ├── 3. Gọi con trỏ hàm User Rx Indication đã cấu hình:
                     ((CanIf_FuncTypeCanSpecial)(entry->CanIfUserRxIndication))(channel, pduId, CanSduPtr, CanDlc, CanId)
-                    └──► Nhảy vào: CanIf_OsekNmUserRxIndication(...) (OsekNm_Cfg.c: L159)
-                         (💡 Cơ chế mapping: GenCanIf.py: L369 sinh ra .CanIfUserRxIndication = CanIf_OsekNmUserRxIndication
-                             từ cấu hình autosar.arxml: L184 với UserNotification="CanIf_OsekNmUser")
+                    └──► Nhảy vào: CanIf_OsekNmUserRxIndication(...) (as/com/as.application/common/config/OsekNm_Cfg.c: L159)
+                         (💡 Cơ chế mapping: GenCanIf.py: L369 sinh ra trong file as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c: L357
+                             dòng code: /*.CanIfUserRxIndication =*/ CanIf_OsekNmUserRxIndication,
+                             [Dùng comment C89 positional initialization] từ cấu hình autosar.arxml: L184 với UserNotification="CanIf_OsekNmUser")
                             │
                             ▼
 6. [TẦNG BSW OSEK NM — GIẢI MÃ BẢN TIN QUẢN TRỊ MẠNG & GỌI SETEVENT]
