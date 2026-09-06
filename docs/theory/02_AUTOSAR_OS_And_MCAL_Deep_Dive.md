@@ -1088,21 +1088,32 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
                  (💡 Địa chỉ hàm được đăng ký tĩnh tại Can_Lcfg.c: L70: CanCallbackConfigData.RxIndication)
                     │
                     ▼
-5. [TẦNG CAN INTERFACE (CANIF) — ĐÓNG GÓI PDU & ĐỊNH TUYẾN LÊN TRÊN]
+5. [TẦNG CAN INTERFACE (CANIF) — ĐỊNH TUYẾN PDU LÊN TẦNG TRÊN]
    CanIf_RxIndication(Hrh, CanId, CanDlc, CanSduPtr) (as/com/as.infrastructure/communication/CanIf/CanIf.c: L1145)
         │
-        ├── scheduleRxIndication(Hrh, CanId, CanDlc, CanSduPtr) (CanIf.c: L317)
-        │     ├── Lọc phần mềm Software Filtering theo CanIfCanRxPduCanIdMask
-        │     ├── Đóng gói PduInfoType { .SduLength = CanDlc, .SduDataPtr = CanSduPtr } (CanIf.c: L400)
-        │     └── Chuyển tiếp bản tin CAN lên tầng BSW trên (OsekNm / PduR / CanNm)
+        └── scheduleRxIndication(Hrh, CanId, CanDlc, CanSduPtr) (CanIf.c: L317)
+                ├── 1. Khớp phần mềm: (CanId & CanIfCanRxPduCanIdMask) == 0x400 (PDU OSEK_NM_RX trong autosar.arxml: L184)
+                ├── 2. Kiểm tra kiểu User: entry->CanIfRxUserType == CANIF_USER_TYPE_CAN_SPECIAL (GenCanIf.py: L351)
+                └── 3. Gọi con trỏ hàm User Rx Indication đã cấu hình:
+                    ((CanIf_FuncTypeCanSpecial)(entry->CanIfUserRxIndication))(channel, pduId, CanSduPtr, CanDlc, CanId)
+                    └──► Nhảy vào: CanIf_OsekNmUserRxIndication(...) (OsekNm_Cfg.c: L159)
+                            │
+                            ▼
+6. [TẦNG BSW OSEK NM — GIẢI MÃ BẢN TIN QUẢN TRỊ MẠNG & GỌI SETEVENT]
+   CanIf_OsekNmUserRxIndication(...) (as/com/as.application/common/config/OsekNm_Cfg.c: L159-L173)
         │
-        └── Tầng BSW OsekNm: OsekNm_RxIndication() (OsekNm.c)
+        ├── 1. Đóng gói NMPduType: Source = canId & 0xFF, Destination = sduPtr[0], OpCode = sduPtr[1], RingData
+        ├── 2. Chuyển tiếp vào lõi OSEK NM: NM_RxIndication(channel, &pdu) (OsekNm.c: L963)
+        │     └── NM_RxIndication xử lý máy trạng thái NM_stNormal ──► gọi nmNormalStandard(NetId, NMPDU)
+        │           └── Khi phát hiện cấu hình mạng thay đổi (Delta Config / Ring Data):
+        │                 └──► Thực thi lệnh: SetEvent(NM_ControlBlock[NetId].nmIndDeltaConfig.normal.TaskId,
+        │                                              NM_ControlBlock[NetId].nmIndDeltaConfig.normal.EMask);
+        │                       (OsekNm.c: L199-L211 — Đã cấu hình tại OsekNm_Cfg.c: L141)
+        └── 3. Gọi trực tiếp OS API: SetEvent(TASK_ID_TaskNmInd, EventNmNormal)
+            (as/com/as.infrastructure/system/kernel/askar/kernel/event.c: L53-L96)
                 │
-                └── Gọi OS API: SetEvent(TASK_ID_TaskNmInd, EVENT_MASK_TaskNmInd_RxInd)
-                    (as/com/as.infrastructure/system/kernel/askar/kernel/event.c: L53-L96)
-                │
-                ├── TaskConstArray[TaskNmInd].pEventVar->set |= Mask
-                ├── Phát hiện TaskNmInd đang ở trạng thái WAITING chờ Mask này
+                ├── TaskConstArray[TaskNmInd].pEventVar->set |= EventNmNormal
+                ├── Phát hiện TaskNmInd đang ở trạng thái WAITING chờ Event này (OsekNm_Cfg.c: L98: WaitEvent)
                 ├── Chuyển trạng thái TaskNmInd: WAITING ──► READY
                 └── Sched_AddReady(TASK_ID_TaskNmInd) (sched-bubble.c: L85)
                     ──► Đưa TaskNmInd vào ReadyQueue với Độ ưu tiên Priority = 7!
@@ -1110,7 +1121,7 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
                     (Lúc này vì CallLevel == TCL_ISR2, OS chưa đổi Task ngay mà chờ đến khi thoát ISR).
                         │
                         ▼
-6. [TẦNG THOÁT NGẮT OS WRAPPER & LẬP LỊCH PREEMPTION]
+7. [TẦNG THOÁT NGẮT OS WRAPPER & LẬP LỊCH PREEMPTION]
    ExitISR() (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S: L173-L218)
         │
         ├── 1. Khôi phục CallLevel cũ và giảm ISR2Counter--
@@ -1122,8 +1133,8 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
         │     └──► Nhảy thẳng vào knl_start_dispatch (portableS.S: L73)
         │
         ▼ (CPU KHÔNG quay lại TaskIdle mà chuyển ngữ cảnh ngay lập tức)
-7. [TASK ƯU TIÊN CAO ĐƯỢC THỰC THI NGAY SAU KHI THOÁT NGẮT]
-   TASK(TaskNmInd) (as/com/as.infrastructure/diagnostic/OsekNm/OsekNm_Cfg.c: L110)
+8. [TASK ƯU TIÊN CAO ĐƯỢC THỰC THI NGAY SAU KHI THOÁT NGẮT]
+   TASK(TaskNmInd) (as/com/as.application/common/config/OsekNm_Cfg.c: L93-L122)
         └── Bắt đầu chạy xử lý gói tin mạng CAN với độ trễ tối thiểu!
 ```
 
