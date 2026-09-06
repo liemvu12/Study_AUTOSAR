@@ -1077,20 +1077,29 @@ Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu k
         └── 3. Gọi knl_isr_handler(intno) (portable.c: L118)
                 │
                 ▼
-4. [TẦNG MCAL DRIVER — ĐỌC DỮ LIỆU PHẦN CỨNG & XÓA CỜ NGẮT]
-   Can_RxIsr(CAN_CTRL_1) (as/com/as.infrastructure/arch/stm32f1/mcal/Can.c: L308)
+4. [TẦNG MCAL DRIVER — ĐỌC DỮ LIỆU PHẦN CỨNG & GỌI CALLBACK]
+   Can_RxIsr(CAN_CTRL_1) (as/com/as.infrastructure/arch/stm32f1/mcal/Can.c: L308-L355)
         │
-        ├── 1. Đọc thanh ghi Mailbox phần cứng: CAN ID, DLC, và 8 Data Bytes
-        ├── 2. Ghi thanh ghi CAN_RFR_RFOM0 để giải phóng Mailbox và xóa cờ ngắt phần cứng
-        └── 3. Đóng gói PduInfoType và gọi tiếp lên tầng giao diện BSW:
-            └──► CanIf_RxIndication(Hrh, CanId, &PduInfo) (CanIf.c: L831)
+        ├── 1. Đọc Mailbox phần cứng: id, RxMessage.DLC, RxMessage.Data[]
+        ├── 2. Ghi CAN_RFR_RFOM0 để giải phóng Mailbox và xóa cờ ngắt phần cứng
+        └── 3. Gọi gián tiếp qua con trỏ hàm cấu hình tĩnh CanCallbacks:
+            GET_CALLBACKS()->RxIndication(hohObj->CanObjectId, id, RxMessage.DLC, (uint8*)&RxMessage.Data[0])
+            └──► Nhảy vào hàm thực thi: CanIf_RxIndication(Hrh, CanId, CanDlc, CanSduPtr) (CanIf.c: L1145)
+                 (💡 Địa chỉ hàm được đăng ký tĩnh tại Can_Lcfg.c: L70: CanCallbackConfigData.RxIndication)
                     │
                     ▼
-5. [TẦNG BSW COM & GỌI OS API SETEVENT]
-   OsekNm_RxIndication() (OsekNm.c)
+5. [TẦNG CAN INTERFACE (CANIF) — ĐÓNG GÓI PDU & ĐỊNH TUYẾN LÊN TRÊN]
+   CanIf_RxIndication(Hrh, CanId, CanDlc, CanSduPtr) (as/com/as.infrastructure/communication/CanIf/CanIf.c: L1145)
         │
-        └── Gọi OS API: SetEvent(TASK_ID_TaskNmInd, EVENT_MASK_TaskNmInd_RxInd)
-            (as/com/as.infrastructure/system/kernel/askar/kernel/event.c: L53-L96)
+        ├── scheduleRxIndication(Hrh, CanId, CanDlc, CanSduPtr) (CanIf.c: L317)
+        │     ├── Lọc phần mềm Software Filtering theo CanIfCanRxPduCanIdMask
+        │     ├── Đóng gói PduInfoType { .SduLength = CanDlc, .SduDataPtr = CanSduPtr } (CanIf.c: L400)
+        │     └── Chuyển tiếp bản tin CAN lên tầng BSW trên (OsekNm / PduR / CanNm)
+        │
+        └── Tầng BSW OsekNm: OsekNm_RxIndication() (OsekNm.c)
+                │
+                └── Gọi OS API: SetEvent(TASK_ID_TaskNmInd, EVENT_MASK_TaskNmInd_RxInd)
+                    (as/com/as.infrastructure/system/kernel/askar/kernel/event.c: L53-L96)
                 │
                 ├── TaskConstArray[TaskNmInd].pEventVar->set |= Mask
                 ├── Phát hiện TaskNmInd đang ở trạng thái WAITING chờ Mask này
