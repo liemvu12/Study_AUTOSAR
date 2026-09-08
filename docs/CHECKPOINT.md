@@ -4,9 +4,32 @@
 > 📌 **Mục đích:** Ghi nhận danh sách tất cả các tệp (files) và thư mục (folders) được tạo mới hoặc chỉnh sửa theo từng ngày cụ thể.
 > ⚠️ **Quy tắc bắt buộc (Mandatory Rule):** Mỗi khi thực hiện bất kỳ thay đổi nào trong ngày, **BẮT BUỘC phải cập nhật danh sách vào file `CHECKPOINT.md` này trước khi commit và push lên GitLab**.
 
-## 📅 NGÀY 08/09/2026 (HÔM NAY) — THAY ĐỔI SO VỚI NGÀY 07/09/2026
+## 📅 NGÀY 09/09/2026 (HÔM NAY) — THAY ĐỔI SO VỚI NGÀY 08/09/2026
 
 > 🎯 **Trọng tâm hôm nay:**  
+> • **Hoàn thiện môi trường Build và Quy trình Sinh mã BSW cho cả 2 Target nền tảng theo Chuyên đề 00 (`00_BUILD_ENVIRONMENT_SETUP.md`)**:
+>   - **Target 1: Board Ảo QEMU `lm3s6965evb` (Nghiên cứu OS, Scheduler & Conformance Classes)**:
+>     * Khắc phục lỗi đường dẫn chứa khoảng trắng trong `as/com/as.application/board.lm3s6965evb/SConscript` (chuyển `CCFLAGS` include sang `CPPPATH` và `LINKFLAGS` dạng list).
+>     * Khắc phục lỗi biên dịch DriverLib trên GCC hiện đại: bổ sung define `gcc` trong `as/com/as.infrastructure/arch/lm3s/SConscript` để nhận diện hàm delay assembly `HibernateWriteDelay`.
+>     * Khắc phục lỗi Linker xung đột định nghĩa hàm tick ngắt: gán thuộc tính `__weak` cho `knl_system_tick_handler` trong `as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c` để nhường quyền ưu tiên cho `portable.c`.
+>     * Khắc phục lỗi Linker xung đột cấu hình CAN: bổ sung cờ `NOT_PYGEN_CAN` vào `board.lm3s6965evb/SConscript` để tránh sinh mảng cấu hình tĩnh trùng lặp với `SCan.c`.
+>     * Kiểm chứng sinh mã và biên dịch thành công: sinh ra `lm3s6965evb.exe`, `lm3s6965evb.map`, `Os_Cfg.c/h` (`ISR_NUM = 0`).
+>     * Kiểm chứng chạy thực tế trên QEMU ARM: Chạy lệnh `qemu-system-arm -M lm3s6965evb -kernel ... -serial stdio`, console hiển thị chuẩn xác chuỗi khởi động: `cpu is little endian`, `XCP MTA memory address`, `OSEK NM node ID is 1`, và `STDOUT :TaskIdle is running`.
+>   - **Target 2: Board Vi Điều Khiển Thật `stm32f107vc` (Nghiên cứu MCAL & Ngắt NVIC)**:
+>     * Thực hiện chu trình Full Clean & Regenerate với cờ `--force`: Sinh mã lại 100% từ ARXML qua `ArGen.py`, `GenCanIf.py`, `GenOs.py`, `GenCom.py`...
+>     * Kiểm chứng các cổ vật pháp y bắt buộc: `Os_Cfg.h` chứa `#define ISR_NUM 68`; `Os_Cfg.c` chứa `extern void ISR_ATTR CAN1_RX0_IRQHandler (void)` (dòng 29) và `ISR_ADDR(CAN1_RX0_IRQHandler)` (dòng 602); file `.map` chứa symbol `CAN1_RX0_IRQHandler` và `HAL_CAN_IRQHandler`.
+>   - **Cập nhật Bảng Kiểm Chứng (Section 6 Checklist)** trong `00_BUILD_ENVIRONMENT_SETUP.md`: Đánh dấu `[x]` xác nhận 100% tất cả công cụ và lệnh build đã nghiệm thu thực tế.
+
+### 📂 DANH SÁCH FILE THAY ĐỔI
+1. `as/com/as.application/board.lm3s6965evb/SConscript` (Sửa include path `CPPPATH`, list link flags, bổ sung `NOT_PYGEN_CAN`)
+2. `as/com/as.infrastructure/arch/lm3s/SConscript` (Tối ưu `-Os`, bổ sung define `gcc`, liên kết thư viện `c`)
+3. `as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c` (Bổ sung thuộc tính `__weak` cho `knl_system_tick_handler`)
+4. `docs/theory/00_BUILD_ENVIRONMENT_SETUP.md` (Cập nhật bảng kiểm chứng nghiệm thu môi trường thực tế)
+5. `docs/CHECKPOINT.md` (Cập nhật nhật ký ngày 09/09/2026)
+
+---
+
+## 📅 NGÀY 08/09/2026 — THAY ĐỔI SO VỚI NGÀY 07/09/2026  
 > • **Bổ sung Phân biệt rạch ròi ECU (Electronic Control Unit) vs MCU (Microcontroller Unit) vào Chuyên đề 01 (Mục 3.0 & Glossary)**:
 >   - Giải mã bản chất kỹ nghệ: Phân định rạch ròi giữa MCU (con chip bán dẫn silicon tích hợp CPU/RAM/Flash/Ngoại vi logic đóng vai trò "Bộ não") vs ECU (toàn bộ hộp thiết bị hoàn chỉnh đóng vỏ nhôm IP67, gồm nguồn PMIC/SBC 12V/24V, mạch bảo vệ TVS/EMC, Transceiver CAN/LIN/Ethernet, mạch công suất MOSFET/H-Bridge và giắc cắm Harness đóng vai trò "Toàn bộ cơ thể").
 >   - Bảng so sánh đối chiếu 8 tiêu chí kỹ thuật (Bản chất, Kích thước, Dòng/Nguồn điện, Ngoại vi, Chuẩn kiểm nghiệm AEC-Q100 vs ISO 16750/IP67, Số lượng MCU trên 1 ECU, Chuỗi cung ứng Silicon Vendors vs Tier-1 Suppliers).

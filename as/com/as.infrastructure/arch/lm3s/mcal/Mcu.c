@@ -128,7 +128,7 @@ void Mcu_DistributePllClock( void )
 	SysTickEnable();
 }
 #ifdef __ASKAR_OS__
-void knl_system_tick_handler(void)
+void __attribute__((weak)) knl_system_tick_handler(void)
 {
 	SignalCounter(0);
 }

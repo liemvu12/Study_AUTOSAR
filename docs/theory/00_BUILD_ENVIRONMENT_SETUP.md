@@ -402,15 +402,17 @@ Khi tiến hành đọc hiểu hoặc viết báo cáo phân tích mã nguồn c
 
 Bạn hãy chạy tuần tự các lệnh sau trên PowerShell/WSL2 để đảm bảo môi trường đã hoàn toàn sẵn sàng.
 
-| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái |
+| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái Thực Tế |
 | :--- | :--- | :--- | :--- |
-| `python --version` | Win / WSL | `Python 3.9.x` (hoặc 3.10.x) | [ ] |
-| `pip --version` | Win / WSL | `pip 2x.x from ... (python 3.9)` | [ ] |
-| `scons --version` | Win / WSL | `SCons by Steven Knight... v4.x.x` | [ ] |
-| `arm-none-eabi-gcc --version` | Win | `arm-none-eabi-gcc (GNU Arm Embedded Toolchain...) 10.x` | [ ] |
-| `gcc --version` | WSL2 | `gcc (Ubuntu 11.x.x) 11.x` | [ ] |
-| `python -c "import lxml, jinja2; print('OK')"` | Win / WSL | `OK` (Không có lỗi báo đỏ) | [ ] |
-| `wsl -l -v` | Win | Có Ubuntu đang chạy (Running / Version 2) | [ ] |
+| `python --version` | Win | `Python 3.9.x` đến `3.12.x` | [x] Đã cấu hình & hoạt động (`Python 3.12.3`) |
+| `pip --version` | Win | `pip 2x.x from ...` | [x] Đã cấu hình & hoạt động (`pip 25.2`) |
+| `scons --version` | Win | `SCons by Steven Knight... v4.x.x` | [x] Đã cài đặt & hoạt động (`SCons v4.11.1`) |
+| `arm-none-eabi-gcc --version` | Win | `arm-none-eabi-gcc 10.x` đến `14.x` | [x] Đã cài đặt qua winget & thêm PATH (`v14.2.Rel1`) |
+| `qemu-system-arm --version` | Win | `QEMU emulator version 8.x` đến `11.x` | [x] Đã cài đặt qua winget & thêm PATH (`v11.1.0`) |
+| `gcc --version` | Win (MSYS2) | `gcc (Rev6, Built by MSYS2...) 13.x` | [x] Đã cấu hình MSYS2 PATH & unzip (`v13.2.0`) |
+| `python -c "import lxml, jinja2, serial, SCons; print('OK')"` | Win | `OK` (Không có lỗi báo đỏ) | [x] Đã cài đủ dependencies & polyfill `collections.abc` |
+| `$env:BOARD="lm3s6965evb"; scons` | Win | `scons: done building targets.` | [x] Đã sinh mã & build thành công, chạy QEMU verified |
+| `$env:BOARD="stm32f107vc"; scons` | Win | `scons: done building targets.` | [x] Đã sinh mã & build thành công firmware .exe & .s19 |
 
 ---
 
