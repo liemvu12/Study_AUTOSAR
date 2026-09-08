@@ -9,6 +9,11 @@
 1. [Bối Cảnh Lịch Sử & Động Lực Hình Thành Chuẩn AUTOSAR](#1)
 2. [Mô Hình Kiến Trúc Phân Tầng Tổng Quan (Layered Architecture Overview)](#2)
 3. [TẦNG 1: Phần Cứng Vi Điều Khiển & Bo Mạch ECU (Microcontroller & ECU Hardware Anatomy)](#3)
+   - [3.0 Phân Biệt Rạch Ròi Bản Chất: ECU (Electronic Control Unit) vs MCU (Microcontroller Unit)](#30-phân-biệt-rạch-ròi-bản-chất-ecu-electronic-control-unit-vs-mcu-microcontroller-unit)
+   - [3.1 Phân Rã Phần Cứng Trên Chip Vi Điều Khiển (MCU On-Chip Hardware)](#31-phân-rã-phần-cứng-trên-chip-vi-điều-khiển-mcu-on-chip-hardware)
+   - [3.2 Phân Rã Phần Cứng Gắn Ngoài Trên Bo Mạch (Off-Chip Hardware on ECU Board)](#32-phân-rã-phần-cứng-gắn-ngoài-trên-bo-mạch-off-chip-hardware-on-ecu-board)
+   - [3.3 Bảng Ánh Xạ Phần Cứng Thực Tế ──► Module Phần Mềm AUTOSAR](#33-bảng-ánh-xạ-phần-cứng-thực-tế--module-phần-mềm-autosar)
+   - [3.4 Cơ Chế Khởi Tạo Ngoại Vi: Vi Điều Khiển (MCU) vs Máy Tính (PC) & Bản Chất Của Bootloader](#34-cơ-chế-khởi-tạo-ngoại-vi-vi-điều-khiển-mcu-vs-máy-tính-pc--bản-chất-của-bootloader)
 4. [TẦNG 2: Phần Mềm Cơ Bản (Basic Software - BSW)](#4)
 5. [TẦNG 3: Môi Trường Thực Thi (RTE) & Bus Chức Năng Ảo (VFB)](#5)
 6. [TẦNG 4: Tầng Ứng Dụng (Application Layer & Software Components - SWC)](#6)
@@ -31,7 +36,8 @@
 > 📖 **SWC** (*Software Component*): Thành phần phần mềm ứng dụng, chứa thuật toán điều khiển độc lập.  
 > 📖 **BSW** (*Basic Software*): Phần mềm cơ bản, cung cấp các dịch vụ nền tảng (OS, mạng, bộ nhớ, chẩn đoán).  
 > 📖 **MCAL** (*Microcontroller Abstraction Layer*): Tầng trừu tượng hóa vi điều khiển, giao tiếp trực tiếp với thanh ghi chip.  
-> 📖 **ECU** (*Electronic Control Unit*): Hộp điều khiển điện tử trên xe.  
+> 📖 **ECU** (*Electronic Control Unit*): Hộp điều khiển điện tử trên xe, đóng vai trò một thiết bị hoàn chỉnh (gồm vỏ nhôm IP67, nguồn, transceiver, mạch công suất và MCU bên trong).  
+> 📖 **MCU** (*Microcontroller Unit*): Vi điều khiển, con chip bán dẫn tích hợp CPU, RAM, Flash và ngoại vi logic — đóng vai trò trái tim/bộ não điều khiển bên trong hộp ECU.  
 > 📖 **OEM** (*Original Equipment Manufacturer*): Nhà sản xuất xe gốc (Ví dụ: VinFast, Toyota, BMW).  
 > 📖 **CDD** (*Complex Device Driver*): Trình điều khiển thiết bị phức tạp (Kênh bypass).  
 > 📖 **PDU** (*Protocol Data Unit*): Đơn vị dữ liệu giao thức mạng.  
@@ -213,6 +219,60 @@ Một hộp ECU (*Electronic Control Unit*) trên ô tô là một bo mạch đi
 │                 (CAN/LIN Bus, Cảm Biến Bánh Xe, Van Thủy Lực, Rơ-le Cao Áp)                 │
 +─────────────────────────────────────────────────────────────────────────────────────────────+
 ```
+
+#### 3.0 Phân Biệt Rạch Ròi Bản Chất: ECU (Electronic Control Unit) vs MCU (Microcontroller Unit)
+
+Trong kỹ nghệ ô tô, **ECU** và **MCU** là hai khái niệm nền tảng thường bị người mới bắt đầu hoặc lập trình viên chuyển ngành nhầm lẫn là một. Để làm chủ kiến trúc AUTOSAR, bạn cần phân định rạch ròi sự khác biệt từ cấp độ phần cứng bán dẫn đến cấp độ hệ thống đóng hộp hoàn chỉnh trên xe hơi:
+
+* **MCU (Microcontroller Unit — Vi Điều Khiển):** Là **MỘT CON CHIP BÁN DẪN (IC)** đơn lẻ nằm trên bo mạch PCB. Nó tích hợp nhân xử lý (CPU Core), bộ nhớ (SRAM, Flash), và các khối logic ngoại vi (CAN, ADC, SPI, Timers). MCU đóng vai trò là **"Bộ não / Trái tim"**.
+* **ECU (Electronic Control Unit — Hộp Điều Khiển Điện Tử):** Là **TOÀN BỘ MỘT HỘP THIẾT BỊ HOÀN CHỈNH (Box / Module)** lắp trên xe. Một hộp ECU bao gồm: Vỏ nhôm đúc tản nhiệt chống nước (IP67/IP69K), giắc cắm bó dây điện (Harness Connector), bo mạch in (PCB), mạch nguồn (PMIC/SBC) hạ áp từ ắc-quy 12V/24V, mạch bảo vệ quá áp/chống sét (TVS/EMC), mạch thu phát vật lý (CAN/LIN Transceiver), mạch công suất điều khiển cơ cấu chấp hành (MOSFET/H-Bridge), và **trái tim MCU nằm bên trong**. ECU đóng vai trò là **"Toàn bộ cơ thể hoàn chỉnh"**.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                            HỘP ĐIỀU KHIỂN ĐIỆN TỬ ECU (Vỏ nhôm kín IP67/IP69K)                   │
+│                                                                                                  │
+│   ┌────────────────────────── BO MẠCH IN PCB BÊN TRONG ──────────────────────────┐               │
+│   │                                                                               │   Giắc Cắm   │
+│   │  ┌───────────────────────┐           ┌─────────────────────────────────────┐  │   Dây Điện   │
+│   │  │  MẠCH NGUỒN (PMIC/SBC)│           │   MẠCH CÔNG SUẤT (ACTUATOR DRIVER)  │  │   (Harness)  │
+│   │  │  Hạ áp 12V -> 5V/3.3V │           │   MOSFETs, Cầu H, Rơ-le kích van    │──┼──► [Bơm ABS] │
+│   │  └──────────┬────────────┘           └──────────────────▲──────────────────┘  │              │
+│   │             │                                           │                     │              │
+│   │             ▼                                           │ (Chân PWM/GPIO)     │              │
+│   │  ┌──────────────────────────────────────────────────────┴──────────────────┐  │              │
+│   │  │                     VI ĐIỀU KHIỂN MCU (Chip Silicon)                    │  │              │
+│   │  │  ┌───────────────┐ ┌───────────────┐ ┌────────────────┐ ┌────────────┐  │  │              │
+│   │  │  │   CPU Core    │ │   SRAM / D-TCM│ │   Flash Memory │ │ Hardware   │  │  │              │
+│   │  │  │ (ARM/TriCore) │ │ (Chứa biến tạm│ │ (Chứa Firmware)│ │ Peripherals│  │  │              │
+│   │  │  └───────────────┘ └───────────────┘ └────────────────┘ │(CAN/ADC/SPI│  │  │              │
+│   │  └───────────────────────────────────┬─────────────────────└────────────┘──┘  │              │
+│   │                                      │                                        │              │
+│   │                                      ▼ (Tín hiệu logic Tx/Rx)                 │              │
+│   │  ┌─────────────────────────────────────────────────────────────────────────┐  │              │
+│   │  │ MẠCH THU PHÁT VẬT LÝ (TRANSCEIVERS) & BẢO VỆ CHỐNG SỐC ĐIỆN (TVS/EMC)   │──┼──► [CAN Bus] │
+│   │  └─────────────────────────────────────────────────────────────────────────┘  │              │
+│   └───────────────────────────────────────────────────────────────────────────────┘              │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+##### 📊 Bảng So Sánh Đối Chiếu Toàn Diện ECU vs MCU (8 Tiêu Chí Kỹ Thuật):
+
+| Tiêu Chí So Sánh | MCU (Microcontroller Unit) | ECU (Electronic Control Unit) |
+| :--- | :--- | :--- |
+| **Bản chất vật lý** | **Linh kiện bán dẫn / Chip IC** đơn lẻ hàn trên bo mạch. | **Hộp thiết bị điện tử cơ khí hoàn chỉnh** (Sub-system Box). |
+| **Kích thước & Hình thái** | Một con chip vuông kích thước $10	ext{mm} 	imes 10	ext{mm}$ đến $30	ext{mm} 	imes 30	ext{mm}$. | Một hộp kim loại/nhựa kích thước bằng bàn tay hoặc quyển sách, nặng từ $300	ext{g}$ đến vài $	ext{kg}$. |
+| **Mối quan hệ cấu thành** | Là **thành phần con (Linh kiện cốt lõi)** bên trong ECU. | Là **tổng thể chứa MCU** cùng hàng trăm linh kiện phụ trợ khác (nguồn, tụ, trở, FET). |
+| **Nguồn & Dòng điện** | Điện áp thấp cố định: $1.2	ext{V}, 3.3	ext{V}, 5	ext{V}$ (Dòng tiêu thụ $< 1	ext{A}$). | Điện áp ắc-quy xe: $12	ext{V}$ (xe du lịch) hoặc $24	ext{V}$ (xe tải), chịu tải từ vài Ampe tới hàng trăm Ampe. |
+| **Giao tiếp ngoại vi** | Tín hiệu số logic mức thấp (UART, SPI, CAN TX/RX, PWM 3.3V). | Tín hiệu vi sai truyền xa qua giắc cắm chuyên dụng chịu nước (CAN-H/CAN-L, LIN, Automotive Ethernet). |
+| **Môi trường & Tiêu chuẩn** | Đạt chuẩn độ bền bán dẫn ô tô **AEC-Q100** (Grade 0/1, $-40^\circ	ext{C}$ đến $+150^\circ	ext{C}$). | Đạt chuẩn độ bền hộp xe hơi **ISO 16750**, chuẩn chống nước/bụi **IP67/IP69K**, chống rung xóc gầm xe. |
+| **Số lượng chip** | Là một con chip vật lý duy nhất. | Có thể chứa **1 MCU** (ECU thông thường) hoặc **2-3 MCU** (ECU an toàn ASIL-D như Phanh ESP gồm Main MCU + Safety Watcher MCU). |
+| **Chuỗi cung ứng & Nhà sản xuất** | Các tập đoàn sản xuất bán dẫn (**Silicon Vendors**): NXP, Infineon, STMicroelectronics, Renesas, Microchip. | Các tập đoàn sản xuất linh kiện ô tô cấp 1 (**Tier-1 Suppliers**): Bosch, Continental, Denso, LG VS, Hyundai Mobis, Aptiv. |
+
+##### 🔗 Ánh Xạ Vào Kiến Trúc Phân Tầng AUTOSAR:
+* **Tầng đại diện cho MCU:** Chính là tầng **MCAL (Microcontroller Abstraction Layer)**. Các module như [`Mcu`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Mcu.c), [`Port`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Port.c), [`Dio`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Dio.c), [`Can`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c) do hãng chip (NXP/Infineon/ST) viết ra để điều khiển trực tiếp thanh ghi của con chip vi điều khiển đó.
+* **Tầng đại diện cho ECU:** Chính là tầng **ECU Abstraction Layer** (`CanIf`, `IoHwAb`, `WdgIf`) và **ECU State Manager ([`EcuM`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/EcuM/EcuM.c))**. Chúng quản lý các linh kiện gắn ngoài trên bo mạch (Transceiver ngoài, chip nguồn SBC, IC mở rộng) và quản lý chu trình bật nguồn/ngủ sâu của **toàn bộ hộp ECU** khi tài xế bật/tắt chìa khóa xe (KL15).
+
+---
 
 #### 3.1 Phân Rã Phần Cứng Trên Chip Vi Điều Khiển (MCU On-Chip Hardware)
 Đây là các khối mạch điện tích hợp bên trong con chip Silicon, chịu sự điều khiển trực tiếp của tầng **MCAL**:

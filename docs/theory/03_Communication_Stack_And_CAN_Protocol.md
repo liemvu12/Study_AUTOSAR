@@ -506,6 +506,187 @@ Nếu gói tin có 64 bytes và xử lý giải nén phức tạp ở COM, ISR n
 
 ---
 
+### 4.3 🆎 Case Study Chuyên Sâu: Chuỗi Gọi Hàm Thực Tế Trong Codebase Cho Luồng Nhận Tín Hiệu Chuẩn Truyền Thống (Hardware ──► MCAL ──► CanIf ──► PduR ──► Com ──► SWC Gauge)
+
+> 📌 **Bản chất kiến trúc (Architecture Context):**  
+> • Khác với mô hình **USB-CAN Gateway Dongle** trên `board.stm32f107vc` (nơi ngắt CAN phần cứng bị chuyển tiếp ra USB `canout` để giao tiếp với máy tính PC), đây là **Luồng AUTOSAR ComStack Chuẩn Truyền Thống (Classic Traditional ECU Architecture)** được thiết kế cho một ECU ô tô độc lập (Standalone ECU).  
+> • Luồng dưới đây bóc tách chính xác chuỗi gọi hàm *Function-Call-Function* liên tục xuyên suốt 7 tầng kiến trúc, từ khi tín hiệu điện áp xuất hiện tại chân vi điều khiển cho đến khi kim đồng hồ trên táp-lô quay hiển thị tốc độ xe trong linh kiện phần mềm ứng dụng (`Swc_Gauge`).
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────┐
+│  🌐 CHUỖI GỌI HÀM COMSTACK TRUYỀN THỐNG: TỪ CHÂN PHẦN CỨNG ĐẾN APPLICATION SWC GAUGE / OSEKNM  │
+└────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+1. [TẦNG 0: CHÂN VI ĐIỀU KHIỂN & BỘ THU PHÁT VẬT LÝ]
+   • Cặp dây vi sai CAN_H / CAN_L đưa tín hiệu điện áp vào CAN Transceiver (VD: TJA1042).
+   • Bộ Transceiver giải mã mức vi sai thành luồng bit logic đưa vào chân CAN_RX của vi điều khiển.
+         │
+         ▼
+2. [TẦNG 1: KHỐI PHẦN CỨNG CAN CONTROLLER & BỘ ĐỆM MAILBOX FIFO0]
+   • Khối CAN Controller phần cứng nhận đủ 1 khung tin (ví dụ: CAN ID = 0x102 mang tín hiệu tốc độ xe).
+   • Dữ liệu được nạp vào thanh ghi phần cứng Mailbox FIFO0:
+     - sFIFOMailBox[0].RIR  = (0x102 << 21) | CAN_ID_STD
+     - sFIFOMailBox[0].RDTR = 8 (DLC)
+     - sFIFOMailBox[0].RDLR = 4 byte dữ liệu đầu (Data[0..3] chứa VehicleSpeed)
+     - sFIFOMailBox[0].RDHR = 4 byte dữ liệu sau (Data[4..7] chứa TachoSpeed)
+   • CAN Controller giương cờ ngắt FMP0 và kéo đường ngắt IRQ 20 (CAN1_RX0_IRQn) lên mức tích cực.
+   • Khối NVIC phần cứng tự động thực hiện Stacking ({R0-R3, R12, LR, PC, xPSR}) xuống stack hiện tại trong 12 chu kỳ xung nhịp.
+         │
+         ▼
+3. [TẦNG 2: BẢNG VECTOR & LỚP BỌC NGẮT OS (TRAP & DISPATCHER)]
+   • Vector Table startup.S: L87 xác định ngắt 36 (IRQ 20) nạp địa chỉ hàm nhãn:
+     .word     knl_isr_process
+   • Lớp bọc hợp ngữ OS (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S: L126-L150):
+     knl_isr_process:
+         mov r3, lr
+         bl  EnterISR         /* Lưu {r4-r11} vào RunningVar, ISR2Counter++, chuyển SP sang knl_system_stack_top */
+         mrs r0, ipsr         /* Đọc số hiệu Exception: r0 = 36 */
+         bl  knl_isr_handler  /* Gọi hàm điều phối C với intno = 36 */
+         b   ExitISR          /* Xử lý cướp quyền khi hàm C trả về */
+   • Hàm điều phối C (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c: L118-L130):
+     void knl_isr_handler(int intno) {
+         if (intno > 15) {
+             tisr_pc[intno - 16]();  /* intno = 36 => 36 - 16 = 20 => gọi tisr_pc[20]() */
+         }
+     }
+         │
+         ▼
+4. [TẦNG 3: TRÌNH ĐIỀU KHIỂN MCAL CAN NGUYÊN BẢN (arch/stm32f1/mcal/Can.c)]
+   • Bảng vector gọi hàm ISR MCAL chuẩn (as/com/as.infrastructure/arch/stm32f1/mcal/Can.c: L222):
+     void Can_1_RxIsr(void) {
+         Can_RxIsr(CAN_CTRL_1);
+     }
+   • Hàm xử lý ngắt MCAL CAN (as/com/as.infrastructure/arch/stm32f1/mcal/Can.c: L308-L355):
+     static void Can_RxIsr(int unit) {
+         CAN_HW_t *canHw = GetController(unit);
+         CanRxMsg RxMessage;
+         CAN_Receive(canHw, CAN_FIFO0, &RxMessage); /* Đọc trực tiếp thanh ghi phần cứng Mailbox FIFO0 */
+         
+         /* Trích xuất ID và DLC */
+         Can_IdType id = (RxMessage.IDE != CAN_ID_STD) ? (RxMessage.ExtId | 0x80000000) : RxMessage.StdId;
+         
+         /* Kích hoạt hàm gọi lại tiếp nhận lớp trên (Top-Half) */
+         if (GET_CALLBACKS()->RxIndication != NULL) {
+             GET_CALLBACKS()->RxIndication(hohObj->CanObjectId, id, RxMessage.DLC, (uint8*)&RxMessage.Data[0]);
+         }
+     }
+   • Con trỏ hàm GET_CALLBACKS()->RxIndication liên kết tĩnh trực tiếp tới hàm CanIf_RxIndication()!
+         │
+         ▼
+5. [TẦNG 4: GIAO DIỆN CAN TRUNG GIAN (communication/CanIf/CanIf.c)]
+   • Hàm tiếp nhận CanIf (as/com/as.infrastructure/communication/CanIf/CanIf.c: L380-L442):
+     void CanIf_RxIndication(uint8 Hrh, Can_IdType CanId, uint8 CanDlc, const uint8 *CanSduPtr) {
+         CanIf_RxPduConfigType *entry = (CanIf_RxPduConfigType *)&CanIf_ConfigPtr->RxPduConfig[0];
+         for (int i = 0; i < CanIf_ConfigPtr->Arc_NumRxPdu; i++) {
+             /* 1. Lọc phần mềm: So khớp Mask & ID */
+             if ((CanId & entry->CanIfCanRxPduCanIdMask) == entry->CanIfCanRxPduCanId) {
+                 switch (entry->CanIfRxUserType) {
+                 case CANIF_USER_TYPE_CAN_PDUR:
+                     PduInfoType pduInfo;
+                     pduInfo.SduLength = CanDlc;
+                     pduInfo.SduDataPtr = (uint8 *)CanSduPtr;
+                     PduR_CanIfRxIndication(entry->CanIfCanRxPduId, &pduInfo); /* CHUYỂN TIẾP LÊN PDUR */
+                     return;
+                 case CANIF_USER_TYPE_CAN_SPECIAL:
+                     ((CanIf_FuncTypeCanSpecial)(entry->CanIfUserRxIndication))(
+                         entry->CanIfCanRxPduHrhRef->CanIfCanControllerHrhIdRef,
+                         entry->CanIfCanRxPduId, CanSduPtr, CanDlc, CanId);
+                     return;
+                 ...
+                 }
+             }
+             entry++;
+         }
+     }
+   • Đối chiếu bảng cấu hình sinh mã tĩnh (as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c: L327-L362):
+     - Với CAN ID 0x102 (PDUR_ID_RxMsgAbsInfo): entry->CanIfRxUserType = CANIF_USER_TYPE_CAN_PDUR.
+       ──► Gọi hàm PduR_CanIfRxIndication().
+     - Với CAN ID 0x400 (PDUR_ID_OSEK_NM_RX): entry->CanIfRxUserType = CANIF_USER_TYPE_CAN_SPECIAL.
+       ──► Gọi hàm CanIf_OsekNmUserRxIndication().
+         │
+         ▼
+6. [TẦNG 5: ĐỊNH TUYẾN PDU ROUTER (PduR) & TẦNG TRUYỀN THÔNG COM]
+   • Hàm tiếp nhận PduR (as/com/as.infrastructure/communication/PduR/PduR_CanIf.c: L21-L23):
+     void PduR_CanIfRxIndication(PduIdType CanRxPduId, const PduInfoType* PduInfoPtr) {
+         PduR_ARC_RxIndication(CanRxPduId, PduInfoPtr, 0x01);
+     }
+   • Hàm định tuyến trực tiếp Zero-Cost (as/com/as.infrastructure/communication/PduR/PduR_Logic.c: L182-L189):
+     void PduR_ARC_RxIndicationDirect(const PduRDestPdu_type * destination, const PduInfoType *PduInfo) {
+         /* Tra cứu bảng RoutingPath: destination trỏ tới Com_RxIndication */
+         Com_RxIndication(destination->DestPduId, PduInfo);
+     }
+   • Hàm tiếp nhận của module COM (as/com/as.infrastructure/communication/Com/Com_Com.c: L263-L295):
+     void Com_RxIndication(PduIdType ComRxPduId, const PduInfoType* PduInfoPtr) {
+         const ComIPdu_type *IPdu = GET_IPdu(ComRxPduId);
+         Com_Arc_IPdu_type *Arc_IPdu = GET_ArcIPdu(ComRxPduId);
+         ...
+         /* 1. Sao chép dữ liệu khung tin vào I-PDU buffer */
+         memcpy(IPdu->ComIPduDataPtr, PduInfoPtr->SduDataPtr, IPdu->ComIPduSize);
+         
+         /* 2. Kích hoạt giải nén tín hiệu */
+         Com_RxProcessSignals(IPdu, Arc_IPdu);
+     }
+   • Giải nén bit & Cập nhật Signal (as/com/as.infrastructure/communication/Com/Com_misc.c: L338-L368):
+     void Com_RxProcessSignals(const ComIPdu_type *IPdu, Com_Arc_IPdu_type *Arc_IPdu) {
+         for (uint8 i = 0; IPdu->ComIPduSignalRef[i] != NULL; i++) {
+             comSignal = IPdu->ComIPduSignalRef[i];
+             Arc_Signal = GET_ArcSignal(comSignal->ComHandleId);
+             
+             /* Cập nhật giám sát thời hạn (Deadline Monitoring) */
+             if (comSignal->ComTimeoutFactor > 0) {
+                 Arc_Signal->Com_Arc_DeadlineCounter = comSignal->ComTimeoutFactor;
+             }
+             
+             /* Đánh dấu tín hiệu đã được cập nhật dữ liệu mới */
+             Arc_Signal->ComSignalUpdated = 1;
+             
+             /* Nếu cấu hình COM_IMMEDIATE: kích hoạt callback thông báo */
+             if (IPdu->ComIPduSignalProcessing == COM_IMMEDIATE && comSignal->ComNotification != NULL) {
+                 comSignal->ComNotification();
+             }
+         }
+     }
+         │
+         ▼
+7. [TẦNG 6: TẦNG ỨNG DỤNG CẤP CAO NHẤT (APPLICATION SWC GAUGE)]
+   • Hàm xử lý chu kỳ của linh kiện táp-lô (as/com/as.application/swc/gauge/Swc_Gauge.c: L48-L80):
+     void Swc_Gauge_Step(void) {
+         static Stmo_DegreeType speed = 0;
+         static Stmo_DegreeType tacho = 0;
+         
+         /* 1. Gọi API của COM để đọc dữ liệu tín hiệu đã được giải nén */
+         (void)Com_ReceiveSignal(COM_SID_VehicleSpeed, &VehicleSpeed);
+         (void)Com_ReceiveSignal(COM_SID_TachoSpeed, &TachoSpeed);
+         
+         /* 2. Thực thi thuật toán điều khiển kim đồng hồ tốc độ */
+         speed = VehicleSpeed;
+         tacho = TachoSpeed;
+         
+         /* 3. Truyền góc quay sang mô-tơ bước táp-lô hiển thị cho tài xế */
+         Stmo_SetPos(STMO_SPEED_GAUGE_ID, speed);
+         Stmo_SetPos(STMO_TACHO_GAUGE_ID, tacho);
+     }
+```
+
+---
+
+#### 📊 Bảng So Sánh Hai Mô Hình Kiến Trúc Tiếp Nhận CAN Trong Dự Án:
+
+| Tiêu Chí So Sánh | Mô Hình USB-CAN Gateway Dongle (`board.stm32f107vc`) | Mô Hình AUTOSAR MCAL Chuẩn Truyền Thống (`Can.c`) |
+| :--- | :--- | :--- |
+| **Cấu hình Module (`SConscript`)** | `MODULES = ['SCAN', 'USB_CAN', ...]` | `MODULES = ['CAN', 'CANIF', 'PDUR', 'COM', ...]` |
+| **File Driver CAN tham gia build** | `as/release/download/stm32f107vc/Src/usbd_cdc_if.c` | `as/com/as.infrastructure/arch/stm32f1/mcal/Can.c` |
+| **Hàm xử lý ngắt phần cứng** | `CAN1_RX0_IRQHandler()` $
+ightarrow$ `HAL_CAN_RxCpltCallback()` | `Can_1_RxIsr()` $
+ightarrow$ `Can_RxIsr()` |
+| **Đích đến của bản tin từ bus** | Đẩy vào bộ đệm vòng `canout` (`RB_PUSH(canout, &pdu)`) | Đọc qua `CAN_Receive()` và gọi `GET_CALLBACKS()->RxIndication` |
+| **Kênh truyền dữ liệu tiếp theo** | Tác vụ nền USB đọc `canout` bắn lên PC (SavvyCAN) | Đi trực tiếp lên `CanIf_RxIndication` ngay trong ngắt |
+| **Tầng ComStack nội bộ kết nối với** | Đọc từ `canin` do máy tính PC gửi xuống qua USB CDC | Nhận trực tiếp từ mạng CAN vật lý qua `CanIf_RxIndication` |
+| **Điểm đến cuối cùng** | Phần mềm phân tích trên máy tính PC | Linh kiện phần mềm ứng dụng (`Swc_Gauge`) & Task (`TaskNmInd`) |
+| **Mục đích sử dụng** | Thiết bị chuyển đổi phần cứng USB-CAN Adapter | Hệ thống ECU điều khiển ô tô độc lập (Standalone ECU) |
+
+---
+
 ## 5. Thực Hành & Pitfalls (Mastering the ComStack)
 
 ### 5.1 ⚠️ Common Pitfalls (5 Lỗi Kinh Điển Trong Dự Án AUTOSAR Thực Tế)

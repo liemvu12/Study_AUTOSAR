@@ -24,6 +24,33 @@ Trong các dự án phần mềm nhúng thông thường, việc biên dịch (b
 
 ---
 
+### 1.1 Nguyên Tắc Vàng Pháp Y: Bắt Buộc Build Full Source Các Board Quan Trọng Trước Khi Trace Code
+
+> ⚠️ **CẢNH BÁO QUAN TRỌNG DÀNH CHO KỸ SƯ AUTOSAR & NGƯỜI HỌC:**  
+> **"Source code tĩnh KHÔNG đại diện cho runtime behavior nếu chưa được Build và Sinh mã thành công."**  
+> *(Nguyên tắc số 1 & số 2 — Hiến chương Pháp y Gemini Forensic Constitution).*
+
+#### Bản chất kiến trúc sinh mã trong AUTOSAR (Code Generation Mechanism):
+1. **Các file cấu hình XML/ARXML chỉ là siêu dữ liệu Compile-Time:**  
+   Các thẻ như `<ISR>`, `<TASK>`, `<ALARM>`, `<PDU>` trong các file XML (`infrastructure.xml`, `can1_isr.xml`, `isr_can.xml`, `autosar.arxml`) **hoàn toàn không được CPU nạp hay thực thi tại runtime**.
+2. **Mã nguồn C cấu hình chỉ xuất hiện SAU KHI BUILD:**  
+   Toàn bộ mã nguồn C thực thi (`Os_Cfg.c`, `Os_Cfg.h`, `CanIf_Cfg.c`, `CanIf_Cfg.h`, `Com_Cfg.c`, mảng con trỏ hàm ngắt tĩnh `tisr_pc[]`, bảng ánh xạ PDU, biến quản lý Task/Alarm...) **KHÔNG HỀ TỒN TẠI** trong kho mã nguồn tĩnh ban đầu. Chúng chỉ được sinh ra bởi các công cụ sinh mã Python (`GenOS.py`, `GenCanIf.py`, `GenCom.py`) nằm tại thư mục `as/com/as.tool/` khi trình biên dịch SCons quét các file cấu hình tương ứng của từng board.
+3. **Linker Map File xác thực hàm nào thực sự tồn tại trong Binary:**  
+   Chỉ khi biên dịch và liên kết thành công, Linker mới sinh ra file `.map` (vd: `stm32f107vc.map`, `lm3s6965evb.map`). File này là bằng chứng pháp y duy nhất xác nhận hàm nào được cấp phát địa chỉ bộ nhớ (`.text`), hàm nào bị loại bỏ do dead-code stripping (`--gc-sections`).
+
+#### Hậu quả nghiêm trọng nếu Trace Code khi chưa Build:
+* **Ảo giác mã nguồn (Code Hallucination):** Bạn sẽ tìm kiếm những hàm không tồn tại (ví dụ: tìm `Can_1_RxIsr` khi board đang cấu hình `CAN1_RX0_IRQHandler`, hoặc tìm bảng `tisr_pc` trên board QEMU `lm3s6965evb` vốn có `ISR_NUM = 0`).
+* **Trace nhầm file mẫu (Demo / Dead Code):** Dẫn chứng nhầm các file thư viện bên thứ ba (như STM32CubeMX HAL `stm32f1xx_it.c`) trong khi hệ thống đang chạy MCAL AUTOSAR thuần túy, hoặc ngược lại.
+* **Đứt gãy chuỗi gọi hàm:** Không thể đối chiếu địa chỉ và chỉ số mảng con trỏ hàm (`tisr_pc[intno - 16]()`).
+
+#### Quy tắc bắt buộc trước khi trace bất kỳ Chuyên đề nào:
+Trước khi phân tích dòng chảy mã nguồn trong bất kỳ tài liệu nào (`docs/theory/` hoặc `docs/hands_on_tasks/`), **BẮT BUỘC PHẢI CHẠY BUILD HOÀN CHỈNH CHO CÁC BOARD NỀN TẢNG**:
+1. **`board=lm3s6965evb`**: Board ảo giả lập QEMU ARM Cortex-M3 (chuyên đề OS, Scheduler, Timer/Counter, Alarm, Conformance Classes, ComStack mô phỏng).
+2. **`board=stm32f107vc`**: Board vi điều khiển phần cứng ARM Cortex-M3 (chuyên đề MCAL Driver, ngoại vi phần cứng, ngắt NVIC, USB-CAN Gateway).
+3. **`board=posix`**: Board mô phỏng trên Linux / WSL2 (chuyên đề Native POSIX Threads & SocketCAN).
+
+---
+
 ## 2. Windows Setup (Primary)
 
 ### 2.1 Python Installation
@@ -202,40 +229,100 @@ Biến PATH cho biết hệ điều hành tìm kiếm các lệnh thực thi ở
 
 ---
 
-## 4. First Build Walkthrough — board=posix
+## 4. Hướng Dẫn Build Chi Tiết Các Board Quan Trọng Trước Khi Trace Code
 
-Quá trình này minh họa việc biên dịch mã nguồn AUTOSAR để mô phỏng trên môi trường POSIX (thường thực hiện trong WSL2 để có kết quả tốt nhất).
+Mọi quá trình phân tích và trace code trong dự án `Study_AUTOSAR` bắt buộc phải dựa trên các tệp đã được sinh ra (generated files) và liên kết thành công trong thư mục `as/build/nt/<board>/ascore/`. Dưới đây là quy trình build chi tiết cho từng board mục tiêu:
 
-```bash
-# Bước 1: Di chuyển tới thư mục chứa root SConstruct (ví dụ thư mục as)
-cd C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as
-# (hoặc cd /mnt/c/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as trên WSL2)
+---
 
-# Bước 2: Kích hoạt quá trình build cho mục tiêu POSIX
-scons --board=posix
+### 4.1 Board Ảo QEMU (`board=lm3s6965evb`) — Nghiên Cứu OS, Scheduler & Conformance Classes
 
-# Expected output:
-# scons: Reading SConscript files ...
-# Compiling com/as.infrastructure/communication/Com/Com.c
-# ...
-# Linking build/posix/as
-# scons: done building targets.
+Board này sử dụng kiến trúc ARM Cortex-M3 giả lập, là môi trường chính để chạy kiểm thử SIL (Software-in-the-Loop) và phân tích nhân hệ điều hành `askar`.
+
+```powershell
+# Bước 1: Mở Windows PowerShell và di chuyển vào thư mục as
+cd C:\Users\liem.vu\Liem.vuOD\Study_AUTOSAR-main\as
+
+# Bước 2: Thực hiện build mục tiêu board lm3s6965evb
+scons board=lm3s6965evb
 ```
 
-**Giải thích từng dòng lệnh và output:**
-- `scons --board=posix`: Gọi SCons và truyền vào biến tùy chỉnh `board=posix`. Lệnh này kích hoạt việc đọc file `SConstruct`, nơi mà biến `board` sẽ được phân tích để quyết định sử dụng compiler nào (trong trường hợp này là `gcc` native của Linux/MinGW) và bao gồm các SConscript nào.
-- `Reading SConscript files ...`: SCons tiến hành đọc và parse toàn bộ các file SConstruct và SConscript, xây dựng cây phụ thuộc (dependency tree) trong RAM.
-- `Compiling ...`: SCons tiến hành gọi trình biên dịch (GCC) để biên dịch các file `.c` thành `.o` (object files).
-- `Linking ...`: Gom tất cả object files lại và liên kết thành một file thực thi duy nhất.
-- **Generated files:** File thực thi cuối cùng được sinh ra tại `build/posix/as` (trên Linux không có đuôi .exe).
-- **Chạy thử:**
-  ```bash
-  ./build/posix/as
-  ```
-  Nếu bạn biên dịch trên Windows (sử dụng MinGW), file tạo ra sẽ là `build\posix\as.exe` và chạy bằng:
+* **Sản phẩm sinh mã kiểm chứng bắt buộc (Must-Verify Artifacts):**
+  1. `as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c` & `Os_Cfg.h`:
+     * Chứa cấu hình tĩnh các Task (`TaskIdle`, `SchM_Startup`, `SchM_BswService`).
+     * Chú ý: `#define ISR_NUM 0` (board này dùng CAN Polling qua `SCan.c`, không sinh mảng `tisr_pc`).
+  2. `as/build/nt/lm3s6965evb/ascore/lm3s6965evb.map`: File bản đồ bộ nhớ để tra cứu địa chỉ các symbol.
+  3. `as/build/nt/lm3s6965evb/ascore/lm3s6965evb.exe`: File firmware nhị phân ARM ELF chạy trực tiếp trên QEMU.
+
+* **Lệnh khởi chạy giả lập QEMU:**
   ```powershell
-  .\build\posix\as.exe
+  qemu-system-arm -M lm3s6965evb -kernel build/nt/lm3s6965evb/ascore/lm3s6965evb.exe -serial stdio
   ```
+
+---
+
+### 4.2 Board Phần Cứng Vi Điều Khiển Thật (`board=stm32f107vc`) — Nghiên Cứu MCAL & Ngắt NVIC
+
+Board này đại diện cho vi điều khiển ô tô thực tế với đầy đủ phần cứng ngoại vi (CAN Controller, NVIC, Port, Dio, USB CDC).
+
+```powershell
+# Bước 1: Mở Windows PowerShell và di chuyển vào thư mục as
+cd C:\Users\liem.vu\Liem.vuOD\Study_AUTOSAR-main\as
+
+# Bước 2: Thực hiện build mục tiêu board stm32f107vc
+scons board=stm32f107vc
+```
+
+* **Sản phẩm sinh mã kiểm chứng bắt buộc (Must-Verify Artifacts):**
+  1. `as/build/nt/stm32f107vc/ascore/config/Os_Cfg.c` & `Os_Cfg.h`:
+     * Chứa `#define ISR_NUM 68`.
+     * Dòng 29: `extern void ISR_ATTR CAN1_RX0_IRQHandler (void);`
+     * Dòng 602: `ISR_ADDR(CAN1_RX0_IRQHandler), /* 20 */` (được sinh ra từ `can1_isr.xml`).
+  2. `as/build/nt/stm32f107vc/ascore/stm32f107vc.map`: File ánh xạ bộ nhớ kiểm chứng hàm `CAN1_RX0_IRQHandler` (tại `0x00010084`) và `HAL_CAN_IRQHandler` (tại `0x000104d8`).
+  3. `as/build/nt/stm32f107vc/ascore/stm32f107vc.exe`: File firmware nhị phân nạp chip thật hoặc nạp qua ST-Link/J-Link.
+
+---
+
+### 4.3 Board Mô Phỏng POSIX (`board=posix`) — Nghiên Cứu Trên Môi Trường Linux / WSL2
+
+Board này chạy trực tiếp trên Kernel Linux của WSL2, tận dụng cơ chế POSIX Thread (`pthread`) và SocketCAN.
+
+```bash
+# Thực hiện bên trong Ubuntu (WSL2)
+cd /mnt/c/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as
+scons board=posix
+```
+
+* **Sản phẩm sinh mã kiểm chứng:**
+  * File thực thi native Linux: `build/posix/as`
+  * Chạy thử: `./build/posix/as`
+
+---
+
+### 4.4 Bảng Tổng Hợp Sản Phẩm Sinh Mã Tĩnh Bắt Buộc Kiểm Chứng Trước Khi Trace Code
+
+| Hạng mục kiểm tra | Board QEMU `lm3s6965evb` | Board Vi Điều Khiển Thật `stm32f107vc` | Board POSIX Simulator `posix` |
+| :--- | :--- | :--- | :--- |
+| **Mục đích nghiên cứu** | OS, Scheduling, Alarm, ECC2 | Hardware Interrupt, NVIC, MCAL, USB-CAN | SocketCAN, Linux simulation, POSIX Threads |
+| **Lệnh Build** | `scons board=lm3s6965evb` | `scons board=stm32f107vc` | `scons board=posix` (WSL2) |
+| **Trình biên dịch** | `arm-none-eabi-gcc` | `arm-none-eabi-gcc` | `gcc` (Ubuntu Native) |
+| **File cấu hình sinh ra** | `build/nt/lm3s6965evb/ascore/config/Os_Cfg.c` | `build/nt/stm32f107vc/ascore/config/Os_Cfg.c` | `build/posix/config/Os_Cfg.c` |
+| **Mảng con trỏ ngắt `tisr_pc`** | Không sinh ra (`ISR_NUM = 0`, dùng CAN Polling) | Sinh ra `tisr_pc[68]`, index 20 chứa `CAN1_RX0_IRQHandler` | Không có phần cứng NVIC |
+| **Linker Map File** | `build/nt/lm3s6965evb/ascore/lm3s6965evb.map` | `build/nt/stm32f107vc/ascore/stm32f107vc.map` | `build/posix/as.map` |
+| **File nhị phân cuối** | `lm3s6965evb.exe` (chạy trên QEMU) | `stm32f107vc.exe` (nạp chip thật) | `as` (chạy trên WSL2 terminal) |
+
+---
+
+### 4.5 Quy Trình Pháp Y 3 Bước Trước Khi Bắt Đầu Trace Code (Pre-Trace Verification Workflow)
+
+Khi tiến hành đọc hiểu hoặc viết báo cáo phân tích mã nguồn cho bất kỳ chức năng nào:
+
+1. **Bước 1 — Build Xác Thực:**  
+   Chạy lệnh `scons board=<target>` tương ứng. Đảm bảo terminal kết thúc bằng `scons: done building targets.` mà không có lỗi.
+2. **Bước 2 — Mở File C/H Đã Sinh Ra:**  
+   Truy cập trực tiếp vào `as/build/nt/<target>/ascore/config/` để kiểm tra các file `Os_Cfg.c`, `CanIf_Cfg.c`, `Com_Cfg.c`. Đọc trực tiếp các macro, mảng con trỏ hàm, và tên hàm extern. **Tuyệt đối không suy đoán nội dung từ file XML.**
+3. **Bước 3 — Đối Chiếu File `.map`:**  
+   Mở file `<target>.map`, tìm kiếm symbol của hàm cần trace (ví dụ: `Ctrl+F` tìm `CAN1_RX0_IRQHandler`, `Can_RxIsr`, `Com_SendSignal`). Nếu symbol có địa chỉ thuộc phân vùng `.text`, hàm đó mới thực sự tham gia vào runtime execution.
 
 ---
 
@@ -315,16 +402,15 @@ scons --board=posix
 
 Bạn hãy chạy tuần tự các lệnh sau trên PowerShell/WSL2 để đảm bảo môi trường đã hoàn toàn sẵn sàng.
 
-| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái Thực Tế |
+| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái |
 | :--- | :--- | :--- | :--- |
-| `python --version` | Win | `Python 3.12.3` | [x] Đã cấu hình & hoạt động |
-| `pip --version` | Win | `pip 25.2 from Python 3.12` | [x] Đã cấu hình & hoạt động |
-| `scons --version` | Win | `SCons v4.11.1 (Steven Knight et al.)` | [x] Đã cài đặt & hoạt động |
-| `arm-none-eabi-gcc --version` | Win | `Arm GNU Toolchain 14.2.Rel1 (14.2.1)` | [x] Đã cài đặt qua winget & thêm vào PATH |
-| `qemu-system-arm --version` | Win | `QEMU emulator version 11.1.0` | [x] Đã cài đặt qua winget & thêm vào PATH |
-| `gcc --version` | Win (MSYS2) | `gcc.exe (Rev6, MSYS2) 13.2.0` | [x] Đã cấu hình MSYS2 PATH & unzip |
-| `python -c "import lxml, jinja2, serial, SCons; print('OK')"` | Win | `OK` (Không có lỗi báo đỏ) | [x] Đã cài đủ dependencies & polyfill collections |
-| `$env:BOARD="stm32f107vc"; scons` | Win | `scons: done building targets.` | [x] Đã build thành công firmware .exe & .s19 |
+| `python --version` | Win / WSL | `Python 3.9.x` (hoặc 3.10.x) | [ ] |
+| `pip --version` | Win / WSL | `pip 2x.x from ... (python 3.9)` | [ ] |
+| `scons --version` | Win / WSL | `SCons by Steven Knight... v4.x.x` | [ ] |
+| `arm-none-eabi-gcc --version` | Win | `arm-none-eabi-gcc (GNU Arm Embedded Toolchain...) 10.x` | [ ] |
+| `gcc --version` | WSL2 | `gcc (Ubuntu 11.x.x) 11.x` | [ ] |
+| `python -c "import lxml, jinja2; print('OK')"` | Win / WSL | `OK` (Không có lỗi báo đỏ) | [ ] |
+| `wsl -l -v` | Win | Có Ubuntu đang chạy (Running / Version 2) | [ ] |
 
 ---
 

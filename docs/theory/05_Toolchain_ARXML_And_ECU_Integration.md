@@ -14,6 +14,8 @@
 1. [Bản Chất Kỹ Thuật Của ARXML & Mô Hình AUTOSAR Meta-Model](#1-bản-chất-kỹ-thuật-của-arxml--mô-hình-autosar-meta-model)
 2. [Phân Loại 4 Tệp ARXML Cốt Lõi Trong Dự Án Ô Tô](#2-phân-loại-4-tệp-arxml-cốt-lõi-trong-dự-án-ô-tô)
 3. [Quy Trình Công Cụ Kỹ Nghệ Ô Tô (Industry Toolchain Workflow)](#3-quy-trình-công-cụ-kỹ-nghệ-ô-tô-industry-toolchain-workflow)
+   - [3.4 Bản Chất Kỹ Nghệ: File ARXML Sinh Ra Những Gì? (BSW Static Core vs. Generated Code)](#34--bản-chất-kỹ-nghệ-file-arxml-sinh-ra-những-gì-bsw-static-core-vs-generated-code)
+   - [3.5 Nghịch Lý Linker Script Trong Toolchain & ECU Integration (So Sánh AUTOSAR vs Bare-Metal vs Linux/Zephyr)](#35--nghịch-lý-linker-script-trong-toolchain--ecu-integration-so-sánh-toàn-diện-autosar-linker-vs-bare-metal-vs-linuxzephyr)
 4. [Chu Trình Khởi Động & Vòng Đời Tích Hợp ECU (ECU Integration & Lifecycle)](#4-chu-trình-khởi-động--vòng-đời-tích-hợp-ecu-ecu-integration--lifecycle)
 5. [Giám Sát An Toàn Chương Trình (Watchdog Manager - WdgM Masterclass)](#5-giám-sát-an-toàn-chương-trình-watchdog-manager---wdgm-masterclass)
 6. [Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp Trong `parai/as`](#6-bằng-chứng-mã-nguồn--định-nghĩa-giao-tiếp-trong-paraias)
@@ -235,6 +237,133 @@ Một module BSW (như COM hay CANIF) luôn bao gồm **2 nửa tách biệt**:
 3. **Viết mã điều khiển phần cứng đặc thù:** Viết trong các hàm BSW Callouts (`EcuM_AL_DriverInitOne()`) và OS Hooks (`StartupHook()`, `ErrorHook()`).
 
 ---
+
+### 3.5 ⚡ Nghịch Lý Linker Script Trong Toolchain & ECU Integration: So Sánh Toàn Diện AUTOSAR Linker vs Bare-Metal vs Linux/Zephyr
+
+> 🎯 **Trọng tâm ECU Integration:**  
+> Trong quy trình tích hợp phần mềm ô tô (ECU Integration), **Linker Script (`.ld`, `.lds`, `.lsl`)** chính là bản thiết kế quy hoạch bộ nhớ vật lý tối thượng. Nó là điểm hội tụ cuối cùng của chuỗi Toolchain — nơi kết hợp mã BSW tĩnh, MCAL driver, mã cấu hình sinh tự động từ ARXML (`Rte.c`, `<Mod>_PBcfg.c`) và thuật toán ứng dụng SWC thành một file nhị phân hoàn chỉnh (`.hex` / `.elf` / `.s19`).
+
+Một hiểu lầm rất phổ biến của nhiều kỹ sư nhúng khi mới bước vào ngành Automotive là:  
+*"Vì AUTOSAR MCAL và BSW không dùng macro gom hàm đăng ký driver tự động vào linker section (như `.initcall` trong Linux hay Zephyr), nên nhiệm vụ của Linker Script trong AUTOSAR đơn giản và nhàn hơn rất nhiều."*
+
+Thực tế hoàn toàn ngược lại 180 độ: **Đây là một "Nghịch lý Kỹ nghệ" (Engineering Paradox)!**  
+Dù không dùng kỹ thuật gom hàm đăng ký động, nhưng **Linker Script trong AUTOSAR Classic lại là một trong những Linker Script phức tạp, đồ sộ và khắt khe bậc nhất thế giới hệ thống nhúng** (trong các dự án ECU thương mại của Bosch, Continental, Denso, một file linker script thường dài từ **2.000 đến hơn 10.000 dòng**).
+
+---
+
+#### 1. Vì Sao Kỹ Thuật Linker Section Trong Linux/Zephyr Trông "Nguy Hiểm" Nhưng Lại Rất "Nhàn"?
+
+Trong Linux Kernel hay Zephyr RTOS, cơ chế driver self-registration hoạt động theo nguyên lý đặt biến con trỏ hàm vào một section chung:
+```c
+// Ví dụ trong Linux:
+#define module_init(initfn)     static initcall_t __initcall_##initfn __attribute__((__section__(".initcall6.init"))) = initfn;
+```
+Đối với Linker của Linux hay Zephyr, nhiệm vụ này **vô cùng đơn giản**:  
+Linker chỉ cần một khối lệnh gom tất cả các con trỏ hàm nằm rải rác trong các file object vào giữa 2 nhãn địa chỉ:
+```lds
+/* Linker script của Linux/Zephyr - Cực kỳ tinh gọn */
+__initcall_start = .;
+KEEP(*(.initcall*))
+__initcall_end = .;
+```
+Linker **hoàn toàn không cần quan tâm** hàm đó thuộc về driver nào, kích thước bao nhiêu bytes, nằm ở lõi CPU số mấy, hay có vi phạm phân vùng an toàn MPU hay không. Khi khởi động, Kernel chỉ việc chạy một vòng lặp `for` duyệt từ `__initcall_start` đến `__initcall_end` và gọi từng con trỏ hàm theo thứ tự level.
+
+---
+
+#### 2. 4 "Cơn Ác Mộng" Của Kỹ Sư ECU Integration Với Linker Script Trong AUTOSAR
+
+Trong thế giới ô tô (Automotive ASIL-D), cơ chế "nhét chung một túi" của Linux/Zephyr bị cấm hoàn toàn. Thay vào đó, kỹ sư ECU Integration phải trực tiếp cấu hình Linker Script để giải quyết 4 bài toán phần cứng sống còn:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│                   4 TRỌNG TRÁCH KỸ NGHỆ CỦA LINKER SCRIPT TRONG AUTOSAR                 │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│ 1. ĐẶC TẢ ÁNH XẠ BỘ NHỚ AUTOSAR MemMap (Hàng trăm Sections riêng biệt)                │
+│    • Mỗi hàm, mỗi biến đều bị bọc bởi cặp macro: CAN_START_SEC_CODE / STOP_SEC_CODE   │
+│    • Phân lập rạch ròi: Code chạy Flash vs Code chạy RAM (.ramcode cho Fls Driver)    │
+│    • Tách biến khởi tạo khi bật nguồn vs biến lưu vết tai nạn không bị xóa (.noinit)  │
+│                                                                                        │
+│ 2. PHÂN VÙNG BẢO VỆ BỘ NHỚ MPU & AN TOÀN ASIL (ISO 26262 Partitioning)                 │
+│    • Cô lập ứng dụng ASIL-D (Phanh, Túi khí) khỏi ứng dụng QM (Điều hòa, Báo xăng)    │
+│    • Mạch phần cứng MPU đòi hỏi địa chỉ và kích thước PHẢI LÀ LŨY THỪA CỦA 2         │
+│      (Power of 2 Alignment: 32B, 64B, 128B, 1KB, 4KB, 16KB...). Lệch 1 byte -> Crash! │
+│                                                                                        │
+│ 3. PHÂN BỔ BỘ NHỚ ĐA LÕI PHẦN CỨNG (Multi-Core Silicon Allocation)                    │
+│    • Chip ô tô hiện đại có 3-6 lõi (Infineon AURIX TC397, NXP S32G, Renesas RH850)    │
+│    • Định tuyến code/data vào đúng bộ nhớ cục bộ siêu tốc của từng lõi (DSPR0, DSPR1)  │
+│    • Bộ nhớ chia sẻ đa lõi (Inter-Core Shared Memory) phải cấu hình Non-cacheable     │
+│                                                                                        │
+│ 4. PHÂN ĐOẠN NẠP FIRMWARE: BOOTLOADER, CALIBRATION DATA & OTA A/B SWAP                 │
+│    • Vùng Calibration Data (.calib): Ghim cố định địa chỉ tuyệt đối cho tool INCA     │
+│    • Vùng Flash Driver nạp động (.flsdrv): Nạp tạm vào RAM để nạp UDS Bootloader      │
+│                                                                                        │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+##### Trọng trách 1: Đặc tả Memory Mapping (`MemMap.h`)
+Trong một dự án AUTOSAR thương mại (Vector DaVinci, EB Tresos), toàn bộ mã nguồn của hàng chục module BSW và hàng trăm SWC đều bị bọc kín bởi các macro MemMap:
+```c
+#define CAN_START_SEC_CODE
+#include "Can_MemMap.h"
+void Can_Init(const Can_ConfigType *Config) { ... }
+#define CAN_STOP_SEC_CODE
+#include "Can_MemMap.h"
+
+#define CAN_START_SEC_VAR_NOINIT_8BIT
+#include "Can_MemMap.h"
+static uint8 _can_filter_index;
+#define CAN_STOP_SEC_VAR_NOINIT_8BIT
+#include "Can_MemMap.h"
+```
+Linker Script phải có các chỉ thị riêng cho từng phân vùng đó. File linker script của một ECU thực tế trên xe có thể **dài từ 2.000 đến hơn 10.000 dòng**, chi tiết đến từng biến 8-bit, 16-bit, 32-bit nhằm tối ưu hóa bộ nhớ đệm cache và bus alignment.
+
+##### Trọng trách 2: Hiện tượng Read-While-Write (RWW) và Vùng Nhớ `.ramcode`
+Khi Fls Driver thực hiện xóa hoặc ghi một Sector Flash, cấu trúc bán dẫn của Flash Bank đó bị khóa hoàn toàn. Nếu CPU cố tình đọc lệnh tiếp theo từ Flash, chip sẽ văng lỗi **Bus Fault / Data Abort**.  
+👉 Kỹ sư ECU Integration bắt buộc phải cấu hình Linker Script tạo phân vùng `.ramcode`: Mã máy được lưu ở Flash nhưng khi chạy phải được copy vào RAM và thực thi hoàn toàn trên RAM (`AT>FLASH >RAM`).
+
+##### Trọng trách 3: Phân vùng MPU và Quy tắc "Lũy Thừa 2" (Power-of-2 Alignment)
+Để đạt chứng chỉ ASIL-D theo tiêu chuẩn ISO 26262, các OS-Application có mức an toàn khác nhau phải được cách ly hoàn toàn bằng phần cứng MPU.  
+Phần cứng MPU của vi điều khiển (ARM Cortex-M/R MPU, TriCore MPU) không cho phép đặt biên giới tùy tiện. Vùng nhớ được giám sát bắt buộc phải có kích thước và địa chỉ khởi đầu căn chỉnh theo $2^N$ (32 bytes, 64 bytes, 512 bytes, 4 KB, 16 KB...).  
+Nếu kỹ sư cấu hình Linker Script thiếu chỉ thị `. = ALIGN(4096);`, chỉ cần compiler dịch code lệch 1 byte là phần cứng MPU sẽ từ chối thiết lập boundary $
+ightarrow$ ECU sập ngay khi vừa boot!
+
+##### Trọng trách 4: Vùng Calibration Hiệu Chuẩn Tham Số Xe (A2L / XCP)
+Trong ngành ô tô, các thông số điều khiển (Bản đồ phun xăng, góc mở bướm ga, giới hạn dòng pin BMS) không được biên dịch lẫn vào code thông thường.  
+Linker Script phải ghim toàn bộ biến hiệu chuẩn này vào một phân vùng Flash cố định tuyệt đối (`.calib` section). Nhờ đó, các kỹ sư cân chỉnh xe hơi ngoài hiện trường có thể dùng phần mềm **Vector CANape** hoặc **ETAS INCA** qua giao thức XCP/UDS để ghi đè tham số mới trực tiếp vào bộ nhớ mà không cần phải compile lại toàn bộ phần mềm ECU.
+
+---
+
+#### 3. Bảng So Sánh Toàn Diện Linker Script Giữa 3 Thế Giới Kiến Trúc
+
+| Tiêu Chí So Sánh | Bare-Metal Thông Thường (Keil / IAR / STM32Cube) | General OS (Linux / Zephyr / FreeRTOS) | Automotive AUTOSAR Classic (ISO 26262 ASIL-D) |
+| :--- | :--- | :--- | :--- |
+| **Quy mô Linker Script** | Rất ngắn (30 – 80 dòng). | Trung bình (100 – 300 dòng). | **Cực kỳ đồ sộ (1.000 – 10.000+ dòng)**. |
+| **Cơ chế nạp Driver** | Gọi trực tiếp trong `main()`. | **Dùng Macro tự đăng ký qua Linker Section** (`.initcall`). | **Khởi tạo tường minh qua `EcuM`**, cấm tự đăng ký động. |
+| **Phân chia Section** | Cơ bản: `.text`, `.data`, `.bss`, `.rodata`. | Cơ bản + Driver sections + Initcall levels. | **Hàng trăm Sections chi tiết** theo chuẩn `MemMap.h` (`SEC_CODE`, `SEC_VAR_FAST`, `SEC_VAR_NOINIT`). |
+| **Bảo vệ Bộ nhớ (Memory Protection)** | Không có (Flat memory model). | 2 cấp (User Space vs Kernel Space) hoặc MPU cơ bản. | **Đa phân vùng MPU khắt khe (OS-Applications)**, bắt buộc Power-of-2 Alignment cho ASIL-D. |
+| **Hỗ trợ MCU Đa Lõi (Multi-Core)** | Hiếm khi hỗ trợ hoặc cấu hình thô sơ. | SMP Kernel tự quản lý bộ nhớ tập trung qua MMU. | **Phân bổ tĩnh chi li từng Byte** vào Local RAM của Core (DSPR0, DSPR1, Core-Specific Stacks, Spinlock Shared RAM). |
+| **Xử lý RAM Code (RWW)** | Hiếm khi cấu hình trừ khi tự làm IAP Bootloader. | Không áp dụng (Kernel chạy hoàn toàn trên RAM). | **Bắt buộc cấu hình `.ramcode`** cho Flash Driver (`Fls`) để tránh nghẽn bus CPU khi xóa ghi Flash. |
+| **Vùng Dữ liệu Hiệu chuẩn (Calibration)** | Không hỗ trợ. | Không có khái niệm này. | **Ghim địa chỉ tuyệt đối cố định** (`.calib`) phục vụ cân chỉnh xe qua CANape / INCA (A2L / XCP). |
+
+---
+
+#### 4. Minh Chứng Pháp Y Trong Mã Nguồn Thực Tế `Study_AUTOSAR` (`parai/as`)
+
+Ngay trong dự án `Study_AUTOSAR`, hệ thống cung cấp tới **17 file Linker Script (`.lds`)** đại diện cho các phân đoạn vận hành khác nhau của chiếc xe:
+
+1. **Linker Script Chạy Ứng Dụng Bình Thường** — [board.stm32f107vc/script/linker-app.lds](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-app.lds):
+   * Phân bổ Flash từ `0x00000000`, RAM từ `0x20000000`.
+   * Cấu hình cơ chế nạp biến khởi tạo: `.data : AT (__etext) { ... } > RAM` (Lưu giá trị khởi tạo ở Flash, khi boot copy sang RAM).
+2. **Linker Script Nạp Bootloader Ô Tô** — [board.stm32f107vc/script/linker-boot.lds](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-boot.lds):
+   * Tách đôi Flash: Dành `64KB` đầu tiên cho Bootloader (`FLASH`), và cô lập `192KB` tiếp theo từ địa chỉ `0x00010000` cho `APPCODE`.
+   * Ghim sẵn địa chỉ nhảy sang ứng dụng: `application_main = 0x00010401;`.
+3. **Linker Script Nạp Động Flash Driver Vào RAM** — [board.stm32f107vc/script/linker-flsdrv.lds](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-flsdrv.lds):
+   * Điểm kỳ lạ nhưng cực kỳ tinh tế: Vùng `FLASH (rx)` lại có địa chỉ `ORIGIN = 0x20000000` (Chính là vùng SRAM)!
+   * Đây là driver ghi xóa flash được công cụ UDS Bootloader nạp tạm thời vào RAM để thực thi, giải quyết triệt để vấn đề Read-While-Write restriction.
+
+---
+
 ## 4. Chu Trình Khởi Động & Vòng Đời Tích Hợp ECU (ECU Integration & Lifecycle)
 
 ### 🟢 LEVEL 1: NEWBIE FRIENDLY
@@ -544,46 +673,21 @@ Dưới đây là bộ 60 câu hỏi cốt lõi được chọn lọc từ quy t
     }
     ```
 
+61. **Vì sao Linker Script trong AUTOSAR Classic lại đồ sộ và phức tạp hơn rất nhiều so với Linux/Zephyr dù không dùng macro gom hàm đăng ký động?**  
+    *Đáp án:* Vì AUTOSAR phải xử lý hàng trăm section theo `MemMap.h`, căn chỉnh lũy thừa 2 (Power-of-2 Alignment) cho phần cứng MPU ASIL-D, phân bổ tĩnh bộ nhớ đa lõi (DSPR/TCM), định tuyến `.ramcode` tránh hiện tượng Flash Read-While-Write (RWW), và ghim địa chỉ tuyệt đối cho vùng Calibration A2L/XCP.
+62. **Vùng nhớ `.ramcode` trong Linker Script của ECU ô tô dùng để làm gì và giải quyết vấn đề vật lý nào?**  
+    *Đáp án:* Giải quyết hiện tượng Read-While-Write (RWW) của bộ nhớ Flash. Khi CPU phát lệnh ghi/xóa Flash, bus đọc của bank Flash đó bị treo. Driver ghi Flash (`Fls.c`) phải được Linker chuyển sang thực thi hoàn toàn trong RAM (`.ramcode`) để CPU không bị nghẽn bus hoặc dính BusFault.
 
-## 8. 🔴 EXPERT LEVEL - EXTENDED DEEP DIVE APPENDIX
 
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
 
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
+## 8. 🔴 EXPERT LEVEL - EXTENDED DEEP DIVE APPENDIX: ECU INTEGRATION CHECKLIST
 
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
+Bảng kiểm tra thực chiến dành cho Senior / Lead ECU Integration Engineer trước khi phát hành bản build Firmware thương mại:
 
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
-Đây là phần bổ sung chuyên sâu dành cho Expert (Deep Dive), phân tích chi tiết thêm các khía cạnh an toàn chức năng (ISO 26262), cấu hình nâng cao trong Vector DaVinci, ETAS ISOLAR, và các ví dụ mã nguồn thực tế mở rộng từ dự án parai/as để đảm bảo bao phủ 100% kiến thức Senior/Lead Automotive System Integrator.
-
+| STT | Hạng Mục Kiểm Tra | Công Cụ & Bằng Chứng Pháp Y | Rủi Ro Nếu Bỏ Qua |
+| :--- | :--- | :--- | :--- |
+| 1 | **Map File Verification** | Kiểm tra file `.map` (vd: `stm32f107vc.map`), đối chiếu tổng dung lượng Flash/RAM. | Tràn bộ nhớ (Overflow), đè lên vùng Bootloader hoặc Vector Table. |
+| 2 | **Stack & Heap Budgeting** | Đo đạc `knl_system_stack_top` và Task Stacks, đảm bảo High-Watermark < 80%. | Tràn Stack (Stack Overflow) dẫn tới ghi đè biến BSS hoặc HardFault. |
+| 3 | **MPU Alignment Check** | Xác thực mọi Region MPU có `ALIGN(2^N)` và kích thước tối thiểu đúng chuẩn vi điều khiển. | MPU cấu hình sai dải địa chỉ $\rightarrow$ Core Dump ngay lệnh khởi tạo đầu tiên. |
+| 4 | **Flash RWW Isolation** | Kiểm tra các hàm của `Fls` driver nằm 100% trong `.ramcode` (VMA thuộc dải RAM). | Bus Fault / Data Abort khi ECU ghi chẩn đoán DTC hoặc nạp phần mềm qua UDS. |
+| 5 | **Calibration Origin Anchor** | Đối chiếu địa chỉ vùng `.calib` trong file `.a2l` với file `.map`. | Kỹ sư CANape/INCA ghi đè nhầm vào vùng Code thực thi làm chết ECU trên xe thử nghiệm. |
