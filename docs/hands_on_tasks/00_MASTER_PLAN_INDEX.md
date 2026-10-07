@@ -15,7 +15,7 @@ docs/hands_on_tasks/
 ├── 00_MASTER_PLAN_INDEX.md          ← File này (Roadmap tổng thể)
 ├── 01_Architecture_VFB_Tasks.md     ← Chuyên đề 01: Layered Arch & VFB (5 tasks)
 ├── 02_OS_MCAL_Tasks.md              ← Chuyên đề 02: AUTOSAR OS & MCAL (5+1 tasks)
-├── 03_ComStack_CAN_Tasks.md         ← Chuyên đề 03: ComStack & CAN Protocol (7 tasks)
+├── 03_ComStack_CAN_Tasks.md         ← Chuyên đề 03: ComStack & CAN Protocol (10 tasks)
 ├── 04_Diagnostic_Memory_Tasks.md    ← Chuyên đề 04: UDS Diagnostic & Memory (5+1 tasks)
 ├── 05_Toolchain_ARXML_Tasks.md      ← Chuyên đề 05: Toolchain & ARXML (4+1 tasks)
 ├── 06_RealWorld_BMS_VCU_Tasks.md    ← Chuyên đề 06: BMS / VCU / Body ECU (3+1 tasks)
@@ -23,7 +23,8 @@ docs/hands_on_tasks/
 ├── 08_Ethernet_SOMEIP_DoIP_Tasks.md ← Chuyên đề 08: Automotive Ethernet & SOME/IP/DoIP (4 tasks)
 └── solutions/
     ├── 01_Architecture_VFB_Solutions.md     ← Đáp án Chuyên Đề 01 (Boot, Hooks, Linker, BSW Order, Ports)
-    ├── 02_ComStack_CAN_Solutions.md         ← Đáp án Chuyên Đề 03 (End-to-End CAN 6 Tầng, Timing, CanTp, COM)
+    ├── 02_OS_MCAL_Solutions.md              ← Đáp án Chuyên Đề 02 (Tasks, ISRs, Resources, MCAL Drivers)
+    ├── 03_ComStack_CAN_Solutions.md         ← Đáp án Chuyên Đề 03 (End-to-End CAN 6 Tầng, Timing, CanTp, COM, Oscilloscope, ARXML, CanSM)
     └── 03_LIN_Ethernet_Solutions.md         ← Đáp án Chuyên Đề 07 & 08 (LIN Stack & Automotive Ethernet/DoIP)
 ```
 
@@ -35,13 +36,13 @@ docs/hands_on_tasks/
 |:---:|---|---|:---:|:---:|:---:|
 | 01 | [Architecture & VFB](./01_Architecture_VFB_Tasks.md) | Layered Architecture, RTE, Memory, OS Hooks | 5 tasks | ~12 giờ | Tuần 1 |
 | 02 | [OS & MCAL](./02_OS_MCAL_Tasks.md) | OSEK OS, Task, ISR, MCAL Drivers | 5+1 tasks | ~15 giờ | Tuần 1–2 |
-| 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, 6-Layer ComStack E2E, CanTp, COM | 7 tasks | ~17 giờ | Tuần 2 |
+| 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, 6-Layer ComStack E2E, CanTp, COM, Oscilloscope, ARXML, CanSM | 10 tasks | ~25 giờ | Tuần 2 |
 | 04 | [Diagnostic & Memory](./04_Diagnostic_Memory_Tasks.md) | UDS, DCM, DEM, NvM, Fee | 5+1 tasks | ~18 giờ | Tuần 3 |
 | 05 | [Toolchain & ARXML](./05_Toolchain_ARXML_Tasks.md) | ARXML, EcuM, BswM, Code Gen | 4+1 tasks | ~12 giờ | Tuần 3–4 |
 | 06 | [Real-World BMS/VCU/Body](./06_RealWorld_BMS_VCU_Tasks.md) | Mini BMS, VCU Torque, BCM Sleep | 3+1 tasks | ~30 giờ | Tuần 4 |
 | 07 | [LIN Stack](./07_LIN_Stack_Tasks.md) | LIN Protocol, LinIf Schedule, Wiper Control | 4 tasks | ~8 giờ | Tuần 4 |
 | 08 | [Automotive Ethernet](./08_Ethernet_SOMEIP_DoIP_Tasks.md) | 100BASE-T1, SOME/IP, DoIP, SoAd | 4 tasks | ~8 giờ | Tuần 4 |
-| | **TỔNG** | | **35 tasks** | **~115 giờ** | **4–5 Tuần** |
+| | **TỔNG** | | **38 tasks** | **~123 giờ** | **4–5 Tuần** |
 
 ---
 
@@ -80,13 +81,15 @@ TUẦN 1 (Nền tảng Architecture + OS):
 ├── Task 1.2: Dependency Analysis — BSW Init Order (3h)
 ├── Task 1.3: Linker Script — Memory Section Map (2h)
 ├── Task 1.4: RTE Port Mapping (3h)
-├── Task 2.1: Build OSEK OS from Source (2h)
-└── Task 2.2: Create Basic Task Periodic (3h)
+├── Task 2.1: Build OSEK OS from Source & Kernel APIs (2h)
+└── Task 2.2: MCAL Power-On Sequencing & Hardware Dependency (2.5h)
 
 TUẦN 2 (OS sâu + ComStack):
-├── Task 2.3: Extended Task Event-Driven CAN (4h)
-├── Task 2.4: Resource & Priority Ceiling (3h)
-├── Task 2.5: MCAL Port/Dio Analysis (2h)
+├── Task 2.3: Basic Task & Conformance Classes BCC1 vs BCC2 (3h)
+├── Task 2.4: Extended Task Event-Driven & ISR Cat 1 vs Cat 2 (3.5h)
+├── Task 2.5: Immediate Priority Ceiling IPCP & Non-blocking Proof (3.5h)
+├── Task 2.6: Schedule Table Static BSW Timing (3.5h)
+├── Task 2.7: Stack Watermark & ErrorHook / DET (3h)
 ├── Task 3.1: CAN Bit Timing Calculation (1h)
 ├── Task 3.2: CAN Driver Source & Mailbox Config (3h)
 └── Task 3.3: CanIf Acceptance Filter (2h)

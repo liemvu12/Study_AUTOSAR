@@ -21,6 +21,7 @@ Trong các dự án phần mềm nhúng thông thường, việc biên dịch (b
 | **QEMU ARM** | `8.x` hoặc `9.x` (`SoftwareFreedomConservancy.QEMU`) | Trình giả lập phần cứng vi điều khiển ARM Cortex-M trên Windows (chạy trực tiếp file firmware nhị phân `.exe`/`.s19` của chip thật). |
 | **SavvyCAN** | `v220` (64-bit) | Phần mềm phân tích mạng CAN bus, giải mã file DBC và vẽ đồ thị tín hiệu thời gian thực. |
 | **Git** | `2.3x` trở lên | Quản lý phiên bản mã nguồn. |
+| **VS Code & Extensions** | Mới nhất (`redhat.vscode-xml`, `robinbreast.vscode-arxml-tree`) | IDE lập trình, đọc, duyệt cây phân cấp và format căn lề tệp cấu hình ARXML/XML. |
 
 ---
 
@@ -190,6 +191,42 @@ QEMU (*Quick Emulator*) là phần mềm máy ảo / giả lập phần cứng m
   * Chọn kiểu: `SLCAN (Serial CAN)` | Cổng: `COM2` | Baudrate: `115200` | CAN Speed: `500000 bps`.
   * Gán file DBC: Vào `DBC File` $\rightarrow$ `DBC Manager` $\rightarrow$ Nạp file `Vehicle_Network.dbc` $\rightarrow$ Gán vào `Bus 0`.
   * Tích chọn `[x] Interpret Frames` để tự động giải mã các tín hiệu (*SoC, Điện áp, Tốc độ*).
+
+### 2.8 Cấu Hình IDE VS Code & Bộ Công Cụ Đọc / Format ARXML Chuyên Dụng
+
+Tệp `autosar.arxml` là nguồn chân lý (Single Source of Truth) định nghĩa toàn bộ OS Task, Alarm, CAN PDU/Signal, UDS Diagnostic và NvM Blocks trong dự án. Để tránh bị rối mắt khi làm việc với hàng ngàn dòng XML, việc trang bị bộ đôi extension và cấu hình chuẩn cho VS Code là bắt buộc:
+
+#### 1. Các Extension Cần Thiết Trên VS Code:
+1. **XML (by Red Hat - `redhat.vscode-xml`):**
+   - Bộ công cụ định dạng và phân tích cú pháp XML tiêu chuẩn công nghiệp.
+   - Hỗ trợ format tài liệu (`Shift + Alt + F`), tự động căn chỉnh thụt lề (indentation) phân cấp thẻ cha - con.
+   - Hỗ trợ thu gọn/mở rộng từng khối (Code Folding) giúp ẩn các module không liên quan.
+2. **vscode-arxml-tree (by robinbreast - `robinbreast.vscode-arxml-tree`):**
+   - Cung cấp giao diện **ARXML Tree View** trực quan ở thanh Activity Bar bên trái.
+   - Hiển thị cây phân cấp các container `OS`, `CanIf`, `PduR`, `Com`, `Dcm`, cho phép click nhảy trực tiếp đến thẻ cần sửa mà không cần cuộn tìm thủ công.
+
+#### 2. Cấu Hình Bắt Buộc Trong `.vscode/settings.json`:
+Mặc định khi cài extension `vscode-arxml-tree`, nó sẽ đăng ký kiểu ngôn ngữ tệp là `arxml`. Do trên chợ VS Code không có bộ formatter riêng cho kiểu `arxml`, khi bấm format hệ thống sẽ báo lỗi `category:formatters arxml`.
+
+Để khắc phục triệt để và kích hoạt bộ format của Red Hat XML, cần khai báo liên kết tệp và thiết lập mặc định trong `.vscode/settings.json`:
+
+```json
+{
+    "files.associations": {
+        "*.arxml": "xml"
+    },
+    "[xml]": {
+        "editor.defaultFormatter": "redhat.vscode-xml",
+        "editor.tabSize": 2,
+        "editor.wordWrap": "off"
+    }
+}
+```
+
+#### 3. Hướng Dẫn Kỹ Thuật Đọc & Format File ARXML:
+- **Đổi Language Mode sang XML:** Nếu góc dưới cùng bên phải màn hình VS Code đang hiển thị chữ `arxml`, hãy click chuột vào đó (hoặc nhấn `Ctrl + K` rồi ấn `M`) $\rightarrow$ chọn **`Configure File Association for '.arxml' ...`** $\rightarrow$ chọn **`XML`**.
+- **Phím tắt Format Document:** Nhấn **`Shift + Alt + F`** (hoặc click chuột phải chọn *Format Document*) để file tự động căn lề thụt dòng ngay ngắn.
+- **Phím tắt thu gọn cấu trúc (Fold Level):** Khi mở file `autosar.arxml`, nhấn tổ hợp phím **`Ctrl + K`** rồi ấn tiếp **`Ctrl + 2`** để thu gọn toàn bộ các module con, chỉ để lộ các thẻ module cấp 1 (`<OS>`, `<EcuC>`, `<Can>`, `<CanIf>`, `<Com>`, `<Dcm>`, `<NvM>`). Cần làm việc với module nào thì bấm mở rộng riêng module đó.
 
 ---
 
@@ -402,17 +439,15 @@ Khi tiến hành đọc hiểu hoặc viết báo cáo phân tích mã nguồn c
 
 Bạn hãy chạy tuần tự các lệnh sau trên PowerShell/WSL2 để đảm bảo môi trường đã hoàn toàn sẵn sàng.
 
-| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái Thực Tế |
+| Lệnh Kiểm Tra (Command) | Môi Trường | Expected Output (Kết quả mong đợi) | Trạng Thái |
 | :--- | :--- | :--- | :--- |
-| `python --version` | Win | `Python 3.9.x` đến `3.12.x` | [x] Đã cấu hình & hoạt động (`Python 3.12.3`) |
-| `pip --version` | Win | `pip 2x.x from ...` | [x] Đã cấu hình & hoạt động (`pip 25.2`) |
-| `scons --version` | Win | `SCons by Steven Knight... v4.x.x` | [x] Đã cài đặt & hoạt động (`SCons v4.11.1`) |
-| `arm-none-eabi-gcc --version` | Win | `arm-none-eabi-gcc 10.x` đến `14.x` | [x] Đã cài đặt qua winget & thêm PATH (`v14.2.Rel1`) |
-| `qemu-system-arm --version` | Win | `QEMU emulator version 8.x` đến `11.x` | [x] Đã cài đặt qua winget & thêm PATH (`v11.1.0`) |
-| `gcc --version` | Win (MSYS2) | `gcc (Rev6, Built by MSYS2...) 13.x` | [x] Đã cấu hình MSYS2 PATH & unzip (`v13.2.0`) |
-| `python -c "import lxml, jinja2, serial, SCons; print('OK')"` | Win | `OK` (Không có lỗi báo đỏ) | [x] Đã cài đủ dependencies & polyfill `collections.abc` |
-| `$env:BOARD="lm3s6965evb"; scons` | Win | `scons: done building targets.` | [x] Đã sinh mã & build thành công, chạy QEMU verified |
-| `$env:BOARD="stm32f107vc"; scons` | Win | `scons: done building targets.` | [x] Đã sinh mã & build thành công firmware .exe & .s19 |
+| `python --version` | Win / WSL | `Python 3.9.x` (hoặc 3.10.x) | [ ] |
+| `pip --version` | Win / WSL | `pip 2x.x from ... (python 3.9)` | [ ] |
+| `scons --version` | Win / WSL | `SCons by Steven Knight... v4.x.x` | [ ] |
+| `arm-none-eabi-gcc --version` | Win | `arm-none-eabi-gcc (GNU Arm Embedded Toolchain...) 10.x` | [ ] |
+| `gcc --version` | WSL2 | `gcc (Ubuntu 11.x.x) 11.x` | [ ] |
+| `python -c "import lxml, jinja2; print('OK')"` | Win / WSL | `OK` (Không có lỗi báo đỏ) | [ ] |
+| `wsl -l -v` | Win | Có Ubuntu đang chạy (Running / Version 2) | [ ] |
 
 ---
 

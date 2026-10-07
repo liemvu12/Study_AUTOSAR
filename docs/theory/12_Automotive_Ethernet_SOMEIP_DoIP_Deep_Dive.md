@@ -10,17 +10,6 @@
 
 ## 1. Tổng Quan Về Automotive Ethernet (Ethernet Trên Ô Tô)
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│  🟢 LEVEL 1: NEWBIE FRIENDLY — TẠI SAO XE HƠI HIỆN ĐẠI CẦN ETHERNET?                            │
-│  • Bùng nổ dữ liệu: Camera 4K ADAS, Lidar, Radar, Màn hình giải trí siêu nét, Cập nhật phần mềm  │
-│    từ xa qua mạng (OTA Firmware Update).                                                        │
-│  • Băng thông CAN FD (5 Mbps) hay LIN (20 kbps) hoàn toàn bị "nghẽn cổ chai".                   │
-│  • Automotive Ethernet (100BASE-T1 / 1000BASE-T1) mang băng thông 100 Mbps - 1 Gbps lên xe,      │
-│    nhưng ĐẶC BIỆT CHỈ DÙNG 1 CẶP DÂY XOẮN ĐƠN (Single Twisted Pair) để giảm trọng lượng xe!     │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
 ### 1.1 Khác Biệt Giữa Ethernet Văn Phòng (Standard RJ45) vs Automotive Ethernet (100BASE-T1)
 
 | Tiêu Chí | Ethernet Văn Phòng (100BASE-TX) | Automotive Ethernet (100BASE-T1 / BroadR-Reach) |

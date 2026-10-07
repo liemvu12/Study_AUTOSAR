@@ -1,4 +1,4 @@
-"""
+﻿"""
 Read Data By Identifier (Service 0x22)
 Äá»c DID 0xF190 (VIN) vÃ  0xF18C (ECU Serial Number)
 """

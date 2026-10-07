@@ -1,0 +1,107 @@
+diff --git a/release/ascore/app/app.c b/release/ascore/app/app.c
+index fc5bbc5..b81d96b 100644
+--- a/release/ascore/app/app.c
++++ b/release/ascore/app/app.c
+@@ -252,6 +252,52 @@ ALARM(AlarmApp)
+ 	OsActivateTask(TaskApp);
+ }
+ 
++/* ========================================================================= */
++/* TASK 2.3: Basic Task & Alarm Periodic 50ms + Conformance Test (BCC1/BCC2) */
++/* ========================================================================= */
++static uint32_t task_instance_counter = 0;
++
++TASK(Task_Periodic_50ms)
++{
++	task_instance_counter++;
++	printf("   --> [Task_Periodic_50ms] Running instance #%u\n", (unsigned int)task_instance_counter);
++	(void)TerminateTask();
++}
++
++TASK(Task_QueueTester)
++{
++	StatusType ret;
++
++	printf("\n=================================================================\n");
++	printf("[TASK 2.3] TESTING OSEK CONFORMANCE CLASS (BCC1 vs BCC2)\n");
++	printf("=================================================================\n");
++
++	/* Lần 1: Kích hoạt Task_Periodic_50ms đưa vào trạng thái READY */
++	printf("[Tester] Activating Task_Periodic_50ms (Call 1)...\n");
++	ret = ActivateTask(Task_Periodic_50ms);
++	printf("         --> Result: ret = %s (Task moved to READY state)\n", (ret == E_OK) ? "E_OK" : "ERROR");
++
++	/* Lần 2: Task đang READY (chưa kịp chạy vì Priority 2 < 5), kích hoạt tiếp */
++	printf("[Tester] Activating Task_Periodic_50ms (Call 2 - Burst activation)...\n");
++	ret = ActivateTask(Task_Periodic_50ms);
++	if (ret == E_OS_LIMIT)
++	{
++		printf("         --> Result: E_OS_LIMIT! (BCC1 Verified: Activation Limit = 1 Reached!)\n");
++	}
++	else if (ret == E_OK)
++	{
++		printf("         --> Result: E_OK! (BCC2 Verified: Activation Queued Successfully!)\n");
++	}
++	else
++	{
++		printf("         --> Result: Unexpected error code %u\n", (unsigned int)ret);
++	}
++
++	printf("=================================================================\n\n");
++	(void)TerminateTask();
++}
++
++
+ #if defined(USE_PROTOTHREAD) && defined(PROTOTHREAD_TEST)
+ PROCESS(protoDemoProductProc,"protoDemoProductProc");
+ PROTO_AUTOSTART_PROCESS_EXPORT(protoDemoProductProc);
+diff --git a/release/ascore/app/app.xml b/release/ascore/app/app.xml
+index 347fde1..7102f2c 100644
+--- a/release/ascore/app/app.xml
++++ b/release/ascore/app/app.xml
+@@ -29,5 +29,44 @@
+ 			Callback="TBD" 
+ 			Application="OsDefaultApp"
+ 			Comment="*" />
++
++		<!-- ================= TASK 2.3: BASIC TASK & ALARM ================= -->
++		<Task Name="Task_Periodic_50ms"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="2" 
++				Schedule="FULL" 
++				StackSize="512"
++				Application="OsDefaultApp"
++	     		Comment="*" />
++		
++		<Task Name="Task_QueueTester"  
++	    		Activation="1" 
++				Autostart="True" 
++				Priority="5" 
++				Schedule="FULL" 
++				StackSize="512"
++				Application="OsDefaultApp"
++	     		Comment="*" >
++			<ApplicationModeList Max="TBD">
++				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
++			</ApplicationModeList>
++		</Task>
++
++		<Alarm Name="Alarm_Periodic_50ms" 
++			Autostart="True" 
++			Period="50" 
++			StartTime="50" 
++			Counter="OsClock" 
++			Action="ActivateTask" 
++			Task="Task_Periodic_50ms" 
++			Event="TBD" 
++			Callback="TBD" 
++			Application="OsDefaultApp" 
++			Comment="*" >
++			<ApplicationModeList Max="TBD">
++				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
++			</ApplicationModeList>
++		</Alarm>
+  	</Os>
+ </AS>
+\ No newline at end of file

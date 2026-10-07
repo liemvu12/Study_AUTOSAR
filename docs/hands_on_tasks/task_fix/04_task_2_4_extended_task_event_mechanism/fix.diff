@@ -1,0 +1,105 @@
+diff --git a/release/ascore/app/app.c b/release/ascore/app/app.c
+index c0b1161..a701967 100644
+--- a/release/ascore/app/app.c
++++ b/release/ascore/app/app.c
+@@ -264,6 +264,8 @@ TASK(Task_Periodic_50ms)
+ 	(void)TerminateTask();
+ }
+ 
++void Simulate_ISR_CanRx_Cat2(uint32_t can_id);
++
+ TASK(Task_QueueTester)
+ {
+ 	StatusType ret;
+@@ -294,9 +296,63 @@ TASK(Task_QueueTester)
+ 	}
+ 
+ 	printf("=================================================================\n\n");
++
++	/* ================================================================= */
++	/* [TASK 2.4] TESTING EXTENDED TASK & ISR CAT 2 PREEMPTION           */
++	/* ================================================================= */
++	Simulate_ISR_CanRx_Cat2(0x180);
++
+ 	(void)TerminateTask();
+ }
+ 
++/* ========================================================================= */
++/* TASK 2.4: Extended Task Event-Driven & ISR Cat 1 vs Cat 2 Verification    */
++/* ========================================================================= */
++static volatile uint32_t rx_can_message_id = 0;
++
++/* Extended Task hướng sự kiện với chu trình 4 bước chuẩn mực */
++TASK(Task_CanRxHandler)
++{
++	EventMaskType active_events;
++	printf("[Task_CanRxHandler] Initialized (Priority 10). Entering WaitEvent()...\n");
++
++	while (1)
++	{
++		/* BƯỚC 1: Ngủ giải phóng 100% CPU, chuyển sang trạng thái WAITING */
++		(void)WaitEvent(Event_CanFrameRx | Event_CanError);
++
++		/* BƯỚC 2: Thức dậy khi nhận sự kiện, lấy mask sự kiện đã được kích hoạt */
++		(void)GetEvent(Task_CanRxHandler, &active_events);
++
++		/* BƯỚC 3: XÓA CỜ SỰ KIỆN — BẮT BUỘC ĐỂ TRÁNH 100% CPU LOCKUP */
++		(void)ClearEvent(active_events);
++
++		/* BƯỚC 4: Xử lý logic nghiệp vụ tương ứng với sự kiện */
++		if (active_events & Event_CanFrameRx)
++		{
++			printf("   --> [Task_CanRxHandler] WAKEUP from WAITING state!\n");
++			printf("   --> [Task_CanRxHandler] CAN Rx Frame processed: ID = 0x%X\n", (unsigned int)rx_can_message_id);
++		}
++		if (active_events & Event_CanError)
++		{
++			printf("   --> [Task_CanRxHandler] CAN Bus Error handled!\n");
++		}
++	}
++	(void)TerminateTask();
++}
++
++/* Hàm kiểm chứng mô phỏng hành vi ISR Cat 2 (Được OS quản lý, gọi SetEvent) */
++void Simulate_ISR_CanRx_Cat2(uint32_t can_id)
++{
++	printf("\n[ISR Cat 2 Simulation] CAN Rx Interrupt Triggered! ID = 0x%X\n", (unsigned int)can_id);
++	rx_can_message_id = can_id;
++	
++	/* Kích hoạt Event đánh thức Task_CanRxHandler */
++	printf("[ISR Cat 2 Simulation] Calling SetEvent(Task_CanRxHandler, Event_CanFrameRx)...\n");
++	(void)SetEvent(Task_CanRxHandler, Event_CanFrameRx);
++	printf("[ISR Cat 2 Simulation] Interrupt Handler completed.\n\n");
++}
++
+ 
+ #if defined(USE_PROTOTHREAD) && defined(PROTOTHREAD_TEST)
+ PROCESS(protoDemoProductProc,"protoDemoProductProc");
+diff --git a/release/ascore/app/app.xml b/release/ascore/app/app.xml
+index bf1a6c6..b62241a 100644
+--- a/release/ascore/app/app.xml
++++ b/release/ascore/app/app.xml
+@@ -68,5 +68,23 @@
+ 				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
+ 			</ApplicationModeList>
+ 		</Alarm>
++
++		<!-- ================= TASK 2.4: EXTENDED TASK & EVENTS ================= -->
++		<Task Name="Task_CanRxHandler"  
++	    		Activation="1" 
++				Autostart="True" 
++				Priority="10" 
++				Schedule="FULL" 
++				StackSize="2048"
++				Application="OsDefaultApp"
++	     		Comment="*" >
++			<ApplicationModeList Max="TBD">
++				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
++			</ApplicationModeList>
++			<EventList Max="32">
++				<Event Comment="*" Mask="0x01" Name="Event_CanFrameRx" />
++				<Event Comment="*" Mask="0x02" Name="Event_CanError" />
++			</EventList>
++		</Task>
+  	</Os>
+ </AS>

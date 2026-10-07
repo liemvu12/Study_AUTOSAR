@@ -1,0 +1,90 @@
+<?xml version='1.0' encoding='utf-8'?>
+<AS>
+	<Os>	
+		<Task Name="TaskApp"  
+	    		Activation="1" 
+				Autostart="True" 
+				Priority="5" 
+				Schedule="FULL" 
+				StackSize="2048"
+				Application="OsDefaultApp"
+	     		Comment="*" >
+			<EventList Max="TBD">
+				<Event Comment="*" Mask="0x01" Name="Event1" />
+				<Event Comment="*" Mask="0x02" Name="Event2" />
+				<Event Comment="*" Mask="0x04" Name="Event3" />
+				<Event Comment="*" Mask="0x08" Name="Event4" />
+				<Event Comment="*" Mask="0x10" Name="Event5" />
+			</EventList>
+		</Task>
+		
+		<Alarm Name="AlarmApp" 
+			Autostart="False" 
+			Period="5" 
+			StartTime="5"
+			Counter="OsClock"
+			Action="ActivateTask"	
+			Task="TaskApp"				
+			Event="TBD"  
+			Callback="TBD" 
+			Application="OsDefaultApp"
+			Comment="*" />
+
+		<!-- ================= TASK 2.3: BASIC TASK & ALARM ================= -->
+		<Task Name="Task_Periodic_50ms"  
+	    		Activation="1" 
+				Autostart="False" 
+				Priority="2" 
+				Schedule="FULL" 
+				StackSize="512"
+				Application="OsDefaultApp"
+	     		Comment="*" />
+		
+		<Task Name="Task_QueueTester"  
+	    		Activation="1" 
+				Autostart="True" 
+				Priority="5" 
+				Schedule="FULL" 
+				StackSize="512"
+				Application="OsDefaultApp"
+	     		Comment="*" >
+			<ApplicationModeList Max="TBD">
+				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
+			</ApplicationModeList>
+		</Task>
+
+		<Alarm Name="Alarm_Periodic_50ms" 
+			Autostart="True" 
+			Period="50" 
+			StartTime="50" 
+			Counter="OsClock" 
+			Action="ActivateTask" 
+			Task="Task_Periodic_50ms" 
+			Event="TBD" 
+			Callback="TBD" 
+			Application="OsDefaultApp" 
+			Comment="*" >
+			<ApplicationModeList Max="TBD">
+				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
+			</ApplicationModeList>
+		</Alarm>
+
+		<!-- ================= TASK 2.4: EXTENDED TASK & EVENTS ================= -->
+		<Task Name="Task_CanRxHandler"  
+	    		Activation="1" 
+				Autostart="True" 
+				Priority="10" 
+				Schedule="FULL" 
+				StackSize="2048"
+				Application="OsDefaultApp"
+	     		Comment="*" >
+			<ApplicationModeList Max="TBD">
+				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
+			</ApplicationModeList>
+			<EventList Max="32">
+				<Event Comment="*" Mask="0x01" Name="Event_CanFrameRx" />
+				<Event Comment="*" Mask="0x02" Name="Event_CanError" />
+			</EventList>
+		</Task>
+ 	</Os>
+</AS>

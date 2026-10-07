@@ -1,0 +1,141 @@
+diff --git a/src_before/as/com/as.infrastructure/arch/common/mcal/SCan.c b/src_after/as/com/as.infrastructure/arch/common/mcal/SCan.c
+index 1071f7c..f8f65fe 100644
+--- a/src_before/as/com/as.infrastructure/arch/common/mcal/SCan.c
++++ b/src_after/as/com/as.infrastructure/arch/common/mcal/SCan.c
+@@ -78,12 +78,16 @@ Can_ReturnType Can_SetControllerMode( uint8 Controller, Can_StateTransitionType
+ 	return CanHW_SetControllerMode(Controller,transition);
+ }
+ 
++extern void Can_SendSLCAN(const char* str);
++
+ Can_ReturnType Can_Write( Can_Arc_HTHType hth, Can_PduType *pduInfo )
+ {
+ 	imask_t imask;
+ 	Can_ReturnType rv = CAN_OK;
+ 	Can_SerialOutPduType pdu;
+ 	rb_size_t r;
++	char slcan_buf[64];
++	int offset = 0;
+ 
+ 	SETSCANID(pdu.canid, pduInfo->id);
+ 	pdu.busid = hth;
+@@ -91,6 +95,25 @@ Can_ReturnType Can_Write( Can_Arc_HTHType hth, Can_PduType *pduInfo )
+ 	memcpy(pdu.data, pduInfo->sdu, pdu.dlc);
+ 	pdu.swPduHandle = pduInfo->swPduHandle;
+ 
++	/* 1. Send SLCAN string to UART1 (Dedicated CAN Channel for SavvyCAN via COM1) */
++	if (pduInfo->id <= 0x7FF) {
++		offset = sprintf(slcan_buf, "t%03X%d", (unsigned int)pduInfo->id, (int)pduInfo->length);
++	} else {
++		offset = sprintf(slcan_buf, "T%08X%d", (unsigned int)pduInfo->id, (int)pduInfo->length);
++	}
++	for (int i = 0; i < pduInfo->length; i++) {
++		offset += sprintf(&slcan_buf[offset], "%02X", pduInfo->sdu[i]);
++	}
++	sprintf(&slcan_buf[offset], "\r");
++	Can_SendSLCAN(slcan_buf);
++
++	/* 2. Print human-readable log to UART0 (Console Terminal stdout) */
++	printf(">>> [CAN Tx Event] ID=0x%03X DLC=%d Data=[", (unsigned int)pduInfo->id, (int)pduInfo->length);
++	for (int i = 0; i < pduInfo->length; i++) {
++		printf("%02X%s", pduInfo->sdu[i], (i == pduInfo->length - 1) ? "" : " ");
++	}
++	printf("]\n");
++
+ 	Irq_Save(imask);
+ 	r = RB_PUSH(canout, &pdu, sizeof(pdu));
+ 	Irq_Restore(imask);
+diff --git a/src_before/as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c b/src_after/as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c
+index 3e8efca..970e15a 100644
+--- a/src_before/as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c
++++ b/src_after/as/com/as.infrastructure/arch/lm3s/mcal/Mcu.c
+@@ -46,26 +46,21 @@
+ /* ============================ [ LOCALS    ] ====================================================== */
+ static void Usart_Init(void)
+ {
+-    /* Enable the peripherals used by this example. */
++    /* Enable UART0 (Console stdout log) */
+     SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+-
+-    /* Enable processor interrupts. */
+-    /* IntMasterEnable(); */
+-
+-    /* Set GPIO A0 and A1 as UART pins. */
+     GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0 | GPIO_PIN_1);
+-
+-    /* Configure the UART for 115,200, 8-N-1 operation. */
+     UARTConfigSetExpClk(UART0_BASE, SysCtlClockGet(), 115200,
+                         (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
+                          UART_CONFIG_PAR_NONE));
+ 
+-    /* Enable the UART interrupt.
+-     *
+-     * IntEnable(INT_UART0);
+-     * UARTIntEnable(UART0_BASE, UART_INT_RX | UART_INT_RT);
+-     */
++    /* Enable UART1 (Dedicated CAN SLCAN streaming channel) */
++    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART1);
++    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOD);
++    GPIOPinTypeUART(GPIO_PORTD_BASE, GPIO_PIN_2 | GPIO_PIN_3);
++    UARTConfigSetExpClk(UART1_BASE, SysCtlClockGet(), 115200,
++                        (UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE |
++                         UART_CONFIG_PAR_NONE));
+ }
+ /* ============================ [ FUNCTIONS ] ====================================================== */
+ void __putchar(char ch)
+@@ -73,6 +68,13 @@ void __putchar(char ch)
+   UARTCharPut(UART0_BASE, ch);
+ }
+ 
++void Can_SendSLCAN(const char* str)
++{
++    while (*str) {
++        UARTCharPut(UART1_BASE, (unsigned char)*str++);
++    }
++}
++
+ #ifndef __GNUC__
+ int putchar( int ch )	/* for printf */
+ {
+diff --git a/src_before/as/release/ascore/app/app.c b/src_after/as/release/ascore/app/app.c
+index b957cb1..effd77f 100644
+--- a/src_before/as/release/ascore/app/app.c
++++ b/src_after/as/release/ascore/app/app.c
+@@ -166,12 +166,36 @@ void* lv_task_thread(void* args)
+ #endif
+ #endif
+ 
++#include "Com.h"
++#include "Com_PbCfg.h"
++
+ void __weak TaskAppHook(void) { }
+ TASK(TaskApp)
+ {
+ 	OS_TASK_BEGIN();
+ 	ASLOG(OFF,("TaskApp is running\n"));
+ 
++	static uint16_t simSpeed = 40;
++	static uint8_t simSoc = 80;
++	static uint32_t tickCount = 0;
++	tickCount++;
++	if (tickCount % 20 == 0) {
++		simSpeed = (simSpeed >= 120) ? 40 : (simSpeed + 2);
++		simSoc = (simSoc <= 20) ? 80 : (simSoc - 1);
++		
++		Com_SendSignal(COM_SID_VehicleSpeed, &simSpeed);
++
++		/* Broadcast Frame 1: BMS State (ID 0x180) */
++		uint8_t bms_data[8] = {simSoc, 100, 0x10, 0x0E, 0x96, 0x00, 65, 0x00};
++		Can_PduType bms_pdu = { .id = 0x180, .length = 8, .sdu = bms_data, .swPduHandle = 0 };
++		Can_Write(0, &bms_pdu);
++
++		/* Broadcast Frame 2: VCU Torque Command (ID 0x200) */
++		uint8_t vcu_data[8] = {0x03, (uint8_t)(simSpeed & 0xFF), (uint8_t)((simSpeed >> 8) & 0xFF), 120, 0x00, 0x00, 80, 0x01};
++		Can_PduType vcu_pdu = { .id = 0x200, .length = 8, .sdu = vcu_data, .swPduHandle = 1 };
++		Can_Write(0, &vcu_pdu);
++	}
++
+ 	TaskAppHook();
+ #ifdef USE_SG
+ 	ASPERF_MEASURE_START();

@@ -61,11 +61,7 @@
 
 ## 1. Tổng Quan Ngăn Xếp Chẩn Đoán (Diagnostic Stack & UDS ISO 14229)
 
-🟢 **LEVEL 1: NEWBIE FRIENDLY**
-📖 **Diagnostic Stack** giống như một "bác sĩ khám bệnh" cho xe ô tô. Khi bạn cắm máy chẩn đoán vào cổng OBD-II dưới vô lăng, máy đó sẽ "hỏi" ECU (hộp điều khiển) xem có bệnh gì không, xe chạy tốt không.
-💡 *Ví dụ:* Máy chẩn đoán hỏi: "Nhiệt độ nước làm mát bao nhiêu?". ECU trả lời: "Đang là 90 độ C". Quá trình trao đổi này được chuẩn hóa toàn cầu bằng giao thức gọi là UDS.
 
-🟡 **LEVEL 2: INTERMEDIATE**
 Ngăn xếp chẩn đoán (*Diagnostic Stack*) phục vụ việc giao tiếp giữa **Thiết bị kiểm chuẩn bên ngoài (Diagnostic Tester / Scanner cắm qua cổng OBD-II)** và các hộp **ECU** trên xe hơi để:
 1. Đọc và xóa mã lỗi hư hỏng phần cứng/cảm biến (**Diagnostic Trouble Codes - DTCs**).
 2. Đọc thông số thời gian thực của xe (Live Sensor Data: Điện áp bình, Nhiệt độ dầu, Tốc độ động cơ).
@@ -96,17 +92,14 @@ graph TD
     style SWC fill:#d5e8d4,stroke:#82b366,stroke-width:2px
 ```
 
-🔴 **LEVEL 3: EXPERT (Deep Dive)**
+### NÂNG CAO
 Ở cấp độ kiến trúc hệ thống, Diagnostic Stack phải xử lý các luồng dữ liệu song song và quản lý bộ nhớ đệm (buffer management). Khi nhận một gói lệnh UDS dài qua CanTp (ISO 15765-2 Segmentation), PDUR gọi DCM cung cấp buffer (`Dcm_ProvideRxBuffer`). DCM phải tính toán timeout (P2/P2*). Nếu việc thao tác bộ nhớ kéo dài, DCM phải tự động phát NRC 0x78 (Response Pending) định kỳ để Tester không bị timeout ở Transport Layer. Sự đồng bộ giữa DCM (nhận request), DEM (đọc trạng thái fault hiện tại) và NvM (lấy snapshot data) là cực kỳ quan trọng, thường được đồng bộ thông qua các hàm callback bất đồng bộ được gọi từ BSW Scheduler (SchM).
 
 ---
 
 ## 2. Bảng Ma Trận Các Dịch Vụ UDS Cốt Lõi (Core UDS Services)
 
-🟢 **LEVEL 1: NEWBIE FRIENDLY**
-Giao thức UDS định nghĩa các "mã lệnh" chuẩn. Ví dụ `0x22` là đọc dữ liệu, giống như bạn gửi tin nhắn `GET_INFO` cho bạn bè. ECU trả lời `0x62` (cộng thêm 0x40 vào 0x22) kèm theo dữ liệu bạn cần. Nếu ECU bận hoặc bạn yêu cầu sai, nó sẽ trả lời bằng mã lỗi (NRC).
 
-🟡 **LEVEL 2: INTERMEDIATE**
 Chuẩn **ISO 14229-1 (Unified Diagnostic Services - UDS)** quy định các mã dịch vụ (*Service Identifier - SID*) chuẩn. Dưới đây là bảng phân loại các Service quan trọng nhất:
 
 | SID Request | SID Positive Response | Tên Dịch Vụ UDS | Mô Tả Kỹ Thuật & Ứng Dụng Thực Tế |
@@ -117,15 +110,14 @@ Chuẩn **ISO 14229-1 (Unified Diagnostic Services - UDS)** quy định các mã
 | **`0x19`** | `0x59` | **ReadDTCInformation** | Đọc danh sách mã lỗi, số lượng lỗi, Snapshot dữ liệu lúc xảy ra lỗi. |
 | **`0x22`** | `0x62` | **ReadDataByIdentifier (RDBI)** | Đọc dữ liệu biến/thông số từ ECU dựa theo mã định danh 2-byte DID. |
 | **`0x2E`** | `0x6E` | **WriteDataByIdentifier (WDBI)** | Ghi dữ liệu cấu hình (VIN, Calibration data) vào bộ nhớ ECU theo DID. |
-| **`0x27`** | `0x67` | **SecurityAccess** | Mở khóa bảo mật mức cao (yêu cầu Seed $
-ightarrow$ tính toán Key) trước khi nạp Flash. |
+| **`0x27`** | `0x67` | **SecurityAccess** | Mở khóa bảo mật mức cao (yêu cầu Seed $\rightarrow$ tính toán Key) trước khi nạp Flash. |
 | **`0x28`** | `0x68` | **CommunicationControl** | Bật / tắt tạm thời việc phát gói tin thông thường trên mạng CAN. |
 | **`0x31`** | `0x71` | **RoutineControl** | Kích hoạt thực thi một hàm chức năng đặc biệt (Xả gió phanh ABS, Kiểm tra kim phun). |
 | **`0x34`** | `0x74` | **RequestDownload** | Bắt đầu quy trình nạp phần mềm FOTA: Khai báo địa chỉ và dung lượng binary. |
 | **`0x36`** | `0x76` | **TransferData** | Truyền các khối dữ liệu binary nhị phân vào RAM/Flash của ECU. |
 | **`0x37`** | `0x77` | **RequestTransferExit** | Kết thúc quá trình truyền dữ liệu và kiểm tra toàn vẹn mã CRC. |
 
-🔴 **LEVEL 3: EXPERT (Deep Dive)**
+### NÂNG CAO
 Các dịch vụ như 0x22, 0x2E, 0x31 đòi hỏi quyền truy cập dựa trên (1) Session, (2) Security Level, (3) Application State. Ma trận quyền truy cập này được định nghĩa tĩnh trong cấu hình DcmDsp (DcmDspDidInfo, DcmDspRoutineInfo). Ví dụ, DID 0xF190 (VIN) có thể cấu hình Read Allowed trong mọi Session, nhưng Write chỉ Allowed trong Extended Session và Security Level 1. Nếu không thỏa mãn, DCM tự động reject request bằng DSD mà không cần DSP xử lý, trả về 0x7F 0x2E 0x33.
 
 ### 2.1 Dịch Vụ 0x10: DiagnosticSessionControl
@@ -245,10 +237,7 @@ Khi một yêu cầu không hợp lệ hoặc bị từ chối, ECU trả về k
 
 ## 3. Module DCM (Diagnostic Communication Manager: DSL, DSD, DSP)
 
-🟢 **LEVEL 1: NEWBIE FRIENDLY**
-DCM là "Cảnh sát giao thông" và "Lễ tân" của ECU. Nó kiểm tra xem Tester có được phép gửi lệnh đó không (có đúng Session không, đã có thẻ VIP Security chưa), sau đó dẫn đường đến đúng phân hệ để lấy dữ liệu. Quản lý timeout cũng là việc của DCM.
 
-🟡 **LEVEL 2: INTERMEDIATE**
 Module DCM được chia thành 3 tầng chức năng nội bộ rõ rệt:
 
 ```mermaid
@@ -269,17 +258,14 @@ graph TD
     style DSP fill:#ffe6cc,stroke:#d79b00,stroke-width:2px
 ```
 
-🔴 **LEVEL 3: EXPERT (Deep Dive)**
+### NÂNG CAO
 Quản trị tài nguyên đệm trong DCM rất khắt khe. Khi Tester gọi `0x19 0x02` (Read DTCs by Status Mask), buffer TX (Transmission Buffer) có thể không đủ chứa hàng trăm DTC. Việc phân trang (Pagination) thông qua cơ chế của ISO 15765-2 (gửi các Consecutive Frames liên tục) phải được xử lý ở tầng DSP kết hợp với DSD. Mỗi khi một block dữ liệu được gửi thành công, `Dcm_TpTxConfirmation` được kích hoạt, cho phép DCM điền block tiếp theo vào buffer, bảo đảm an toàn bộ nhớ RAM hẹp hòi của MCU.
 
 ---
 
 ## 4. Module DEM (Diagnostic Event Manager) & Cấu Trúc Mã Lỗi DTC
 
-🟢 **LEVEL 1: NEWBIE FRIENDLY**
-DEM giống như một "Cuốn sổ Nam Tào". Khi cảm biến (ví dụ: nhiệt độ) báo lỗi, DEM sẽ ghi vào sổ mã lỗi (DTC). Để chắc chắn đó không phải do chập chờn (xe đi vào ổ gà), DEM đếm: "Lỗi 1 lần, 2 lần... 10 lần! Chắc chắn lỗi rồi, bật đèn Check Engine lên!".
 
-🟡 **LEVEL 2: INTERMEDIATE**
 ### 4.1 Cấu Trúc Mã Lỗi DTC 3-Byte & Mã Kiểu Lỗi (Fault Type Byte - FTB)
 
 Một mã lỗi **DTC (Diagnostic Trouble Code)** trong AUTOSAR gồm đúng **3 bytes (24 bits)**, định dạng phổ biến nhất theo ISO 15031-6:
@@ -316,19 +302,16 @@ Mỗi mã lỗi trong ECU luôn đi kèm một **Byte Trạng Thái (Status Byte
 | **Bit 6** | `testNotCompletedThisOperationCycle` | Trong chu kỳ nổ máy này, thuật toán kiểm tra lỗi chưa hoàn tất chạy. | Thuật toán đã hoàn tất kiểm tra trong chu kỳ này. |
 | **Bit 7** | `warningIndicatorRequested` | Yêu cầu bật đèn cảnh báo lỗi trên đồng hồ taplo (**đèn Check Engine / MIL ON**). | Không yêu cầu bật đèn cảnh báo. |
 
-🔴 **LEVEL 3: EXPERT (Deep Dive)**
+### NÂNG CAO
 ### 4.3 Thuật Toán Lọc Rung Lỗi (Debounce Algorithms: Counter-Based vs Time-Based)
 
 Để tránh báo lỗi giả do nhiễu điện từ đột biến, DEM cung cấp 2 thuật toán lọc, thường được kỹ sư Calibration cấu hình.
 
 1. **Counter-Based Debouncing (Bộ đếm bước):**
    * Duy trì một biến đếm *Fault Counter*.
-   * Khi phát hiện lỗi $
-ightarrow$ Tăng biến đếm thêm `+StepUp` (ví dụ: +2).
-   * Khi không có lỗi $
-ightarrow$ Giảm biến đếm `-StepDown` (ví dụ: -1).
-   * Chỉ khi biến đếm vượt ngưỡng **`Failed Threshold` (+127)** $
-ightarrow$ Mới chính thức xác nhận lỗi (`confirmedDTC = 1`).
+   * Khi phát hiện lỗi $\rightarrow$ Tăng biến đếm thêm `+StepUp` (ví dụ: +2).
+   * Khi không có lỗi $\rightarrow$ Giảm biến đếm `-StepDown` (ví dụ: -1).
+   * Chỉ khi biến đếm vượt ngưỡng **`Failed Threshold` (+127)** $\rightarrow$ Mới chính thức xác nhận lỗi (`confirmedDTC = 1`).
 2. **Time-Based Debouncing (Bộ đếm thời gian):**
    * Lỗi phải tồn tại liên tục trong một khoảng thời gian cố định (ví dụ: liên tục 500 ms) mới xác nhận lỗi.
 
@@ -382,10 +365,7 @@ DID 0x0103 (Vehicle Speed):   120 km/h
 
 ## 5. Ngăn Xếp Bộ Nhớ Phi Bốc Hơi (Memory Stack: NvM, MemIf, Fee, Fls)
 
-🟢 **LEVEL 1: NEWBIE FRIENDLY**
-Ngăn xếp nhớ (NvM) là "Ổ cứng SSD" của xe. Tắt máy dữ liệu vẫn còn (VD: Số Kilomet, mã lỗi, cài đặt đài Radio). Trong đó, Module Fee đóng vai trò "Kẻ đánh lừa", làm cho chip Flash vật lý tưởng mình là bộ nhớ EEPROM cao cấp, giúp phân bổ dữ liệu nhỏ lẻ để ghi và tăng tuổi thọ chip, tránh việc ghi đi ghi lại 1 chỗ gây cháy chip.
 
-🟡 **LEVEL 2: INTERMEDIATE**
 ### 5.1 Kiến Trúc 4 Tầng Của Memory Stack
 
 ```mermaid
@@ -410,12 +390,11 @@ graph TD
 
 | Loại Khối NVRAM | Cấu Trúc Vật Lý Lưu Trữ | Độ An Toàn & Khả Năng Khôi Phục | Ứng Dụng Thực Tế |
 |---|---|---|---|
-| **Native Block** | 1 bản sao duy nhất trong Flash + 1 mã kiểm tra CRC. | Trung bình: Nếu CRC lỗi $
-ightarrow$ Dữ liệu bị hỏng vĩnh viễn, phải nạp lại ROM Default. | Lưu thông số cấu hình thông thường (Cài đặt âm lượng, Độ sáng màn hình, Vị trí ghế lái). |
+| **Native Block** | 1 bản sao duy nhất trong Flash + 1 mã kiểm tra CRC. | Trung bình: Nếu CRC lỗi $\rightarrow$ Dữ liệu bị hỏng vĩnh viễn, phải nạp lại ROM Default. | Lưu thông số cấu hình thông thường (Cài đặt âm lượng, Độ sáng màn hình, Vị trí ghế lái). |
 | **Redundant Block** | **2 bản sao lưu độc lập (Copy 1 & Copy 2)** + 2 mã CRC riêng biệt. | **Cực cao**: Nếu Copy 1 bị hỏng hoặc mất nguồn giữa lúc đang ghi, NvM tự động khôi phục dữ liệu từ Copy 2. | **Dữ liệu an toàn sống còn**: Odometer (Số km xe đã chạy), Mã lỗi chẩn đoán DTC, Dữ liệu túi khí, Khóa bảo mật. |
 | **Dataset Block** | Mảng gồm **N phần tử dữ liệu con** được đánh chỉ số từ `0` đến `N-1`. | Linh hoạt: Cho phép ứng dụng chọn lựa phần tử cần đọc/ghi qua hàm `NvM_SetDataIndex()`. | Bảng dữ liệu hiệu chỉnh động cơ theo nhiều chế độ lái (Eco, Sport, Comfort). |
 
-🔴 **LEVEL 3: EXPERT (Deep Dive)**
+### NÂNG CAO
 ### 5.3 Chu Trình Đọc/Ghi Bất Đồng Bộ (`NvM_ReadAll`, `NvM_WriteAll`, `NvM_WriteBlock`)
 
 Quá trình ghi Flash mất rất nhiều thời gian (vài mili-giây đến vài giây tùy kích thước block). Do đó, NvM hoạt động theo cơ chế **Bất Đồng Bộ (Asynchronous Non-Blocking)**:
@@ -424,10 +403,8 @@ Quá trình ghi Flash mất rất nhiều thời gian (vài mili-giây đến v�
    * Hàm `EcuM` gọi `NvM_ReadAll()` lúc hệ thống boot.
    * NvM tự động nạp toàn bộ các block dữ liệu từ Flash vào các vùng nhớ RAM tương ứng (*RAM Mirror Buffers*) và kiểm tra mã CRC. Nếu sai, nạp Default ROM.
 2. **Giai đoạn Hoạt động bình thường Lúc Xe Chạy:**
-   * Ứng dụng chỉ việc đọc/ghi trực tiếp trên RAM Mirror Buffer $
-ightarrow$ Tốc độ tức thì (0 ns).
-   * Khi muốn lưu vĩnh viễn xuống Flash, ứng dụng gọi `NvM_WriteBlock(BlockId, NULL)` $
-ightarrow$ Lệnh được đẩy vào hàng đợi *NvM Queue*. Hàm nền `NvM_MainFunction()` chạy định kỳ để âm thầm thực thi tác vụ từ hàng đợi, nhường CPU cho các task khác chạy song song.
+   * Ứng dụng chỉ việc đọc/ghi trực tiếp trên RAM Mirror Buffer $\rightarrow$ Tốc độ tức thì (0 ns).
+   * Khi muốn lưu vĩnh viễn xuống Flash, ứng dụng gọi `NvM_WriteBlock(BlockId, NULL)` $\rightarrow$ Lệnh được đẩy vào hàng đợi *NvM Queue*. Hàm nền `NvM_MainFunction()` chạy định kỳ để âm thầm thực thi tác vụ từ hàng đợi, nhường CPU cho các task khác chạy song song.
 3. **Giai đoạn Tắt máy (`NvM_WriteAll`):**
    * Khi tài xế tắt chìa khóa xe (Key-Off), `EcuM` gọi `NvM_WriteAll()`.
    * NvM quét toàn bộ các RAM Mirror có cờ đánh dấu đã thay đổi (*Block Changed*) và ghi đồng loạt xuống Flash trước khi ngắt nguồn ECU hoàn toàn (đòi hỏi Mạch duy trì nguồn - Power Hold Circuit).
@@ -749,8 +726,7 @@ Thực thi lệnh rào cản pipeline và nhảy:
 *   `59 02`: Positive Response của dịch vụ 19 02 (19 + 40 = 59).
 *   `09`: DTC Status Availability Mask của ECU (báo cho Tester biết ECU có thể cung cấp các trạng thái nào).
 *   `0A 7E`: Chính là mã lỗi `P0A7E` được lưu dưới dạng Hex.
-*   `2F`: Status Byte của lỗi này (0x2F tức là 0010 1111 dạng nhị phân, bit 0,1,2,3 và 5 đều bật $
-ightarrow$ TestFailed + Confirmed + Pending + TestFailedSinceLastClear).
+*   `2F`: Status Byte của lỗi này (0x2F tức là 0010 1111 dạng nhị phân, bit 0,1,2,3 và 5 đều bật $\rightarrow$ TestFailed + Confirmed + Pending + TestFailedSinceLastClear).
 
 🎯 **Real-world Scenario:**
 Xe điện (EV) đang đi trên cao tốc, tài xế thấy báo lỗi hệ thống pin (BMS) nhấp nháy trên đồng hồ trung tâm. Thợ sửa xe đưa xe vào gara, dùng máy chẩn đoán cắm vào cổng OBD-II, gửi lệnh `19 04` (Read DTC Snapshot) để đọc Freeze Frame của mã lỗi P0A7E. Khi phân tích Freeze Frame trên màn hình máy scan, thợ thấy `Max Cell Temp` là 65 độ C tại thời điểm lỗi phát sinh, trong khi `Vehicle Speed` đang là 120km/h. Thợ sửa chữa tiếp tục kích hoạt Routine Control `0x31` bật bơm nước bằng tay, kết quả thấy bơm quay lờ đờ, dòng điện tiêu thụ thấp. Kết luận: Hệ thống làm mát pin bị nghẽn (do mô tơ bơm nước làm mát yếu đi sau thời gian sử dụng), dẫn đến nhiệt độ cell pin không kịp thoát khi xả dòng lớn chạy cao tốc. Thợ quyết định thay cụm bơm nước.

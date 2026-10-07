@@ -1,0 +1,110 @@
+diff --git a/release/ascore/app/app.c b/release/ascore/app/app.c
+index a701967..631dcc9 100644
+--- a/release/ascore/app/app.c
++++ b/release/ascore/app/app.c
+@@ -353,6 +353,51 @@ void Simulate_ISR_CanRx_Cat2(uint32_t can_id)
+ 	printf("[ISR Cat 2 Simulation] Interrupt Handler completed.\n\n");
+ }
+ 
++/* ========================================================================= */
++/* TASK 2.5: Immediate Priority Ceiling Protocol (IPCP) & Zero Context Switch */
++/* ========================================================================= */
++TASK(Task_Low)
++{
++	printf("\n=================================================================\n");
++	printf("[TASK 2.5] TESTING IMMEDIATE PRIORITY CEILING PROTOCOL (IPCP)\n");
++	printf("=================================================================\n");
++	printf("[TIMELINE 1] Task_Low starts executing (Static Priority = 1)...\n");
++
++	/* GỌI GETRESOURCE: QUAN SÁT KHÔNG CÓ CONTEXT SWITCH */
++	(void)GetResource(Res_SharedBuffer);
++	printf("[TIMELINE 2] Task_Low GOT Resource! ActualPriority elevated to 3 (NO Context Switch).\n");
++
++	/* KÍCH HOẠT TASK HIGH VÀ TASK MID */
++	printf("[TIMELINE 3] Activating Task_High (Prio 3) & Task_Mid (Prio 2)...\n");
++	(void)ActivateTask(Task_High);
++	(void)ActivateTask(Task_Mid);
++	printf("[TIMELINE 4] Task_Low STILL RUNNING! Neither Mid nor High could preempt Task_Low!\n");
++
++	/* TRẢ RESOURCE: CONTEXT SWITCH XẢY RA TẠI ĐÂY */
++	printf("[TIMELINE 5] Task_Low calling ReleaseResource(Res_SharedBuffer)...\n");
++	(void)ReleaseResource(Res_SharedBuffer);
++	/* ActualPriority hạ về 1 -> Kernel Sched_Schedule() -> Context Switch sang Task_High! */
++
++	printf("[TIMELINE 8] Task_Low resumed and finished.\n");
++	printf("=================================================================\n\n");
++	(void)TerminateTask();
++}
++
++TASK(Task_High)
++{
++	printf("[TIMELINE 6] Task_High DISPATCHED! (Context Switch from Low -> High occurred).\n");
++	(void)GetResource(Res_SharedBuffer);
++	printf("             Task_High GOT Resource instantly! (Zero Contention, O(1)).\n");
++	(void)ReleaseResource(Res_SharedBuffer);
++	(void)TerminateTask();
++}
++
++TASK(Task_Mid)
++{
++	printf("[TIMELINE 7] Task_Mid executing (Prio 2). (High has terminated, Mid now highest).\n");
++	(void)TerminateTask();
++}
++
+ 
+ #if defined(USE_PROTOTHREAD) && defined(PROTOTHREAD_TEST)
+ PROCESS(protoDemoProductProc,"protoDemoProductProc");
+diff --git a/release/ascore/app/app.xml b/release/ascore/app/app.xml
+index b62241a..40b0b7c 100644
+--- a/release/ascore/app/app.xml
++++ b/release/ascore/app/app.xml
+@@ -86,5 +86,49 @@
+ 				<Event Comment="*" Mask="0x02" Name="Event_CanError" />
+ 			</EventList>
+ 		</Task>
++
++		<!-- ================= TASK 2.5: IPCP & RESOURCE TIMELINE ================= -->
++		<Resource Name="Res_SharedBuffer" 
++			Priority="3" 
++			Application="OsDefaultApp" 
++			Comment="*" />
++
++		<Task Name="Task_Low"  
++	    		Activation="1" 
++				Autostart="True" 
++				Priority="1" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" >
++			<ApplicationModeList Max="TBD">
++				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
++			</ApplicationModeList>
++			<ResourceList>
++				<Resource Name="Res_SharedBuffer" />
++			</ResourceList>
++		</Task>
++
++		<Task Name="Task_Mid"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="2" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" />
++
++		<Task Name="Task_High"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="3" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" >
++			<ResourceList>
++				<Resource Name="Res_SharedBuffer" />
++			</ResourceList>
++		</Task>
+  	</Os>
+ </AS>

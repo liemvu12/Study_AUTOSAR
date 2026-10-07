@@ -1,4 +1,4 @@
-import sys, time, can
+﻿import sys, time, can
 
 sys.stdout.reconfigure(encoding='utf-8')
 

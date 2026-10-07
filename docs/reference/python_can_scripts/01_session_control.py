@@ -1,4 +1,4 @@
-"""
+﻿"""
 01_session_control.py - UDS Service 0x10: DiagnosticSessionControl
 ===================================================================
 Mục đích: Chuyển ECU sang Extended Diagnostic Session (0x03)

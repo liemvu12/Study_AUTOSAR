@@ -1,4 +1,4 @@
-# Python-CAN UDS Scripts — AUTOSAR Diagnostic Lab
+﻿# Python-CAN UDS Scripts — AUTOSAR Diagnostic Lab
 
 > **Mục đích:** Tập hợp Python scripts để test UDS (Unified Diagnostic Services) với ECU qua CAN bus.  
 > **Yêu cầu:** Python 3.9+, python-can, cantools, virtual CAN (vcan0 trên Linux/WSL2)

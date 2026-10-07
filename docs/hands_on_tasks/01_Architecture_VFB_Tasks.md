@@ -25,7 +25,7 @@
 | **Task 1.5** | **RTE Port Mapping — Extract All Ports from Source** | 🟢 **P3 (Tooling/Extension)** | **10%** | **Kỹ năng Tự động hóa & Tích hợp:** Viết kịch bản Python/PowerShell đối soát giữa file cấu hình ARXML và mã C thực tế của tầng Application SWC. |
 
 > 💡 **Ghi chú về Ngăn Xếp Truyền Thông ComStack:**  
-> Bài tập thực hành chuyên sâu về **Trace Dòng Chảy CAN 6 Tầng (End-to-End ComStack Trace)** được bố trí tại đúng vị trí chuyên đề chuyên biệt tương ứng: [**Chuyên Đề 03: Task 3.1**](03_ComStack_CAN_Tasks.md#task-31) và [**Lời Giải Chuyên Đề 03**](solutions/02_ComStack_CAN_Solutions.md).
+> Bài tập thực hành chuyên sâu về **Trace Dòng Chảy CAN 6 Tầng (End-to-End ComStack Trace)** được bố trí tại đúng vị trí chuyên đề chuyên biệt tương ứng: [**Chuyên Đề 03: Task 3.1**](03_ComStack_CAN_Tasks.md#task-31) và [**Lời Giải Chuyên Đề 03**](solutions/03_ComStack_CAN_Solutions.md).
 
 ---
 

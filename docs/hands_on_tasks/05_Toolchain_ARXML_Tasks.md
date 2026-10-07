@@ -2,16 +2,21 @@
 
 ## Cấu trúc source thực tế
 - `as/com/as.tool/config.infrastructure.gui/` (GUI configurator)
-- `as/com/as.tool/config.infrastructure.system/` (System gen tools)
+- `as/com/as.tool/config.infrastructure.system/` (System gen tools & ArGen)
 - `as/com/as.tool/lua/` (Code generators)
 - `as/com/as.infrastructure/system/EcuM/` (EcuM module)
 - `as/com/as.infrastructure/system/BswM/` (BswM module)
 - `as/com/as.infrastructure/system/SchM/` (Schedule Manager)
-- Build: `scons --board=posix`
+- Build: `scons --board=lm3s6965evb` (ARM Cortex-M3) hoặc `scons --board=posix`
+
+> 💡 **Tài Liệu Lý Thuyết Nền Tảng (Theory Reference):**  
+> Toàn bộ lý thuyết chuyên sâu về kiến trúc Meta-Model, quy trình Toolchain (Vector DaVinci / EB tresos), và **[Mục 3.6: Kiến Trúc Hợp Nhất Cấu Hình Đa Tệp (Multi-File XML Aggregation) & Cơ Chế Đóng Gói Module](../../docs/theory/05_Toolchain_ARXML_And_ECU_Integration.md#36--kiến-trúc-hợp-nhất-cấu-hình-đa-tệp-multi-file-xml-aggregation--cơ-chế-đóng-gói-module-trong-paraias-vs-chuẩn-công-nghiệp)** (giải mã hiện tượng 8 Task vs 2 Task, 4 mắt xích liên kết SCons/Python/Linker, cơ chế bật/tắt module) đã được hệ thống hóa chuẩn mực tại:  
+> 👉 [**`docs/theory/05_Toolchain_ARXML_And_ECU_Integration.md`**](../theory/05_Toolchain_ARXML_And_ECU_Integration.md)  
+> 👉 [**Bộ quy luật thiết kế chia Task & định vị File C (`rule.md`)**](task_fix/rule.md#5-🧭-bộ-quy-luật-thiết-kế-nguyên-tắc-chia-task-chia-file-xml-và-định-vị-file-c-trong-tương-lai)
 
 ---
 
-## TASK 5.1: Parse ARXML — Extract Signal & SWC List (~3h, Intermediate)
+### TASK 5.1: Parse ARXML — Extract Signal & SWC List (~3h, Intermediate)
 
 **Objective**: Viết Python script đọc file ARXML (nếu có trong `as/`) và extract danh sách signals.
 
@@ -131,4 +136,3 @@
 - **Bước 3**: Viết SWC application code gọi generated `Rte.h`.
 - **Bước 4**: Compile thành công.
 - **Success**: SWC code compile với generated `Rte.h`.
-

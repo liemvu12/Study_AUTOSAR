@@ -757,8 +757,7 @@ Trong kiến trúc hệ thống nhúng ô tô, thứ tự khởi tạo này là 
    Sau khi 2 module này hoàn tất, tầng MCAL và Interface mới sẵn sàng nhận lệnh truyền.
 2. **Ngăn ngừa lỗi mất gói tin khởi động (Init PDU Drop):**  
    `Com_Init()` nạp dữ liệu ban đầu cho các tín hiệu và sẵn sàng phát các gói tin khởi động chu kỳ (`COM_PERIODIC`).  
-   *Nếu `Com_Init` chạy trước khi Can/CanIf được khởi tạo, tầng COM sẽ kích hoạt lệnh `PduR_ComTransmit()` $
-ightarrow$ `CanIf_Transmit()`, lúc này CanIf chưa có bảng cấu hình HTH sẽ trả về `E_NOT_OK`, làm mất hoàn toàn các frame khởi động đầu tiên của xe.*
+   *Nếu `Com_Init` chạy trước khi Can/CanIf được khởi tạo, tầng COM sẽ kích hoạt lệnh `PduR_ComTransmit()` $ightarrow$ `CanIf_Transmit()`, lúc này CanIf chưa có bảng cấu hình HTH sẽ trả về `E_NOT_OK`, làm mất hoàn toàn các frame khởi động đầu tiên của xe.*
 
 ---
 

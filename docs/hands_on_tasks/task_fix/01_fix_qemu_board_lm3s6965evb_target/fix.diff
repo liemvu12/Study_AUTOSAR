@@ -1,0 +1,97 @@
+﻿diff --git a/com/as.infrastructure/arch/common/mcal/SCan.c b/com/as.infrastructure/arch/common/mcal/SCan.c
+index bbc0150..1071f7c 100644
+--- a/com/as.infrastructure/arch/common/mcal/SCan.c
++++ b/com/as.infrastructure/arch/common/mcal/SCan.c
+@@ -35,14 +35,14 @@ RB_DECLARE(canin,  Can_SerialInPduType, CAN_SERIAL_Q_SIZE);
+ RB_DECLARE(canout, Can_SerialOutPduType, CAN_SERIAL_Q_SIZE);
+ 
+ /* stub data */
+-const Can_ControllerConfigType Can_ControllerCfgData[1] ;
+-const Can_ConfigSetType Can_ConfigSetData =
++const Can_ControllerConfigType __attribute__((weak)) Can_ControllerCfgData[1] ;
++const Can_ConfigSetType __attribute__((weak)) Can_ConfigSetData =
+ {
+   .CanController =	NULL,
+   .CanCallbacks =	NULL,
+ };
+ 
+-const Can_ConfigType Can_ConfigData = {
++const Can_ConfigType __attribute__((weak)) Can_ConfigData = {
+   .CanConfigSet =	&Can_ConfigSetData,
+ };
+ /* ============================ [ LOCALS    ] ====================================================== */
+diff --git a/com/as.infrastructure/arch/lm3s/DriverLib/src/hibernate.c b/com/as.infrastructure/arch/lm3s/DriverLib/src/hibernate.c
+index 53af456..6b9f8d5 100644
+--- a/com/as.infrastructure/arch/lm3s/DriverLib/src/hibernate.c
++++ b/com/as.infrastructure/arch/lm3s/DriverLib/src/hibernate.c
+@@ -89,7 +89,7 @@ HibernateWriteDelay(unsigned long ulCount)
+           "    bx      lr");
+ }
+ #endif
+-#if defined(gcc) || defined(sourcerygxx)
++#if defined(gcc) || defined(sourcerygxx) || defined(__GNUC__)
+ static void __attribute__((naked))
+ HibernateWriteDelay(unsigned long ulCount)
+ {
+diff --git a/com/as.infrastructure/arch/lm3s/mcal/Mcu.c b/com/as.infrastructure/arch/lm3s/mcal/Mcu.c
+index 54522a9..3e8efca 100644
+--- a/com/as.infrastructure/arch/lm3s/mcal/Mcu.c
++++ b/com/as.infrastructure/arch/lm3s/mcal/Mcu.c
+@@ -128,7 +128,7 @@ void Mcu_DistributePllClock( void )
+ 	SysTickEnable();
+ }
+ #ifdef __ASKAR_OS__
+-void knl_system_tick_handler(void)
++void __attribute__((weak)) knl_system_tick_handler(void)
+ {
+ 	SignalCounter(0);
+ }
+diff --git a/com/as.tool/config.infrastructure.system/building.py b/com/as.tool/config.infrastructure.system/building.py
+index d87eb53..2cd49f1 100644
+--- a/com/as.tool/config.infrastructure.system/building.py
++++ b/com/as.tool/config.infrastructure.system/building.py
+@@ -603,14 +603,11 @@ def MKSymlink(src,dst):
+ 
+     if(not os.path.exists(dst)):
+         if(IsPlatformWindows()):
+-            RunSysCmd('del %s'%(adst))
+-            if((sys.platform == 'msys') and
+-               (os.getenv('MSYS') == 'winsymlinks:nativestrict')):
+-                RunCommand('ln -fs %s %s'%(asrc,adst))
+-            elif(os.path.isdir(asrc)):
+-                RunCommand('mklink /D %s %s'%(adst,asrc))
+-            else:
+-                RunCommand('mklink %s %s'%(adst,asrc))
++            import shutil
++            if(os.path.isdir(asrc)):
++                shutil.copytree(asrc, adst, dirs_exist_ok=True)
++            else:
++                shutil.copy2(asrc, adst)
+         else:
+             RunSysCmd('rm -f %s'%(adst))
+             os.symlink(asrc,adst)
+@@ -1252,15 +1249,18 @@ def PreProcess(cfgdir, fil):
+         return filR
+     filC = filR + '.h'
+     MKSymlink(fil,filC)
+-    cmd = 'gcc -E --include %s/asmconfig.h %s'%(cfgdir, filC)
++    cc = Env.get('CC', 'arm-none-eabi-gcc')
++    cmd = '%s -E --include %s/asmconfig.h %s'%(cc, cfgdir, filC)
+     err, txt = RunSysCmd(cmd)
+-    if(0 == err):
+-        raise Exception('gcc preprocessing %s failed:\n%s'%(fil, txt))
+     newTxt = ''
+-    for line in txt.split('\n'):
+-        line = line.strip()
+-        if((not line.startswith('#')) and (line != '')):
+-            newTxt += line+'\n'
++    if(0 != err):
++        for line in txt.split('\n'):
++            line = line.strip()
++            if((not line.startswith('#')) and (line != '')):
++                newTxt += line+'\n'
++    if(newTxt.strip() == ''):
++        with open(fil, 'r', encoding='utf-8') as f:
++            newTxt = f.read()
+     MKFile(filR, newTxt)
+     return filR

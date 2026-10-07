@@ -21,14 +21,7 @@
 
 ## 1. Định Vị Nghề Nghiệp: BSW Integration vs ECU Software Engineer
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **Knowledge Mapping:** Automotive hardware knowledge → AUTOSAR software mapping
-Hãy tưởng tượng việc xây dựng phần mềm cho một chiếc xe ô tô giống như xây dựng một nhà hàng.
-- **BSW Integration Engineer (Người quản lý hạ tầng):** Lo đường ống nước, đường điện, đảm bảo các tiện ích cơ bản hoạt động ổn định (Cấu hình OS, ComStack, MemStack). Họ không quan tâm khách ăn gì, chỉ quan tâm bếp có lửa, có nước.
-- **ECU Software Engineer (Đầu bếp):** Nấu các món ăn dựa trên công thức, thiết kế thuật toán điều khiển (Viết SWC, logic BMS/VCU). Họ không cần biết nước từ đâu ra, chỉ cần biết vặn vòi là có nước.
-💡 **Ví dụ:** BSW sẽ lo việc gửi tin nhắn CAN đi đúng giờ trên đường truyền vật lý, còn ECU Dev sẽ lo tính toán nội dung tin nhắn đó (ví dụ: nhiệt độ là bao nhiêu) và gọi lệnh truyền đi.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 Để tránh lan man vào các công việc ngoài luồng (như viết MCAL từ đầu cho chip mới hay làm HIL test thuần túy), bạn cần hiểu rõ phạm vi trách nhiệm của 2 vị trí mục tiêu:
 
 ```mermaid
@@ -59,7 +52,7 @@ graph LR
 🔧 **API Reference:** Các API phổ biến `Rte_Write_<Port>_<Data>`, `Rte_Read_<Port>_<Data>`, `Dem_SetEventStatus`.
 ✅ **Best Practice:** Phân tách rõ ràng giữa thuật toán (App) và phần cứng (BSW) theo chuẩn AUTOSAR. Ứng dụng tuyệt đối không gọi trực tiếp thanh ghi vi điều khiển mà phải thông qua RTE.
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 Ở cấp độ chuyên gia, BSW Integrator phải hiểu sâu về kiến trúc phần cứng (Multicore OS, Memory Protection Unit - MPU) và ECU Dev phải nắm rõ tiêu chuẩn an toàn ISO 26262 ASIL.
 📊 **Data / Statistics:** Thời gian thực thi của một Task BSW thường phải nhỏ hơn 50% chu kỳ (ví dụ Task 10ms chỉ nên chạy mất max 5ms). Nếu vượt quá, Task bị trễ (Deadline Miss) dẫn đến jitter trên mạng CAN.
 💀 **Critical Bug:** Lỗi cấu hình OS Priority Inversion làm hệ thống bị reset bởi Watchdog do task ưu tiên thấp chiếm dụng resource (Spinlock) của task ưu tiên cao trong một thời gian dài.
@@ -68,16 +61,7 @@ graph LR
 
 ## 2. Thiết Kế Hộp Quản Trị Pin Xe Điện (BMS ECU - Battery Management System)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **BMS** (*Battery Management System*): Là bộ não bảo vệ cục pin khổng lồ của xe điện.
-📖 **SoC** (*State of Charge*): Giống như vạch pin trên điện thoại (0-100%).
-📖 **SoH** (*State of Health*): Độ chai pin, pin dùng lâu sẽ giảm dung lượng tối đa.
-📖 **AFE** (*Analog Front End*): Con chip đo điện áp của từng cục pin nhỏ.
-📖 **Contactor**: Cái rơ-le to đùng đóng ngắt điện cao áp, kêu "cạch cạch" khi khởi động xe.
 
-Giống như bạn dùng smartphone, khi pin yếu nó tự sập nguồn để bảo vệ. BMS làm nhiệm vụ tương tự nhưng cho cục pin to hơn hàng nghìn lần, với điện áp có thể giật chết người ngay lập tức. Cục pin được cấu thành từ hàng nghìn cell pin nhỏ bằng ngón tay. AFE có nhiệm vụ đi đo điện áp của từng cell đó.
-
-### 🟡 LEVEL 2: INTERMEDIATE
 #### 2.1 Sơ Đồ Khối & Phân Rã Phần Mềm BMS Thành Các SWCs
 
 Hộp **BMS ECU** chịu trách nhiệm giám sát sự an toàn của pack pin cao áp (400V - 800V). Kiến trúc phần mềm AUTOSAR của BMS được chia thành các SWCs độc lập:
@@ -223,13 +207,13 @@ Byte 2 & 3: Pack Voltage - Factor: 0.1V/bit, Offset: 0 (Ví dụ: truyền giá 
 Byte 4 & 5: Pack Current - Factor: 0.1A/bit, Offset: -500A (Ví dụ: truyền giá trị 5000 = 0A, 6000 = 100A đang sạc, 4000 = -100A đang xả)
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 📊 **Real-world numbers:** 
 - Cell voltage range: Giới hạn vật lý của pin Lithium-ion thường từ 2.5V (cạn kiệt) đến 4.25V (đầy). Nếu sạc vượt 4.25V sẽ gây cháy nổ, xả dưới 2.5V sẽ gây hỏng cell vĩnh viễn.
 - Max current: Có thể lên tới 500A lúc xe tăng tốc kịch kim.
 - Temperature limits: Thường hoạt động từ -20°C đến 60°C. Vượt qua 60°C hệ thống tản nhiệt chất lỏng phải chạy hết công suất.
 
-Thuật toán SoC trên thực tế không chỉ dùng Coulomb Counting. Coulomb Counting giống như bạn nhắm mắt đếm bước chân, đi càng xa thì sai số càng tích tụ. Ở mức chuyên gia, người ta kết hợp **Kalman Filter** để khử nhiễu sensor và bù trừ (drift) qua thời gian, kết hợp với đường cong OCV (Open Circuit Voltage).
+Thuật toán ước lượng SoC trên thực tế không chỉ dùng phương pháp đếm Coulomb (Coulomb Counting) thuần túy do sai số tích phân $\int I dt$ tích lũy theo thời gian từ dòng rò và nhiễu cảm biến Shunt/Hall. Ở cấp độ chuyên gia ô tô, hệ thống kết hợp **Bộ lọc Kalman mở rộng (Extended Kalman Filter - EKF)** hoặc **Unscented Kalman Filter (UKF)** để khử nhiễu cảm biến, tự động bù trừ độ trôi (drift compensation) và hiệu chuẩn liên tục dựa trên đường đặc tính điện áp mạch hở OCV (Open Circuit Voltage).
 
 ⚠️ **5 DEM DTCs Phổ Biến Cho BMS:**
 1. `P0A7E`: Battery Over-temperature (>60°C) - Kích hoạt ngắt contactor ngay lập tức.
@@ -247,12 +231,7 @@ Thuật toán SoC trên thực tế không chỉ dùng Coulomb Counting. Coulomb
 
 ## 3. Thiết Kế Hộp Điều Khiển Trung Tâm Xe Điện (VCU ECU - Vehicle Control Unit)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **VCU** (*Vehicle Control Unit*): "Nhạc trưởng" của xe, nhận lệnh từ chân ga, phanh, số của tài xế và ra lệnh cho mô-tơ quay.
-📖 **Torque Coordination**: Bàn giao việc phân bổ sức mạnh. Khi bạn đạp ga, VCU tính toán xem phải đẩy bao nhiêu lực (mô-men xoắn) xuống bánh xe.
-💡 **Ví dụ:** VCU giống như não của bạn, khi thấy chướng ngại vật, mắt (sensor) báo về não (VCU), não ra lệnh cho chân (Mô-tơ) phanh lại. VCU điều phối toàn bộ các hoạt động liên quan đến di chuyển.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 #### 3.1 Xử Lý Tín Hiệu Kép Bàn Đạp Ga/Phanh (Sensor Plausibility Check)
 
 Theo tiêu chuẩn an toàn **ISO 26262 ASIL-D**, cảm biến chân ga không bao giờ dùng 1 dây tín hiệu vì nếu đứt dây, xe có thể phóng đi ngoài kiểm soát. Cảm biến chân ga luôn có **2 đường tín hiệu biến trở độc lập (Sensor 1: 0.5V - 4.5V; Sensor 2: 0.25V - 2.25V)**. VCU phải kiểm tra tính hợp lý (*Plausibility Check*) trước khi cấp ga cho động cơ:
@@ -356,7 +335,7 @@ void TorqueCoordinator_CalculateTorque_Runnable(void)
 }
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 🎯 **Use Case:** Quản Lý Chế Độ Lái (P-R-N-D) Qua BswM & Mode-Switch Interface.
 Mode-Switch Interface là cơ chế mạnh mẽ trong AUTOSAR cho phép một SWC (như Mode Manager) báo cho tất cả các SWC khác biết chế độ hiện tại của xe, để chúng chuyển đổi logic phù hợp mà không cần truyền biến liên tục.
 
@@ -382,11 +361,7 @@ void ModeManager_SetGear_Runnable(void)
 
 ## 4. Thiết Kế Hộp Điều Khiển Thân Xe (BCM ECU - Body Control Module)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **BCM** (*Body Control Module*): Hộp quản lý các chức năng tiện nghi: khóa cửa, gạt mưa, đèn pha, xi nhan.
-💡 **Ví dụ:** Khi bạn bấm khóa cửa trên chìa khóa, BCM nhận tín hiệu và điều khiển mô-tơ điện chốt 4 cửa. Khác với VCU và BMS lo về an toàn tính mạng, BCM lo về sự tiện nghi của tài xế.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 #### 4.1 Điều Khiển Đèn Tự Động, Gạt Mưa & Khóa Cửa Trung Tâm
 * **Giao tiếp ngoại vi:** Đọc cảm biến ánh sáng/gạt mưa (Rain/Light Sensor) qua bus **LIN**, điều khiển rơ-le đèn pha qua chân **Dio**, điều khiển băm xung gạt mưa qua **Pwm**.
 
@@ -462,7 +437,7 @@ sequenceDiagram
     Note over BCM: ECU trở lại trạng thái RUN bình thường, sẵn sàng phục vụ!
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 📊 **Power Consumption:** Trong chế độ ngủ sâu (Deep Sleep), BCM phải tiêu thụ dưới **100µA** (100 Micro-Ampe). Nếu cao hơn, ắc-quy 12V (dung lượng khoảng 45Ah) sẽ cạn sạch sau 2-3 tuần đỗ xe ở bãi, tài xế sẽ không thể khởi động được xe.
 💀 **Critical Bug:** Chu trình EcuM Sleep thất bại do một SWC nào đó liên tục giữ cờ Wakeup (Ví dụ lỗi logic nút bấm bị dính, không trả về trạng thái nhả). Hệ quả: MCU không thể gọi hàm `EcuM_GoHalt`, tiêu thụ tĩnh ở mức 200mA, xe sập bình 12V chỉ sau 1 tuần.
 
@@ -470,14 +445,7 @@ sequenceDiagram
 
 ## 5. Trách Nhiệm & Kỹ Năng Cốt Lõi Của BSW Integration Engineer
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-Debug giống như làm thám tử. Khi xe không chạy, thám tử phải cắm máy tính vào xe để xem "hộp đen" đang bị lỗi ở đường truyền nào.
-🛠️ **Tools sử dụng:**
-- **CANoe**: Dùng để bắt gói tin mạng giống như nghe lén điện thoại. Bạn có thể thấy ECU A gửi gì cho ECU B.
-- **Lauterbach**: Dụng cụ phẫu thuật não ECU (JTAG/Trace tool), có thể tạm dừng (pause) con chip và soi từng thanh ghi bên trong.
-- **PTC MTC**: Phần mềm quản lý requirement và test case (ALM tool).
 
-### 🟡 LEVEL 2: INTERMEDIATE
 #### 5.1 Quy Trình Nạp ARXML, Cấu Hình Stacks & Sinh Mã
 
 Một **BSW Integrator** thực hiện chuỗi công việc chuẩn hóa trên công cụ (Vector DaVinci / EB Tresos / AS Studio):
@@ -513,7 +481,7 @@ on key 't' {
 }
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 #### 5.2 Kỹ Năng Debug Tích Hợp Hệ Thống Thực Tế
 
 **5 Debug Scenarios Mới & Phổ Biến Kèm Root Cause Analysis:**
@@ -530,12 +498,7 @@ on key 't' {
 
 ## 6. Bộ Kịch Bản Phỏng Vấn Tình Huống Dự Án (Project Scenario Interview)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-Những câu hỏi lý thuyết để lọc ứng viên:
-- Em hiểu thế nào là AUTOSAR? Các layer chính của AUTOSAR là gì?
-- CAN Bus khác gì LIN Bus về tốc độ và kiến trúc dây?
 
-### 🟡 LEVEL 2: INTERMEDIATE
 **5 Kịch Bản Phỏng Vấn Tình Huống Mới (Thiết kế cho ECU Developer):**
 
 1. ❓ *"Làm sao để đọc tín hiệu tốc độ xe từ CAN và tính quãng đường (Odometer)?"*
@@ -569,7 +532,7 @@ Dưới đây là các câu hỏi tình huống thực tế dành riêng cho v�
   * Nếu gọi hàm chờ đồng bộ (Blocking / Polling), Task 10ms điều khiển động cơ/phanh sẽ bị nghẽn lại chờ quá hạn (Deadline Miss) gây tai nạn xe nghiêm trọng.
   * Do đó, ứng dụng chỉ được cập nhật dữ liệu vào RAM Mirror và gọi `NvM_WriteBlock()` để đẩy yêu cầu vào hàng đợi *NvM Queue*. Hàm nền `NvM_MainFunction()` sẽ âm thầm ghi từng khối nhỏ xuống Flash trong các chu kỳ nhàn rỗi (Background Task).
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 **Technical Deep-Dive Questions:**
 - ❓ *"Trong OS Multicore (VD: Infineon Aurix TC397), làm sao chia sẻ dữ liệu an toàn giữa Core 0 (chạy BSW) và Core 1 (chạy SWC) mà không làm chậm hệ thống?"*
    * *Trả lời chuẩn mực:* Dùng cơ chế Spinlock kết hợp (Inter-OS Application Communicaton) IOC do RTE sinh ra. Spinlock sử dụng tập lệnh phần cứng đặc biệt để lock tài nguyên, đảm bảo Data Consistency giữa các core thật sự chạy song song.

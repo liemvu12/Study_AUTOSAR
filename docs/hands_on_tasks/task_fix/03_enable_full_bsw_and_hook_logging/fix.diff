@@ -1,0 +1,42 @@
+diff --git a/src_before/as/com/as.infrastructure/include/asdebug.h b/src_after/as/com/as.infrastructure/include/asdebug.h
+index b2cfa39..bec8ad1 100644
+--- a/src_before/as/com/as.infrastructure/include/asdebug.h
++++ b/src_after/as/com/as.infrastructure/include/asdebug.h
+@@ -27,22 +27,34 @@
+ #define asAssertErrorHook()
+ #endif
+ 
++#ifndef USE_ASLOG
++#define USE_ASLOG
++#endif
++
+ /* levels for log output */
+ #define AS_LOG_DEFAULT  1
+ #define AS_LOG_STDOUT  	AS_LOG_DEFAULT
+ #define AS_LOG_STDERR  	AS_LOG_DEFAULT
+ #define AS_LOG_ON       AS_LOG_DEFAULT
+ #define AS_LOG_ERROR    AS_LOG_DEFAULT
++#define AS_LOG_INFO     AS_LOG_DEFAULT
++#define AS_LOG_DEBUG    AS_LOG_DEFAULT
++#define AS_LOG_ECUM     AS_LOG_DEFAULT
++#define AS_LOG_BSWM     AS_LOG_DEFAULT
++#define AS_LOG_SCHM     AS_LOG_DEFAULT
++#define AS_LOG_OS       AS_LOG_DEFAULT
++#define AS_LOG_CAN      AS_LOG_DEFAULT
++#define AS_LOG_COM      AS_LOG_DEFAULT
+ #define AS_LOG_OFF      0
+ 
+ #ifndef AS_LOG_LOW
+-#define AS_LOG_LOW 0
++#define AS_LOG_LOW 1
+ #endif
+ #ifndef AS_LOG_MEDIUM
+-#define AS_LOG_MEDIUM 0
++#define AS_LOG_MEDIUM 1
+ #endif
+ #ifndef AS_LOG_HIGH
+-#define AS_LOG_HIGH 0
++#define AS_LOG_HIGH 1
+ #endif
+ 
+ /* debug/warning/error */

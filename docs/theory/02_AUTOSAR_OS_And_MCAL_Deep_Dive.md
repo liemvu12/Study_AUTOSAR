@@ -11,7 +11,7 @@
 
 ## 📖 Hệ Thống Biểu Tượng (Icon System)
 - 📖 Glossary / Định nghĩa thuật ngữ lõi
-- 💡 Ví dụ / Example / Ẩn dụ thực tế 
+- 💡 Ví dụ minh họa / Real-world Example
 - ⚠️ Warning / Pitfall cần tránh
 - ✅ Best Practice (Nên làm)
 - ❌ Bad Practice (Không nên làm)
@@ -19,7 +19,7 @@
 - 🔧 API Reference (Giao diện lập trình)
 - 📊 Data / Statistics (Dữ liệu thống kê)
 - 🛠️ Hands-On Exercise (Thực hành)
-- 🟢 LEVEL 1 / 🟡 LEVEL 2 / 🔴 LEVEL 3 (Difficulty Level)
+- 🔴 NÂNG CAO (Nội dung chuyên sâu & Deep Dive)
 - 💀 Critical Bug (Lỗi nghiêm trọng)
 - 🌟 Pro Tip (Mẹo chuyên gia)
 
@@ -28,12 +28,28 @@
 ## Mục Lục
 0. [Bức Tranh Toàn Cảnh: Mạng Lưới 100+ ECU & Hệ Sinh Thái Linh Kiện Điện Tử Trên Xe Hơi](#0-bức-tranh-toàn-cảnh-mạng-lưới-100-ecu--hệ-sinh-thái-linh-kiện-điện-tử-trên-xe-hơi)
 1. [Mô Hình Hai Loại Tác Vụ Cốt Lõi: Basic Task vs Extended Task (Kèm Mã Nguồn Gốc)](#1-mô-hình-hai-loại-tác-vụ-cốt-lõi-basic-task-vs-extended-task-kèm-mã-nguồn-gốc)
+   - [1.1 Bảng So Sánh Chi Tiết Giữa Basic Task & Extended Task](#11--bảng-so-sánh-chi-tiết-giữa-basic-task--extended-task)
+   - [1.2 Mã Nguồn C Gốc Của Basic Task & Extended Task Trong Dự Án as](#12--mã-nguồn-c-gốc-của-basic-task--extended-task-trong-dự-án-as)
+   - [1.3 Vòng Đời Siêu Tốc Của 1 Basic Task & Cơ Chế Kích Hoạt](#13--vòng-đời-siêu-tốc-của-1-basic-task--cơ-chế-kích-hoạt-trigger-without-waiting)
+   - [1.4 Vòng Đời Bất Tử Của 1 Extended Task: Bản Chất Vòng Lặp while(1) / for(;;) & Cơ Chế Giải Phóng CPU Tại WaitEvent()](#14--vòng-đời-bất-tử-của-1-extended-task-bản-chất-vòng-lặp-while1--for-cơ-chế-giải-phóng-cpu-tại-waitevent)
+   - [1.5 ECU Đơn Nhân vs. Đa Nhân & Cơ Chế Thực Thi Đa Tác Vụ](#15-️-ecu-đơn-nhân-vs-đa-nhân--cơ-chế-thực-thi-đa-tác-vụ-single-core-vs-multi-core)
+   - [1.6 So Sánh Toàn Diện: AUTOSAR / OSEK Task vs. FreeRTOS / POSIX Thread](#16-️-so-sánh-toàn-diện-autosar--osek-task-vs-freertos--posix-thread)
 2. [Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU](#2-phân-tích-task-autostart-schm_startup--chuỗi-function-call-function-khởi-tạo-task-khi-boot-ecu)
-3. [Bản Chất 4 Cấp Độ Tuân Thủ (Conformance Classes: BCC1, BCC2, ECC1, ECC2) Qua Mã Nguồn C](#3-bản-chất-4-cấp-độ-tuân-thủ-conformance-classes-bcc1-bcc2-ecc1-ecc2-qua-mã-nguồn-c)
-4. [Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)](#4-hiện-tượng-đảo-ngược-độ-ưu-tiên--giao-thức-priority-ceiling-protocol-pcp)
-5. [Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2](#5-phân-cấp-ngắt-phần-cứng-isr-category-1-vs-isr-category-2)
+4. [Bản Chất Resource Trong AUTOSAR/OSEK & Giao Thức Immediate Priority Ceiling Protocol (IPCP)](#4-bản-chất-resource-trong-autosarosek--giao-thức-immediate-priority-ceiling-protocol-ipcp)
+   - [4.0 Bản Chất Cốt Tử: "Resource Trong AUTOSAR/OSEK Thực Chất Là Gì?"](#40-bản-chất-cốt-tử-resource-trong-autosarosek-thực-chất-là-gì)
+   - [4.1 Hiện Tượng Đảo Ngược Độ Ưu Tiên (Priority Inversion) & Bài Học Mars Pathfinder 1997](#41-hiện-tượng-đảo-ngược-độ-ưu-tiên-priority-inversion--bài-học-mars-pathfinder-1997)
+   - [4.2 Giao Thức Trần Ưu Tiên Tức Thì (Immediate Priority Ceiling Protocol - IPCP)](#42-giao-thức-trần-ưu-tiên-tức-thì-immediate-priority-ceiling-protocol---ipcp)
+   - [4.3 Mổ Xẻ Mã Nguồn Kernel resource.c & Bộ Sinh Mã GenOS.py](#43-mổ-xẻ-mã-nguồn-kernel-resourcec--bộ-sinh-mã-genospy)
+   - [4.4 Bảng So Sánh Toàn Diện: AUTOSAR Resource vs FreeRTOS Mutex vs POSIX Mutex](#44-bảng-so-sánh-toàn-diện-autosar-resource-vs-freertos-mutex-vs-posix-mutex)
+   - [4.5 Các Quy Tắc Vàng & Điều Cấm Kỵ Tuyệt Đối Khi Dùng Resource Trong Kỹ Nghệ Xe Hơi](#45-các-quy-tắc-vàng--điều-cấm-kỵ-tuyệt-đối-khi-dùng-resource-trong-kỹ-nghệ-xe-hơi)
 6. [Cơ Chế Định Thời: Counter, Alarm & Schedule Table](#6-cơ-chế-định-thời-counter-alarm--schedule-table)
-7. [Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)](#7-hệ-thống-hàm-hook-quản-trị-trạng-thái-hook-routines)
+7. [Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines) & Cơ Chế Giám Sát Nhân Hệ Điều Hành](#7-hệ-thống-hàm-hook-quản-trị-trạng-thái-hook-routines--cơ-chế-giám-sát-nhân-hệ-điều-hành)
+   - [7.1 Bức Tranh Toàn Cảnh: Vòng Đời & Bản Chất Kỹ Nghệ Của OS Hooks](#71-bức-tranh-toàn-cảnh-vòng-đời--bản-chất-kỹ-nghệ-của-os-hooks)
+   - [7.2 Mổ Xẻ Chi Tiết Từng Loại Hook & Call-Site Trong Mã Nguồn Kernel askar](#72-mổ-xẻ-chi-tiết-từng-loại-hook--call-site-trong-mã-nguồn-kernel-askar)
+   - [7.3 Cơ Chế Quản Trị Mức Gọi Kernel (CallLevel / TCL_*) & Kỹ Thuật Chống Đệ Quy Vô Hạn](#73-cơ-chế-quản-trị-mức-gọi-kernel-calllevel--tcl_-kỹ-thuật-chống-đệ-quy-vô-hạn)
+   - [7.4 Cơ Chế Bắt & Chẩn Đoán Lỗi Tập Trung: OSErrorGetServiceId & Union _ErrorHook_Par](#74-cơ-chế-bắt--chẩn-đoán-lỗi-tập-trung-oserrorgetserviceid--union-_errorhook_par)
+   - [7.5 Ma Trận Thẩm Quyền Gọi API Chuẩn OSEK/AUTOSAR OS (API Calling Permissions Matrix)](#75-ma-trận-thẩm-quyền-gọi-api-chuẩn-osekautosar-os-api-calling-permissions-matrix)
+   - [7.6 Bốn Ứng Dụng Thực Chiến Chuẩn ASIL-D Trong Kỹ Nghệ Ô Tô](#76-bốn-ứng-dụng-thực-chiến-chuẩn-asil-d-trong-kỹ-nghệ-ô-tô)
 8. [Tầng Trừu Tượng Vi Điều Khiển (MCAL Layer Architecture & SWS Patterns)](#8-tầng-trừu-tượng-vi-điều-khiển-mcal-layer-architecture--sws-patterns)
 9. [Phân Tích Chi Tiết Các Module MCAL Cốt Lõi: Cấu Trúc File, Cẩm Nang Đọc Hiểu & Phân Tích Chức Năng Theo Các Function Quan Trọng](#9-phân-tích-chi-tiết-các-module-mcal-cốt-lõi-cấu-trúc-file-cẩm-nang-đọc-hiểu--phân-tích-chức-năng-theo-các-function-quan-trọng)
    - [9.0 Cẩm Nang Đọc Hiểu, Cấu Trúc File Driver & Các Nhóm Function Cốt Lõi](#90-cẩm-nang-đọc-hiểu-cấu-trúc-file-driver--các-nhóm-function-cốt-lõi)
@@ -115,8 +131,7 @@ Trong một chiếc ô tô hiện đại, hệ thống điều khiển không v�
 | **ADAS Controller** | Xử lý ảnh camera AI, phanh khẩn cấp AEB | NVIDIA DRIVE Orin / TI TDA4 | **16 GB – 32 GB** | 128 GB UFS | **AUTOSAR Adaptive (QNX / Linux)** |
 
 > 🎯 **Tại sao phải có chuẩn AUTOSAR OS & Conformance Classes?**  
-> Chính vì sự chênh lệch phần cứng từ 512 Bytes RAM đến 32 GB RAM, không một hệ điều hành đơn lẻ nào có thể bao quát toàn bộ. Chuẩn **AUTOSAR OS chia thành 4 Conformance Classes (BCC1 $
-ightarrow$ ECC2)** để có thể chuẩn hóa phần mềm từ vi điều khiển cửa kính 1KB RAM nhỏ nhất cho tới ECU điều khiển động cơ mạnh nhất!
+> Chính vì sự chênh lệch phần cứng từ 512 Bytes RAM đến 32 GB RAM, không một hệ điều hành đơn lẻ nào có thể bao quát toàn bộ. Chuẩn **AUTOSAR OS chia thành 4 Conformance Classes (BCC1 $\rightarrow$ ECC2)** để có thể chuẩn hóa phần mềm từ vi điều khiển cửa kính 1KB RAM nhỏ nhất cho tới ECU điều khiển động cơ mạnh nhất!
 
 ---
 
@@ -157,9 +172,7 @@ stateDiagram-v2
 | :--- | :--- | :--- |
 | **Số lượng trạng thái** | **3 trạng thái:** `SUSPENDED`, `READY`, `RUNNING`. | **4 trạng thái:** `SUSPENDED`, `READY`, `RUNNING`, `WAITING`. |
 | **Cơ chế chờ đợi (Blocking)**| ❌ **Không thể ngủ chờ (Non-blocking)**. Chạy 1 mạch từ đầu hàm đến lệnh `TerminateTask()`. | ✅ **Có thể chủ động dừng ngủ chờ sự kiện** bằng lệnh `WaitEvent(EventMask)`. |
-| **Quản trị Stack (RAM)** | **Dùng chung 1 Stack (Single Shared Stack):** Nhiều Basic Task có thể dùng chung 1 vùng RAM Stack $= \max(	ext{Stack}_{T1..Tn})$. $
-ightarrow$ **Cực kỳ tiết kiệm RAM**. | **Bắt buộc có Stack riêng (Dedicated Stack):** Khi bị block ở `WaitEvent()`, Context phải lưu trên Stack riêng của Task đó. 10 Tasks $= \sum 	ext{Stack}$ $
-ightarrow$ **Tốn RAM**. |
+| **Quản trị Stack (RAM)** | **Dùng chung 1 Stack (Single Shared Stack):** Nhiều Basic Task có thể dùng chung 1 vùng RAM Stack $= \max(	ext{Stack}_{T1..Tn})$. $\rightarrow$ **Cực kỳ tiết kiệm RAM**. | **Bắt buộc có Stack riêng (Dedicated Stack):** Khi bị block ở `WaitEvent()`, Context phải lưu trên Stack riêng của Task đó. 10 Tasks $= \sum 	ext{Stack}$ $\rightarrow$ **Tốn RAM**. |
 | **Mã nguồn Kernel (`kernel_internal.h`)** | `pEventVar = NULL` trong `TaskConstType`. Không tốn bộ nhớ lưu Event. | `pEventVar = &Task_EventVar` chứa 2 trường `set` và `wait`. |
 | **Ứng dụng thực tế trên xe** | Xử lý chu kỳ định kỳ: `Com_MainFunctionTx`, `Can_Write`, `Adc_Read`, `WdgM_MainFunction`. | Xử lý sự kiện ngắt bất đồng bộ: `TaskNmInd` (chờ gói tin NM), `TaskDiag` (chờ gói tin UDS). |
 
@@ -228,10 +241,7 @@ TASK(TaskNmInd)
 #### 1. Bản Chất Vòng Đời Basic Task: "Vào Việc ──► Làm Thần Tốc ──► Tự Sát (Terminate)"
 Khác với Thread trong FreeRTOS (sống vĩnh viễn trong vòng lặp `while(1)` và ngủ ở `BLOCKED/WAITING`), một **Basic Task trong AUTOSAR/OSEK** được thiết kế để sống chớp nhoáng:
 * Khi không có việc: Nằm "chết lâm sàng" ở trạng thái `SUSPENDED` (**0 bytes RAM Stack, 0% CPU**).
-* Khi có sự kiện kích hoạt: Bật dậy chuyển sang `READY` $
-ightarrow$ `RUNNING` $
-ightarrow$ Thực thi logic trong khoảng **vài Micro-giây ($\mu s$)** $
-ightarrow$ Gọi `TerminateTask()` tự sát về lại `SUSPENDED`!
+* Khi có sự kiện kích hoạt: Bật dậy chuyển sang `READY` $\rightarrow$ `RUNNING` $\rightarrow$ Thực thi logic trong khoảng **vài Micro-giây ($\mu s$)** $\rightarrow$ Gọi `TerminateTask()` tự sát về lại `SUSPENDED`!
 
 ```mermaid
 sequenceDiagram
@@ -403,7 +413,375 @@ TASK(SchM_BswService)
 
 ---
 
-### 1.4 🏎️ ECU Đơn Nhân vs. Đa Nhân & Cơ Chế Thực Thi Đa Tác Vụ (Single-Core vs. Multi-Core):
+### 1.4 🔄 Vòng Đời Bất Tử Của 1 Extended Task: Bản Chất Vòng Lặp `while(1)` / `for(;;)` & Cơ Chế Giải Phóng CPU Tại `WaitEvent()`:
+
+> ❓ **Câu hỏi kỹ nghệ kinh điển:**  
+> *"Tại sao trong các Extended Task (như `Task_CanRxHandler`, `TaskShell`, `TaskNmInd`), ta luôn thấy có một vòng lặp vô hạn `while(1)` hoặc `for(;;)` mà không có điều kiện thoát? Nếu không thoát được vòng lặp thì làm sao nó nhường CPU cho các task khác chạy?"*
+
+#### 1. Bản Chất Vòng Đời Extended Task: "Worker Daemon Bất Tử" (Lifecycle-Persistent Server):
+Khác hoàn toàn với Basic Task mang tính chất "chớp nhoáng" (Transient), một **Extended Task** trong hệ điều hành thời gian thực OSEK/AUTOSAR đóng vai trò là một **Event Server / Worker Daemon**:
+* **Khởi tạo 1 lần duy nhất lúc Boot (`Autostart = True`):** Task thức dậy, thiết lập biến, đăng ký tài nguyên.
+* **Sống vĩnh viễn:** Task không bao giờ kết thúc hàm suốt vòng đời hoạt động của ECU (từ khi bật chìa khóa xe cho đến khi tắt máy).
+* **Cơ chế "Nhả CPU tại chỗ" (Blocking Call Mechanism):** Task không nhả CPU bằng cách gọi `TerminateTask()` thoát hàm, mà tự phanh hãm đưa mình vào trạng thái **`WAITING`** ngay tại dòng lệnh **`WaitEvent()`**!
+
+```text
+TASK(Task_Extended)
+{
+    while(1)
+    {
+        WaitEvent(Event_A | Event_B); ───► [TASK DỪNG LẠI TẠI ĐÂY!]
+                                           1. Kernel đóng băng Task, chuyển từ RUNNING -> WAITING.
+                                           2. Toàn bộ thanh ghi CPU và Stack của Task được giữ nguyên.
+                                           3. CPU được bàn giao 100% cho Task khác.
+                                           Task tiêu tốn đúng 0% CPU trong lúc chờ!
+                                           
+        /* --- ĐOẠN DƯỚI NÀY ĐỨNG YÊN, CHỈ CHẠY KHI ĐƯỢC ĐÁNH THỨC --- */
+        GetEvent(Task_Extended, &active_events);
+        ClearEvent(active_events);        /* Bắt buộc dọn cờ sự kiện */
+        /* Xử lý dữ liệu */
+    }
+    (void)TerminateTask();                /* Điểm thoát danh nghĩa (MISRA-C / Graceful Shutdown) */
+}
+```
+
+---
+
+#### 2. Minh Chứng Thực Tế 100% Từ Mã Nguồn Dự Án `as`: Case Study `TaskShell` & `EventShellInput`:
+
+Để đối chiếu với mã nguồn chuẩn mực đang vận hành thực tế trong kho code `Study_AUTOSAR-main`, hãy khảo sát module Shell điều khiển dòng lệnh qua cổng nối tiếp UART:
+* **File cấu hình XML:** [`as/com/as.infrastructure/system/shell/shell.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/shell/shell.xml)
+* **File mã nguồn C:** [`as/com/as.infrastructure/system/shell/shell.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/shell/shell.c)
+* **File ánh xạ macro:** [`as/com/as.infrastructure/system/kernel/Os.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/Os.h)
+
+##### 🅰️ Triển khai C Thực Tế Của `TaskShell` ([`shell.c: L543-L560`](../../as/com/as.infrastructure/system/shell/shell.c#L543-L560)):
+```c
+/* as/com/as.infrastructure/system/shell/shell.c */
+TASK(TaskShell)
+{
+    OS_TASK_BEGIN();
+    SHELL_Mainloop();            /* Nhảy vào vòng lặp bất tử của Shell */
+    OsTerminateTask(TaskShell);  /* Điểm thoát danh nghĩa (MISRA-C / Defensive) */
+    OS_TASK_END();
+}
+
+void SHELL_Mainloop(void)
+{
+    SHELL_puts("AS Shell version 0.1\n");
+    doPrompt();
+
+    for(;;)                      /* VÒNG LẶP VÔ HẠN (LIFECYCLE PERSISTENT DAEMON) */
+    {
+        c = SHELL_getc();        /* ĐỌC KÝ TỰ — NƠI TASK SẼ NGỦ GIẢI PHÓNG CPU */
+
+        /* Khi thức dậy và nhận được ký tự, xử lý lệnh */
+        if( c == '\n' ) {
+            cmdLine[lineIndex] = '\0';
+            SHELL_RunCmd(cmdLine, &cmdRv);
+            doPrompt();
+        } else {
+            cmdLine[lineIndex++] = c;
+            SHELL_putc(c);       /* Echo lại ký tự lên màn hình */
+        }
+    }
+}
+```
+
+##### 🅱️ Trọng Tâm Giải Phóng CPU Tại `SHELL_getc()` ([`shell.c: L191-L218`](../../as/com/as.infrastructure/system/shell/shell.c#L191-L218)):
+```c
+static char SHELL_getc(void)
+{
+    char c;
+    rb_size_t r;
+    imask_t imask;
+
+    do
+    {
+        Irq_Save(imask);
+        r = RB_POP(shin, &c, 1);    /* 1. Thử lấy ký tự từ bộ đệm RingBuffer */
+        Irq_Restore(imask);
+
+        if(0 == r)                  /* 2. BUFFER RỖNG (CHƯA CÓ AI GÕ PHÍM) */
+        {
+            /* 3. TỰ ĐỘNG CHUYỂN SANG TRẠNG THÁI WAITING — GIẢI PHÓNG 100% CPU! */
+            StatusType ercd = OsWaitEvent(TaskShell, EventShellInput);
+
+            /* 4. KHI CÓ PHÍM BẤM ĐƯỢC ĐÁNH THỨC DẬY -> XÓA CỜ NGAY TẠI ĐÂY */
+            OsClearEvent(TaskShell, EventShellInput);
+        }
+    } while(0 == r);
+
+    return c;
+}
+```
+
+##### 🆎 Ngắt Ngoại Vi Trigger Sự Kiện ([`shell.c: L159-L189`](../../as/com/as.infrastructure/system/shell/shell.c#L159-L189)):
+```c
+void SHELL_input(char c)
+{
+    Irq_Save(imask);
+    r = RB_PUSH(shin, &c, 1);                  /* Đẩy ký tự vào RingBuffer */
+    Irq_Restore(imask);
+
+    /* BẮN SỰ KIỆN ĐÁNH THỨC TaskShell ĐANG NGỦ TRONG WaitEvent()! */
+    ercd = OsSetEvent(TaskShell, EventShellInput); 
+}
+```
+
+---
+
+#### 3. Sơ Đồ Tuần Tự (Sequence Diagram) 5 Giai Đoạn Từ File XML Đến Runtime Trigger:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant XML as shell.xml (Thiết Kế Tĩnh)
+    participant Gen as ArGen (GenOS.py)
+    participant App as TaskShell (Consumer Daemon)
+    participant Kernel as OSEK OS Kernel (TCB)
+    participant HW as UART RX / Stdio (Producer)
+
+    Note over XML,Gen: GIAI ĐOẠN 1 & 2: THIẾT KẾ TĨNH & SINH MÃ
+    XML->>Gen: Khai báo TaskShell (Priority 1) + EventShellInput (Mask 0x01)
+    Gen->>Gen: Sinh EVENT_MASK_TaskShell_EventShellInput = 0x01
+    Gen->>Gen: Bật #define EXTENDED_TASK & sinh macro OsWaitEvent / OsSetEvent
+
+    Note over App,Kernel: GIAI ĐOẠN 3: KHỞI ĐỘNG HỆ THỐNG (BOOT-UP)
+    Kernel->>App: Autostart=True -> TaskShell vào RUNNING
+    App->>App: Vào for(;;) -> gọi SHELL_getc() -> RingBuffer rỗng
+    App->>Kernel: Gọi OsWaitEvent(TaskShell, EventShellInput)
+    Kernel->>Kernel: Đặt TaskShell = WAITING, đóng băng Context & Stack
+    Note over Kernel: Task tiêu tốn đúng 0% CPU, nhường CPU cho các Task khác!
+
+    Note over HW,App: GIAI ĐOẠN 4 & 5: RUNTIME TRIGGER TỪ PHẦN CỨNG
+    HW->>HW: Người dùng gõ phím 'h' trên terminal -> Ngắt UART RX kích hoạt!
+    HW->>App: Gọi SHELL_input('h') -> PUSH 'h' vào RingBuffer shin
+    HW->>Kernel: Gọi OsSetEvent(TaskShell, EventShellInput)
+    Kernel->>Kernel: Bật bit 0x01 trong TCB, chuyển TaskShell từ WAITING -> READY
+    Kernel->>App: Cấp CPU -> TaskShell thức dậy TIẾP TỤC NGAY SAU OsWaitEvent()!
+    App->>Kernel: Gọi OsClearEvent(TaskShell, EventShellInput) xóa bit dọn cờ
+    App->>App: POP 'h' từ RingBuffer -> In ra terminal & Xử lý lệnh
+    App->>Kernel: Hết ký tự -> Vòng for(;;) lặp lại -> Gọi OsWaitEvent() ngủ tiếp!
+```
+
+---
+
+#### 4. Vai Trò Thực Sự Của `TerminateTask()` Ở Cuối Hàm:
+Nếu vòng lặp `while(1)` / `for(;;)` không bao giờ thoát, tại sao ở cuối hàm luôn có `TerminateTask()`?
+1. **Tuân thủ chuẩn MISRA-C & Tránh Warning của Compiler:** Trình biên dịch (GCC, Tasking, IAR) và công cụ phân tích tĩnh (Coverity, Polyspace) yêu cầu mọi hàm `TASK()` phải có điểm kết thúc chuẩn mực.
+2. **Kịch bản Tắt máy ECU (Graceful ECU Shutdown):** Khi xe tắt chìa khóa hoặc chuyển sang chế độ ngủ (Sleep Mode), BSW gửi sự kiện tắt máy (`Event_Shutdown`). Lúc này code thực hiện `break;` thoát khỏi vòng lặp và gọi `TerminateTask()` để đưa task về `SUSPENDED` an toàn trước khi ngắt nguồn.
+
+---
+
+#### 5. Giải Phẫu Cơ Chế Mặt Nạ Sự Kiện (Event Masking Mechanics): Biến `&active_events`, Kiểu `EventMaskType` & Các Phép Toán Bit (`|`, `&`, `~`):
+
+> ❓ **Câu hỏi kỹ nghệ kinh điển:**  
+> *"Lệnh `WaitEvent(Event_CanFrameRx | Event_CanError)` chờ sự kiện xong thì đọc mask sự kiện đã kích hoạt như thế nào? Biến `&active_events` ở đâu ra, và bản chất 'Mask sự kiện kích hoạt' là gì bên trong bộ nhớ vi điều khiển?"*
+
+##### 🔬 1. `&active_events` Là Gì & Được Khai Báo Ở Đâu?
+* **Bản chất biến:** `active_events` **không phải biến toàn cục của hệ điều hành**, mà là **một biến cục bộ (Local Variable / Auto Variable)** do chính kỹ sư phần mềm khai báo ngay tại dòng đầu tiên của hàm `TASK()`:
+  ```c
+  TASK(Task_CanRxHandler)
+  {
+      EventMaskType active_events = 0; /* <--- KHAI BÁO BIẾN CỤC BỘ TẠI ĐÂY! */
+      StatusType ercd;
+      
+      while(1)
+      {
+          /* Chờ một trong 2 sự kiện: Frame nhận (0x01) hoặc Lỗi bus (0x02) */
+          WaitEvent(Event_CanFrameRx | Event_CanError);
+          
+          /* Nhận diện xem sự kiện nào thực sự vừa đánh thức Task */
+          ercd = GetEvent(TASK_ID_Task_CanRxHandler, &active_events);
+          ...
+      }
+  }
+  ```
+* **Kiểu dữ liệu `EventMaskType`:** Trong chuẩn OSEK OS và file định nghĩa [`kernel.h: L63`](../../as/com/as.infrastructure/system/kernel/askar/include/kernel.h#L63), `EventMaskType` thực chất là một số nguyên không dấu 32-bit:
+  ```c
+  typedef uint32_t        EventMaskType;    /* Mặt nạ 32-bit: Mỗi bit đại diện cho 1 Event duy nhất */
+  typedef EventMaskType*  EventMaskRefType; /* Con trỏ trỏ tới mặt nạ sự kiện */
+  ```
+* **Vì sao phải truyền con trỏ dấu `&` (`&active_events`)?**
+  Chữ ký hàm chuẩn OSEK của [`GetEvent()`](../../as/com/as.infrastructure/system/kernel/askar/kernel/event.c#L147-L173) là:
+  ```c
+  StatusType GetEvent(TaskType TaskID, EventMaskRefType Mask);
+  ```
+  Tham số thứ 2 là **Tham số đầu ra (Output Parameter)** nhận địa chỉ vùng nhớ `&active_events`. Kernel sẽ ghi đè giá trị các bit sự kiện hiện tại của Task vào ô nhớ này trên Stack của Task.
+
+---
+
+##### 🧮 2. "Mask Sự Kiện Đã Được Kích Hoạt" (Active Event Mask) Là Gì?
+Trong lập trình vi điều khiển, một **"Mask" (Mặt nạ bit)** là kỹ thuật gán mỗi sự kiện tương ứng với **đúng 1 bit nhị phân độc lập** (Bit flag):
+
+Khi ta khai báo trong file XML cấu hình (ví dụ [`config.xml`](../../as/com/as.application/common/config/config.xml#L18-L23)):
+```xml
+<EventList>
+    <Event Name="Event_CanFrameRx" Mask="0x01" />  <!-- Bit 0: 0000 0001 -->
+    <Event Name="Event_CanError"   Mask="0x02" />  <!-- Bit 1: 0000 0010 -->
+    <Event Name="Event_CanTxDone"  Mask="0x04" />  <!-- Bit 2: 0000 0100 -->
+</EventList>
+```
+Công cụ sinh mã ArGen tạo ra các hằng số macro nhị phân trong `Os_Cfg.h`:
+* `Event_CanFrameRx` = `0x01` (`0b00000001`)
+* `Event_CanError`   = `0x02` (`0b00000010`)
+* `Event_CanTxDone`  = `0x04` (`0b00000100`)
+
+Khi Task gọi:
+```c
+WaitEvent(Event_CanFrameRx | Event_CanError); /* 0x01 | 0x02 = 0x03 (Chờ bit 0 HOẶC bit 1) */
+```
+Task sẽ rơi vào ngủ vì đang chờ **1 trong 2 sự kiện**. Khi được đánh thức dậy, Task **hoàn toàn chưa biết ai vừa đánh thức mình**:
+* Có phải vừa nhận được frame CAN mới (`0x01`)?
+* Hay do đường truyền chập mạch gây lỗi Bus-Off (`0x02`)?
+* Hay ngẫu nhiên cả hai sự kiện cùng xuất hiện đồng thời (`0x03`)?
+
+Lúc này, Task gọi `GetEvent(Task_CanRxHandler, &active_events)`. Con số Kernel trả về trong biến `active_events` chính là **Mặt nạ sự kiện kích hoạt (Active Event Mask)**:
+
+| Giá trị `active_events` (Hex) | Dạng Nhị Phân (Binary) | Trạng Thái Kích Hoạt Thực Tế | Hành Vi Xử Lý Của Task |
+| :---: | :---: | :--- | :--- |
+| **`0x01`** | `0000 0001` | **Chỉ có `Event_CanFrameRx` bật.** | Đọc gói tin CAN từ Mailbox/FIFO. |
+| **`0x02`** | `0000 0010` | **Chỉ có `Event_CanError` bật.** | Phục hồi lỗi truyền thông Bus-Off. |
+| **`0x03`** | `0000 0011` | **CẢ HAI ĐỀU BẬT ĐỒNG THỜI!** | Chạy cả 2 nhánh: Đọc gói tin xong rồi reset bộ đếm lỗi CAN. |
+
+Task sử dụng phép toán **Bitwise AND (`&`)** để trích xuất từng cờ sự kiện:
+```c
+if ((active_events & Event_CanFrameRx) != 0) {
+    /* Đúng là bit 0 đã bật -> Xử lý frame CAN */
+}
+if ((active_events & Event_CanError) != 0) {
+    /* Đúng là bit 1 đã bật -> Xử lý lỗi bus */
+}
+```
+
+---
+
+##### ⚙️ 3. Giải Phẫu Cấu Trúc Dữ Liệu Lõi & 4 Hàm Quản Trị Sự Kiện Của Kernel:
+
+Trong mã nguồn lõi của hệ điều hành AS Core ([`kernel_internal.h: L276-L289`](../../as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L276-L289)), mỗi Extended Task quản lý sự kiện bằng struct 2 trường trong RAM:
+
+```c
+/* as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h */
+typedef struct
+{
+    EventMaskType set;   /* Chứa các bit sự kiện ĐÃ ĐƯỢC BẬT (Bởi SetEvent) */
+    EventMaskType wait;  /* Chứa các bit sự kiện MÀ TASK ĐANG CHỜ (Bởi WaitEvent) */
+} EventVarType;
+```
+
+Bốn hàm API sự kiện OSEK trong [`askar/kernel/event.c`](../../as/com/as.infrastructure/system/kernel/askar/kernel/event.c) thao tác trực tiếp trên 2 thanh ghi mềm này:
+
+```
+[1. WaitEvent(Mask)] (event.c: L230-L268)
+   ├── Kiểm tra nếu (Mask & pEventVar->set) == 0:
+   │   ├── Ghi nhận: pEventVar->wait = Mask;  // Lưu mặt nạ các bit task đang chờ
+   │   ├── Chuyển trạng thái: Task.state = WAITING;
+   │   └── Bàn giao CPU: Sched_GetReady() -> Os_PortDispatch();
+   └── Nếu sự kiện đã bật sẵn từ trước: Không ngủ, tiếp tục thực thi ngay!
+
+[2. SetEvent(TaskID, Mask)] (event.c: L53-L96)
+   ├── Bật bit cờ: Task.pEventVar->set |= Mask;  // Phép OR nhị phân bật bit lên 1
+   └── Kiểm tra điều kiện đánh thức:
+       if (0 != (pEventVar->set & pEventVar->wait))
+       {
+           pEventVar->wait = 0;
+           Task.state = READY;
+           Sched_AddReady(TaskID);  // Đưa Task vào hàng đợi sẵn sàng / Preempt nếu ưu tiên cao hơn
+       }
+
+[3. GetEvent(TaskID, Mask)] (event.c: L173-L203)
+   └── Copy giá trị: *Mask = Task.pEventVar->set;  // Đọc toàn bộ các bit sự kiện đang bật gán vào biến active_events
+
+[4. ClearEvent(Mask)] (event.c: L117-L144)
+   └── Xóa bit cờ: Task.pEventVar->set &= ~Mask;  // Phép AND với NOT để hạ bit về 0 an toàn!
+```
+
+---
+
+##### 📁 4. Trích Dẫn Mã Nguồn Thực Tế Trong Dự Án `as`:
+
+###### 🅰️ Minh chứng trọn vẹn chu trình `mask` trong [`OsekNm_Cfg.c: L93-L122`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L93-L122):
+```c
+/* as/com/as.application/common/config/OsekNm_Cfg.c */
+TASK(TaskNmInd)
+{
+    StatusType ercd;
+    EventMaskType mask;  /* 1. KHAI BÁO BIẾN LOCAL HỨNG MASK SỰ KIỆN */
+    OS_TASK_BEGIN();
+    
+    /* 2. Dừng chờ 4 sự kiện mạng cùng lúc (Bitwise OR: 0x01 | 0x02 | 0x04 | 0x08 = 0x0F) */
+    ercd = WaitEvent(EventNmNormal | EventNmLimphome | EventNmStatus | EventRingData);
+    if(E_OK == ercd)
+    {
+        /* 3. Đọc cờ sự kiện hiện có vào &mask */
+        GetEvent(TASK_ID_TaskNmInd, &mask);
+        
+        /* 4. Dùng toán tử AND (&) để kiểm tra từng bit độc lập */
+        if((mask & EventNmNormal) != 0)
+        {
+            printf("In NM normal state,config changed.\n");
+        }
+        if((mask & EventNmLimphome) != 0)
+        {
+            printf("In NM limphome state,config changed.\n");
+        }
+        if((mask & EventNmStatus) != 0)
+        {
+            printf("NM network status changed.\n");
+        }
+        if((mask & EventRingData) != 0)
+        {
+            printf("NM Ring Data ind.\n");
+        }
+        
+        /* 5. Dập tắt toàn bộ các cờ sự kiện đã xử lý */
+        ClearEvent(EventNmNormal | EventNmLimphome | EventNmStatus | EventRingData);
+    }
+    OsTerminateTask(TaskNmInd);
+    OS_TASK_END();
+}
+```
+
+---
+
+#### 6. Phân Biệt 2 Trường Phái Thiết Kế Extended Task: Worker Daemon Bất Tử `while(1)` vs. One-Shot Extended Task (Giải Mã `TaskNmInd`):
+
+> ❓ **Câu hỏi phản biện sâu sắc:**  
+> *"Tại sao nói Extended Task phải có vòng lặp vô hạn `while(1)` để sống vĩnh viễn, nhưng trong `TASK(TaskNmInd)` ở trên lại không có vòng lặp mà kết thúc bằng `OsTerminateTask()`?"*
+
+##### 1. Phân Loại 2 Trường Phái Thiết Kế:
+
+| Tiêu Chí So Sánh | 🔄 Trường Phái 1: Worker Daemon Bất Tử (`while(1)`) *(Chuẩn Công Nghiệp OEM)* | ⚡ Trường Phái 2: One-Shot Extended Task *(Mã Mẫu Demo Như `TaskNmInd`)* |
+| :--- | :--- | :--- |
+| **Cấu trúc mã nguồn** | Bắt buộc có `while(1)` hoặc `for(;;)` bao quanh `WaitEvent()`. | Không có vòng lặp. Chạy 1 lượt rồi kết thúc bằng `TerminateTask()`. |
+| **Vòng đời (Lifecycle)** | Sống vĩnh viễn suốt chu trình xe chạy (`WAITING` $\leftrightarrow$ `READY` $\leftrightarrow$ `RUNNING`). Không bao giờ chuyển về `SUSPENDED`. | Chạy xong 1 lượt $\to$ Tự sát chuyển về **`SUSPENDED`**! |
+| **Cơ chế tái kích hoạt (Re-trigger)** | Dùng **`SetEvent()`** từ ngắt phần cứng hoặc Task khác. Cực nhanh vì Stack và Context luôn được giữ nguyên. | **Bắt buộc dùng `ActivateTask()`** để hồi sinh Task từ `SUSPENDED`! |
+| **Hậu quả nếu dùng sai** | Nếu quên `ClearEvent()` sẽ rơi vào bẫy spinlock 100% CPU. | Nếu Task đã về `SUSPENDED` mà bên ngoài gọi `SetEvent()` thì **Hệ điều hành sẽ văng lỗi `E_OS_STATE` (0x07)**! |
+| **Ví dụ trong codebase** | [`TASK(TaskShell)`](../../as/com/as.infrastructure/system/shell/shell.c#L442-L460), `Task_CanRxHandler` (Task 2.4). | [`TASK(TaskNmInd)`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L93-L122). |
+
+##### 2. Bằng Chứng Kỹ Nghệ: Cơ Chế "Hồi Sinh" Của OSEK NM Trong [`OsekNm.c`](../../as/com/as.infrastructure/communication/OsekNm/OsekNm.c#L195-L213):
+Vì `TaskNmInd` tự sát về `SUSPENDED`, nên khi có sự kiện mạng tiếp theo, module Quản trị mạng OSEK NM **không thể gọi `SetEvent()`** mà buộc phải gọi **`ActivateTask()`** để khởi động lại Task từ đầu:
+
+```c
+/* as/com/as.infrastructure/communication/OsekNm/OsekNm.c: L195-L213 */
+if(NM_ControlBlock[NetId].nmIndDeltaConfig.normal.SMode == SignalActivation)
+{
+    /* HỒI SINH TASK TỪ SUSPENDED BẰNG ACTIVATETASK (VÌ TASK KHÔNG CÓ WHILE(1)) */
+    (void)ActivateTask(NM_ControlBlock[NetId].nmIndDeltaConfig.normal.TaskId);
+}
+else
+{
+    /* BẮN SỰ KIỆN SETEVENT KHI TASK ĐANG SỐNG TRONG VÒNG LẶP (SIGNAL EVENT) */
+    (void)SetEvent(NM_ControlBlock[NetId].nmIndDeltaConfig.normal.TaskId, ...);
+}
+```
+
+> 💡 **Kết luận thực tế Tier-1 / OEM:**  
+> Đoạn code `TASK(TaskNmInd)` trong `OsekNm_Cfg.c` là một **file code ví dụ mẫu (Stub/Sample Demo)** của tác giả dự án (chú thích tại dòng 124: `/* This is an example of how to write NMInit() */`).  
+> Trong các dự án phần mềm ô tô thương mại (Bosch, Continental, LG VS), **99.9% Extended Task xử lý sự kiện (CAN RX, UDS Diagnostic, Shell) đều bắt buộc phải dùng vòng lặp `while(1)`** để bảo đảm tính tất định, tránh lãng phí thời gian nạp lại ngữ cảnh Stack và triệt tiêu lỗi `E_OS_STATE`.
+
+---
+
+### 1.5 🏎️ ECU Đơn Nhân vs. Đa Nhân & Cơ Chế Thực Thi Đa Tác Vụ (Single-Core vs. Multi-Core):
 
 > ❓ **Câu hỏi:** *ECU là đơn nhân hay đa nhân? Khi có nhiều Basic Task thì chúng chạy đồng thời hay tuần tự?*
 
@@ -417,15 +795,13 @@ TASK(SchM_BswService)
 Trên một lõi CPU đơn, tại một chu kỳ xung nhịp vật lý **CHỈ CÓ DUY NHẤT 1 TASK ĐƯỢC CHẠY**. Cách các Task kết thúc phụ thuộc vào cơ chế lập lịch:
 
 ##### 🅰️ Chế Độ Không Tiếm Quyền (Non-Preemptive — Chạy Tuần Tự Tuyệt Đối):
-Task A đang chạy thì Task B (ưu tiên cao hơn) xuất hiện $
-ightarrow$ Task B **buộc phải chờ xếp hàng**. Task A chạy xong đến `TerminateTask()` thì Task B mới được chạy.
+Task A đang chạy thì Task B (ưu tiên cao hơn) xuất hiện $\rightarrow$ Task B **buộc phải chờ xếp hàng**. Task A chạy xong đến `TerminateTask()` thì Task B mới được chạy.
 ```
 CPU Core 0: [──── Task A chạy từ đầu đến cuối ────] ──► [──── Task B mới được chạy ────]
 ```
 
 ##### 🅱️ Chế Độ Có Tiếm Quyền (Preemptive — Chạy Lồng Nhau Kiểu Ngăn Xếp LIFO):
-Task A (Priority 2) đang chạy dở dang thì Task B (Priority 8) xuất hiện $
-ightarrow$ Kernel **tạm dừng Task A**, lưu ngữ cảnh vào Stack và trao CPU cho Task B chạy ngay lập tức. Sau khi Task B kết thúc (`TerminateTask`), CPU **quay lại chạy nốt phần còn lại của Task A**.
+Task A (Priority 2) đang chạy dở dang thì Task B (Priority 8) xuất hiện $\rightarrow$ Kernel **tạm dừng Task A**, lưu ngữ cảnh vào Stack và trao CPU cho Task B chạy ngay lập tức. Sau khi Task B kết thúc (`TerminateTask`), CPU **quay lại chạy nốt phần còn lại của Task A**.
 ```
 Task B (Prio 8):                       [── Chạy B ──] (Terminate)
                                              ▲              │
@@ -436,7 +812,7 @@ Task A (Prio 2): [── Chạy A dở dang ─────────┘      
 
 ---
 
-### 1.5 ⚖️ So Sánh Toàn Diện: AUTOSAR / OSEK Task vs. FreeRTOS / POSIX Thread:
+### 1.6 ⚖️ So Sánh Toàn Diện: AUTOSAR / OSEK Task vs. FreeRTOS / POSIX Thread:
 
 | Tiêu Chí Kỹ Thuật | 🚗 AUTOSAR / OSEK OS Task | 💻 FreeRTOS Task / POSIX Thread / Linux |
 | :--- | :--- | :--- |
@@ -676,10 +1052,8 @@ TASK(TaskIdle)
   1. **Nhân hệ điều hành RTOS (`askar`, `trampoline`):** Mã nguồn C của Kernel phải cài đặt chính xác các thuật toán lập lịch, cấu trúc dữ liệu theo đúng đặc tả chuẩn ISO 17356-3.
   2. **File Cấu hình sinh ra (`Os_Cfg.h`, `Os_Cfg.c`):** Toolchain đọc file ARXML và sinh ra các cờ tiền xử lý (`#define`) phù hợp với cấp độ được chọn.
 * **Tại sao phân chia 4 cấp độ?** Nhằm tối ưu hóa triệt để phần cứng (**Hardware Scalability**):
-  * Một chip vi điều khiển nhỏ 8-bit/16-bit chỉ có **1 KB RAM** (cảm biến lốp TPMS, công tắc cửa) $
-ightarrow$ Dùng **BCC1** để toàn bộ OS chỉ chiếm $<500	ext{ Bytes RAM}$.
-  * Một ECU 32-bit cao cấp (BMS, VCU, ADAS) có **512 KB - vài MB RAM** $
-ightarrow$ Dùng **ECC2** để tận dụng tối đa cơ chế đa nhiệm Event-Driven và hàng đợi Task FIFO.
+  * Một chip vi điều khiển nhỏ 8-bit/16-bit chỉ có **1 KB RAM** (cảm biến lốp TPMS, công tắc cửa) $\rightarrow$ Dùng **BCC1** để toàn bộ OS chỉ chiếm $<500	ext{ Bytes RAM}$.
+  * Một ECU 32-bit cao cấp (BMS, VCU, ADAS) có **512 KB - vài MB RAM** $\rightarrow$ Dùng **ECC2** để tận dụng tối đa cơ chế đa nhiệm Event-Driven và hàng đợi Task FIFO.
 
 ---
 
@@ -876,8 +1250,7 @@ Trong mã nguồn của nhân hệ điều hành `askar`, sự khác nhau giữa
 
 * **Nhóm BCC (BCC1 / BCC2) — Cơ Chế Dùng Chung Một Ngăn Xếp (Single Shared Stack):**
   * *Tại sao Basic Task có thể dùng chung Stack?*  
-    Vì Basic Task không có lệnh `WaitEvent()` (không bao giờ ngủ giữa chừng). Khi một Basic Task chạy, nó thực thi từ đầu đến cuối rồi gọi `TerminateTask()` $
-ightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải phóng hoàn toàn. Con trỏ Stack Pointer (SP) quay trở về đáy ngăn xếp.
+    Vì Basic Task không có lệnh `WaitEvent()` (không bao giờ ngủ giữa chừng). Khi một Basic Task chạy, nó thực thi từ đầu đến cuối rồi gọi `TerminateTask()` $\rightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải phóng hoàn toàn. Con trỏ Stack Pointer (SP) quay trở về đáy ngăn xếp.
   * *Hiệu quả tiết kiệm RAM:* Hệ thống 10 Basic Tasks không cần 10 mảng RAM mà chỉ cần **1 mảng Stack duy nhất** bằng kích thước của Task lớn nhất ($pprox 512	ext{ Bytes}$).
 * **Nhóm ECC (ECC1 / ECC2) — Cơ Chế Ngăn Xếp Riêng Biệt (Dedicated Stacks):**
   * *Tại sao Extended Task bắt buộc phải có Stack riêng?*  
@@ -907,65 +1280,275 @@ ightarrow$ toàn bộ khung ngăn xếp (Stack Frame) của hàm được giải
 
 ---
 
-## 4. Hiện Tượng Đảo Ngược Độ Ưu Tiên & Giao Thức Priority Ceiling Protocol (PCP)
+## 4. Bản Chất Resource Trong AUTOSAR/OSEK & Giao Thức Immediate Priority Ceiling Protocol (IPCP)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **PCP** (*Priority Ceiling Protocol*): Giao thức trần ưu tiên hệ điều hành.
+### 4.0 Bản Chất Cốt Tử: "Resource Trong AUTOSAR/OSEK Thực Chất Là Gì?"
 
-💡 **Ẩn dụ thực tế:** 
-- **Hiện tượng Đảo ngược ưu tiên:** Tổng giám đốc (Priority Cao) cần máy chiếu, nhưng Nhân viên tập sự (Priority Thấp) đang mượn máy chiếu. Lúc này, Trưởng phòng (Priority Vừa) đi qua, bắt Nhân viên tập sự làm báo cáo. Kết quả: Tổng giám đốc bị block và phải chờ Trưởng phòng (người không liên quan đến máy chiếu) làm xong việc!
-- **Giải pháp PCP (Thẻ VIP Tạm Thời):** Mỗi khi mượn máy chiếu, người mượn tạm thời được cấp **Thẻ VIP (Priority Ceiling)** bằng cấp của Tổng giám đốc. Lúc này Trưởng phòng không dám sai vặt Nhân viên tập sự nữa. Nhân viên tập sự dùng xong máy chiếu, trả lại Thẻ VIP. Tổng giám đốc ngay lập tức lấy máy chiếu và sử dụng mà không bị trì hoãn.
+> ❓ **Câu hỏi kỹ nghệ bản lề (The Core Architectural Question):**  
+> *"Trong Task 2.5, chúng ta cấu hình `<Resource Name="Res_SharedBuffer" Priority="3" />` và gọi `GetResource()` / `ReleaseResource()`. Vậy **Resource ở đây thực chất là cái gì**? Nó có phải là một mảng dữ liệu RAM, một file, hay là một Mutex như trong Linux/FreeRTOS?"*
 
-### 🟡 LEVEL 2: INTERMEDIATE
-Khi Task ưu tiên thấp (Task Low) giữ tài nguyên chung (Resource) và Task ưu tiên cao (Task High) cần tài nguyên đó, nếu không có cơ chế bảo vệ, Task Medium (không cần Resource) có thể ngắt Task Low, làm cho Task High bị trễ hạn (*Deadline Miss*).
+#### 1. Định Nghĩa Thực Chất: Resource KHÔNG PHẢI Là Dữ Liệu!
+- **Quan niệm sai lầm phổ biến:** Nhiều kỹ sư mới tiếp cận AUTOSAR thường nhầm tưởng `Resource` là một bộ đệm (buffer) chứa dữ liệu hay một đối tượng chứa con trỏ trỏ đến RAM.
+- **Bản chất kỹ nghệ chuẩn mực:**  
+  Trong tiêu chuẩn **OSEK/VDX OS 2.2.3** và **AUTOSAR OS SWS**:
+  > **Resource là một "Điều Phối Viên Vùng Găng" (Critical Section Coordinator)** hay một **"Chiếc Khóa Nâng Quyền Ưu Tiên Tĩnh" (Priority Locking Ticket)** do hệ điều hành quản lý.  
+  > Bản thân `Resource` **KHÔNG CHỨA BẤT KỲ BYTE DỮ LIỆU NGHIỆP VỤ NÀO**, và **HOÀN TOÀN KHÔNG CÓ HÀNG ĐỢI CHỜ (WAIT QUEUE / BLOCKED LIST)**!
 
-Giải pháp AUTOSAR OS - OSEK PCP quy định:
-1. **Trần ưu tiên tĩnh (Ceiling Priority):** Mỗi Resource được gán một mức trần tĩnh bằng độ ưu tiên của **Task cao nhất từng được cấu hình sử dụng Resource đó**.
-2. **Kế thừa tức thì:** Khi một Task bất kỳ gọi `GetResource(ResID)`, độ ưu tiên của nó ngay lập tức được hệ điều hành **nâng lên mức Ceiling Priority của Resource đó**.
-3. Không một Task nào khác có thể ngắt giữa chừng nếu ưu tiên <= Ceiling.
+#### 2. Đối Tượng Thực Tế Trên Xe Hơi Mà Resource Đứng Ra Bảo Vệ Là Gì?
+Dữ liệu cần bảo vệ là **biến toàn cục, mảng RAM hoặc thanh ghi phần cứng ngoại vi do kỹ sư tự định nghĩa bên ngoài**. Cặp hàm `GetResource()` và `ReleaseResource()` đóng vai trò là chiếc cổng an toàn bảo vệ 4 nhóm đối tượng thực tế, có minh chứng trực tiếp từ mã nguồn BSW của dự án:
 
+1. **Bộ đệm dữ liệu chia sẻ giữa nhiều Task (Shared Memory Buffer — Ví dụ từ Task 2.5):**
+   - *Vị trí mã nguồn:* Được định cấu hình tại [`as/release/ascore/app/app.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.xml) và triển khai tại [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c).
+   - *Thực thể được bảo vệ:* Mảng dữ liệu RAM `static uint8 Shared_CAN_TxBuffer[8]` và biến biến đếm `static uint32 Shared_Data_Counter`:
+     - `Task_Low` (Priority 1): Đang từ từ ghi 8 bytes dữ liệu frame CAN vào bộ đệm.
+     - `Task_High` (Priority 3): Được kích hoạt để đọc dữ liệu từ bộ đệm bắn ra bus CAN.
+   - *Mã nguồn minh họa thực tế:*
+     ```c
+     /* Dữ liệu RAM nghiệp vụ cần bảo vệ khỏi Race Condition */
+     static uint8  Shared_CAN_TxBuffer[8];
+     static uint32 Shared_Data_Counter = 0;
+
+     TASK(Task_Low)
+     {
+         /* 1. Xin cấp vé Resource: Độ ưu tiên vọt từ 1 -> 3 ngay lập tức */
+         GetResource(Res_SharedBuffer);
+
+         /* 2. VÙNG GĂNG (CRITICAL SECTION): Ghi an toàn tuyệt đối, Task_High không thể chen ngang */
+         for(int i = 0; i < 8; i++) {
+             Shared_CAN_TxBuffer[i] = (uint8)(Shared_Data_Counter + i);
+         }
+         Shared_Data_Counter++;
+
+         /* 3. Trả vé: Độ ưu tiên hạ từ 3 -> 1. Lúc này nếu Task_High đang chờ, Context Switch mới nổ ra */
+         ReleaseResource(Res_SharedBuffer);
+         TerminateTask();
+     }
+     ```
+   - *Nguy cơ nếu không có Resource:* `Task_High` chen ngang lúc `Task_Low` mới ghi được 3 byte $\rightarrow$ `Task_High` đọc dữ liệu chắp vá (nửa cũ nửa mới), gửi thông điệp sai lệch lên mạng xe hơi!
+
+2. **Bộ điều phối lập lịch của Kernel (`RES_SCHEDULER`) — Minh chứng từ BSW Module EcuM ([`EcuM_Main.c: L315-L318`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/EcuM/EcuM_Main.c#L315-L318)):**
+   - *Vị trí mã nguồn thực tế:* Trong module quản lý trạng thái xe hơi chuẩn AUTOSAR BSW **EcuM (ECU State Manager)** tại [`as/com/as.infrastructure/system/EcuM/EcuM_Main.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/EcuM/EcuM_Main.c).
+   - *Thực thể được bảo vệ:* Chuỗi chuyển đổi trạng thái ngủ/thức (Sleep/Wakeup Sequence) của toàn bộ hộp ECU.
+   - *Mã nguồn BSW gốc:*
+     ```c
+     /* as/com/as.infrastructure/system/EcuM/EcuM_Main.c: L315-L320 */
+     /* Let no one else run */
+     #if !defined(USE_CONTIKI)
+         GetResource(RES_SCHEDULER);
+     #endif
+         set_current_state(ECUM_STATE_SLEEP);
+     ```
+     Và sau khi thức dậy, khởi động lại driver phần cứng (`EcuM_AL_DriverRestart()`), EcuM mới trả tự do cho Scheduler:
+     ```c
+     /* as/com/as.infrastructure/system/EcuM/EcuM_Main.c: L576-L579 */
+         EcuM_World.killAllRequest = false;  /* Enable run request again */
+         ReleaseResource(RES_SCHEDULER);
+     ```
+   - *Ý nghĩa kiến trúc:* `RES_SCHEDULER` có mức trần tĩnh bằng `PRIORITY_NUM`. Khi EcuM gọi `GetResource(RES_SCHEDULER)`, **toàn bộ mọi Task khác trong ECU đều bị chặn lập lịch** ("Let no one else run"), giúp quá trình tính toán kiểm tra RAM Hash và đưa vi điều khiển vào Low Power Sleep Mode diễn ra bất khả xâm phạm. Tuy nhiên, ngắt phần cứng ISR vẫn có thể chạy để phát hiện sự kiện Wakeup!
+
+3. **Vùng găng bộ đệm mạng truyền thông (Protocol Stack Buffer) — Minh chứng từ LwIP DoIP ([`sys_arch.c: L118-L132`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/common/lwip/sys_arch.c#L118-L132)):**
+   - *Vị trí mã nguồn thực tế:* Trong tầng kiến trúc cổng chuyển tiếp mạng Ethernet ô tô tại [`as/com/as.infrastructure/arch/common/lwip/sys_arch.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/common/lwip/sys_arch.c).
+   - *Thực thể được bảo vệ:* Cấu trúc Mailbox và hàng đợi gói tin socket TCP/IP.
+   - *Mã nguồn gốc:*
+     ```c
+     /* as/com/as.infrastructure/arch/common/lwip/sys_arch.c: L118-L132 */
+     sys_prot_t sys_arch_protect(void)
+     {
+         return GetResource(RES_SCHEDULER);
+     }
+
+     void sys_arch_unprotect(sys_prot_t pval)
+     {
+         ReleaseResource(RES_SCHEDULER);
+     }
+     ```
+
+4. **Thanh ghi ngoại vi phần cứng chia sẻ & Hàm không tái nhập (Shared Hardware / Non-reentrant Algorithms):**
+   - Một vi điều khiển chỉ có 1 khối SPI Controller hoặc 1 bộ đồng xử lý mật mã (Crypto Hardware Accelerator SecOC). Nếu hai tác vụ độc lập cùng ghi vào thanh ghi dữ liệu `SPI_DR` hoặc thanh ghi chế độ `SPI_CR` cùng lúc, xung Clock sẽ bị méo dạng và phần cứng bị treo. Cặp `GetResource / ReleaseResource` đóng vai trò khóa bảo vệ thanh ghi này một cách tất định.
+
+---
+
+#### 3. Giải Phẫu Cấu Trúc Bộ Nhớ Của Resource: Vì Sao Resource Chỉ Tốn 2 Bytes RAM?
+Để thấy rõ sự tinh gọn đến kinh ngạc của hệ điều hành ô tô, hãy nhìn trực tiếp vào cấu trúc mã nguồn C của `askar` Kernel:
+
+##### Trong RAM ([`kernel_internal.h: L270-L274`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L270-L274)):
 ```c
-/* MÃ NGUỒN GỐC SỬ DỤNG RESOURCE TRONG DỰ ÁN as */
-/* (Trích xuất từ as/com/as.infrastructure/system/EcuM/EcuM_Main.c: L315-L325 & sys_arch.c: L120) */
+/* as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h */
+typedef struct
+{
+    PriorityType prevPrio; /* 1 byte: Lưu lại độ ưu tiên cũ của Task trước khi lấy Resource */
+    ResourceType prevRes;  /* 1 byte: ID của Resource trước đó (Hỗ trợ chiếm giữ lồng nhau LIFO) */
+} ResourceVarType;
 
-/* 1. Chiếm quyền truy cập Resource RES_SCHEDULER (Độ ưu tiên được nâng tức thì lên Ceiling Priority = 31) */
-GetResource(RES_SCHEDULER);
-
-/* 2. Critical Section: Bảo vệ dữ liệu hàng đợi sự kiện / danh sách Task khỏi bị ngắt ngắt quãng */
-EcuM_ProcessScheduledEvents();
-
-/* 3. Giải phóng tài nguyên (Độ ưu tiên được hạ trở lại mức ưu tiên ban đầu của Task) */
-ReleaseResource(RES_SCHEDULER);
+static ResourceVarType ResourceVarArray[RESOURCE_NUM];
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
-**Trace Execution Step-by-step (Quá trình PCP):**
-1. **Task L (Prio 1)** đang chạy, gọi `GetResource(ResX)`. Trần cấu hình tĩnh của ResX là 3.
-2. OS lập tức nâng ưu tiên của Task L từ 1 lên 3.
-3. Ngắt ngoại vi kích hoạt, **Task M (Prio 2)** trở thành Ready. Tuy nhiên, vì Task L đang ở mức 3 > 2, Task M bị Block, không thể ngắt Task L.
-4. Một ngắt khác kích hoạt, **Task H (Prio 3)** trở thành Ready. Nó muốn chiếm CPU. Task L và Task H cùng mức 3, OSEK quy định Task đang chạy không bị ngắt bởi Task cùng mức ưu tiên $\rightarrow$ Task H bị Block (đưa vào Wait Queue).
-5. Task L thực thi xong Critical Section, gọi `ReleaseResource(ResX)`. OS hạ ưu tiên Task L trở về 1.
-6. OS Scheduler quét danh sách Ready, thấy **Task H (Prio 3)** là cao nhất $\rightarrow$ Dispatch lập tức Task H.
+##### Trong ROM / Flash ([`Os_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c)):
+```c
+/* as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c */
+const ResourceConstType ResourceConstArray[RESOURCE_NUM] =
+{
+    { /*.ceilPrio =*/ PRIORITY_NUM },        /* RES_SCHEDULER (ID = 0) */
+    { /*.ceilPrio =*/ OS_PTHREAD_PRIORITY + 3 }, /* Res_SharedBuffer (ID = 1) */
+};
+```
 
-💀 **Deadlock Scenario & Phương Pháp Phòng Tránh:**
-Nếu sử dụng Multiple Resources mà không cẩn thận, hệ thống có thể bị Deadlock kinh điển:
-- Task A giữ Res1, xin Res2.
-- Task B giữ Res2, xin Res1.
-✅ **Phòng tránh trong AUTOSAR:** OSEK OS thiết kế loại trừ hoàn toàn Deadlock bằng luật cứng:
-1. Task **bắt buộc phải trả các Resource theo đúng thứ tự ngược lại lúc lấy (LIFO)**. `Get(Res1) -> Get(Res2) -> Release(Res2) -> Release(Res1)`.
-2. Do thuật toán Static Ceiling Priority, khi Task A lấy Res1, Priority của nó đã lớn hơn hoặc bằng Task B (Vì Task B cũng cần Res1 nên Ceiling của Res1 $\ge$ Prio B). Do đó Task B không bao giờ có cơ hội ngắt Task A để lấy Res2. Deadlock logic trên OSEK PCP là **BẤT KHẢ THI**.
+> 💡 **Khám Phá Kỹ Nghệ Đắt Giá:**  
+> - Một đối tượng Mutex trong FreeRTOS hoặc POSIX tốn từ **32 đến 80 bytes RAM** (bao gồm danh sách liên kết kép các Task bị chặn, cờ đếm, con trỏ Task đang giữ).  
+> - Một `Resource` trong AUTOSAR **chỉ tốn đúng 2 bytes RAM** (`prevPrio` và `prevRes`)!  
+> - Vì sao? Vì cơ chế IPCP đảm bảo Resource luôn rảnh khi được gọi, **hệ điều hành không bao giờ cần tạo hàng đợi Task bị chặn (Zero Wait Queue)**!
+
+---
+
+#### 4. Phân Loại Các Nhóm Resource Trong Chuẩn OSEK / AUTOSAR:
+1. **Standard Resource (Tài nguyên tiêu chuẩn):**
+   - Được khai báo trong XML (`<Resource Name="Res_SharedBuffer" />`).
+   - Kỹ sư chủ động gọi `GetResource()` khi vào vùng găng và `ReleaseResource()` khi thoát vùng găng trong mã C.
+2. **Internal Resource (`INTERNAL_RESOURCE`):**
+   - Không thể gọi bằng API `GetResource()`. Thay vào đó, Kernel **tự động gán Resource cho Task ngay khi Task chuyển sang RUNNING**, và **tự động trả Resource khi Task kết thúc qua `TerminateTask()`**.
+   - *Ứng dụng:* Dùng để gom một nhóm Task vào cùng một "Non-preemptive Group" mà lập trình viên không sợ bị quên gọi `ReleaseResource()`, giúp các Task này có thể chia sẻ chung 1 vùng Stack duy nhất (Single Shared Stack).
+3. **Linked Resource:**
+   - Resource kế thừa cấu hình trần ưu tiên từ một Resource khác.
+4. **Scheduler Resource (`RES_SCHEDULER`):**
+   - Tài nguyên định nghĩa sẵn toàn hệ thống để khóa bộ lập lịch.
+
+---
+
+### 4.1 Hiện Tượng Đảo Ngược Độ Ưu Tiên (Priority Inversion) & Bài Học Mars Pathfinder 1997
+
+
+Trong hệ thống đa nhiệm thời gian thực:
+- `Task_Low` (Prio 1) chiếm giữ tài nguyên chung `Res_SharedBuffer`.
+- `Task_High` (Prio 3) cần `Res_SharedBuffer` nên bị chặn.
+- Bất ngờ `Task_Mid` (Prio 2, hoàn toàn không cần tài nguyên này) được kích hoạt. Vì $2 > 1$, `Task_Mid` cướp quyền CPU từ `Task_Low`.
+- **Hậu quả thảm khốc (Priority Inversion):** `Task_High` (ưu tiên cao nhất) bị treo gián tiếp bởi `Task_Mid` (ưu tiên trung bình) trong thời gian không thể xác định (*Unbounded Priority Inversion*)!
+- **Bài học lịch sử NASA Mars Pathfinder (1997):** Xe tự hành trên Sao Hỏa liên tục bị Watchdog reset do tác vụ thu thập dữ liệu thời tiết (Low) bị tác vụ truyền thông tin (Mid) cướp quyền, khiến tác vụ điều khiển bus dữ liệu cao tần (High) bị trễ deadline. NASA đã phải nạp bản vá từ Trái Đất để kích hoạt cơ chế Priority Ceiling!
+
+---
+
+### 4.2 Giao Thức Trần Ưu Tiên Tức Thì (Immediate Priority Ceiling Protocol - IPCP)
+
+AUTOSAR OS / OSEK OS giải quyết triệt để vấn đề này bằng giao thức **IPCP**:
+
+1. **Trần ưu tiên tĩnh (Static Ceiling Priority) — Chỉ Nâng Lên Mức MAX Của Các Task Dùng Chung:**  
+   Mỗi Resource được tính toán sẵn một mức trần ưu tiên tĩnh tại thời điểm cấu hình XML/OIL theo đặc tả `[SWS_Os_00052]`:
+   $$\text{Ceiling}(R) = \max_{T \in \text{Users}(R)} (\text{Priority}(T))$$
+   > ⚠️ **Quy tắc vàng:** Hệ điều hành **CHỈ NÂNG LÊN MỨC MAX CỦA CÁC TASK ĐƯỢC CẤP QUYỀN DÙNG CHUNG RESOURCE ĐÓ**, tuyệt đối **KHÔNG NÂNG LÊN MAX HỆ THỐNG**!  
+   > *Ví dụ Task 2.5:* `Res_SharedBuffer` được dùng bởi `Task_Low` (Prio 1) và `Task_High` (Prio 3) $\rightarrow$ $\text{Ceiling} = 3$.  
+   > *Ý nghĩa sống còn về Schedulability (ISO 26262):* Nếu trong ECU có một tác vụ túi khí `Task_Airbag` (Priority 10) hoàn toàn không dùng `Res_SharedBuffer`, khi xe xảy ra va chạm, `Task_Airbag` ($10 > 3$) **vẫn được phép tiếm quyền lập tức để cứu mạng tài xế**! Nếu nâng mù quáng lên Max toàn hệ thống (10), tác vụ túi khí sẽ bị chặn đứng bởi một tác vụ đọc dữ liệu tầm thường.
+
+2. **Hai (02) Ngoại Lệ Cốt Tử Trong OSEK / AUTOSAR:**
+   - **`RES_SCHEDULER` (`[SWS_Os_00054]`):** Resource đặc biệt của Kernel, có Ceiling bằng `PRIORITY_NUM` (cao nhất toàn bộ Task trong hệ thống), dùng để khóa bộ lập lịch khi chuyển trạng thái ECU (EcuM Sleep).
+   - **Resource dùng chung với ISR Category 2 (`[SWS_Os_00053]`):** Trần ưu tiên được nâng vượt cấp Task, lên bằng **mức ưu tiên ngắt phần cứng (Hardware Interrupt Level)** của ISR Cat 2 cao nhất, khóa ngắt tại CPU (`BASEPRI`) khi Task nắm giữ.
+
+3. **Kế thừa ưu tiên tức thì (Immediate Elevation):**  
+   Khi bất kỳ Task nào gọi `GetResource(Res_SharedBuffer)`, hệ điều hành **lập tức nâng độ ưu tiên thực thi (`RunningVar->priority`) lên mức Ceiling (3)** mà không cần chờ đợi xảy ra tranh chấp!
+
+4. **Triệt tiêu tranh chấp:** Vì độ ưu tiên hiện tại là 3:
+   - `Task_Mid` (Prio 2) không thể tiếm quyền vì $2 < 3$.
+   - `Task_High` (Prio 3) dù có sẵn sàng cũng không thể tiếm quyền vì độ ưu tiên ngang bằng không thể ngắt Task đang chạy.
+
+5. **Hạ độ ưu tiên tại `ReleaseResource()`:**  
+   Khi `Task_Low` gọi `ReleaseResource()`, Kernel hạ độ ưu tiên của nó trở lại `1`, đồng thời gọi Scheduler để trao ngay CPU cho `Task_High`. Khi `Task_High` chạy vào `GetResource()`, tài nguyên **đã được giải phóng sẵn 100%**!
+
+---
+
+### 4.3 Mổ Xẻ Mã Nguồn Kernel `resource.c` & Bộ Sinh Mã `GenOS.py`
+
+#### 🔬 1. Vì Sao `GetResource()` Là Lệnh Hằng Số $O(1)$ & Tuyệt Đối Không Gây Context Switch?
+Hãy nhìn vào mã nguồn gốc của nhân [`resource.c: L95-L103`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/resource.c#L95-L103):
+
+```c
+/* as/com/as.infrastructure/system/kernel/askar/kernel/resource.c */
+LOCK_KERNEL(imask);
+ResourceVarArray[ResID].prevRes = RunningVar->currentResource;
+ResourceVarArray[ResID].prevPrio = RunningVar->priority;
+RunningVar->currentResource = ResID;
+if(RunningVar->priority < ResourceConstArray[ResID].ceilPrio)
+{
+    RunningVar->priority = ResourceConstArray[ResID].ceilPrio; /* GÁN ĐỘ ƯU TIÊN LÊN CEILING */
+}
+UNLOCK_KERNEL(imask);
+```
+- Lệnh `GetResource()` **chỉ thực hiện vài thao tác gán biến bộ nhớ** trong RAM.
+- Kernel **HOÀN TOÀN KHÔNG GỌI `Sched_Schedule()`** và **KHÔNG GỌI `Os_PortDispatch()`**!
+- Vì tài nguyên luôn rảnh, Task không bao giờ bị đưa vào hàng đợi chờ, không bao giờ bị block $\rightarrow$ **Zero Context Switch, thời gian thực thi $O(1)$ tuyệt đối!**
+
+#### 🔬 2. Context Switch Thực Sự Xảy Ra Ở Đâu?
+Chính là tại [`resource.c: L180-L189`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/resource.c#L180-L189):
+
+```c
+/* as/com/as.infrastructure/system/kernel/askar/kernel/resource.c */
+RunningVar->currentResource = ResourceVarArray[ResID].prevRes;
+RunningVar->priority = ResourceVarArray[ResID].prevPrio; /* HẠ ƯU TIÊN VỀ LẠI MỨC CŨ */
+ResourceVarArray[ResID].prevPrio = INVALID_PRIORITY;
+
+if(PRIORITY_NUM != RunningVar->priority)
+{
+    if(Sched_Schedule()) /* KIỂM TRA READYQUEUE: THẤY TASK_HIGH (PRIO 3) */
+    {
+        Os_PortDispatch(); /* KÍCH HOẠT CONTEXT SWITCH TẠI ĐÂY! */
+    }
+}
+```
+Tại thời điểm `ReleaseResource()`, Kernel nhận thấy `Task_High` đang đứng ở đỉnh ReadyQueue $\rightarrow$ Context Switch lập tức chuyển giao CPU sang `Task_High`.
+
+#### 🔬 3. Vì Sao File XML Bắt Buộc Phải Khai Báo `<ResourceList>` Trong Thẻ `<Task>`?
+Trong file cấu hình của bài 2.5:
+- Nếu chỉ khai báo `<Resource Name="Res_SharedBuffer" />` ở cấp OS mà quên khai báo `<ResourceList>` bên trong `Task_Low` và `Task_High`:
+  1. [`GenOS.py: L41-L51`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenOS.py#L41-L51) dùng hàm `fixupRes()` quét `ResourceList` của Task để tính toán trần ưu tiên. Nếu không có Task nào khai báo, trần ưu tiên của `Res_SharedBuffer` bị gán về `0`!
+  2. [`GenOS.py: L300-L314`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenOS.py#L300-L314) sinh ra hàm `Task_Low_CheckAccess(ResID)`. Vì thiếu cấu hình, hàm này trả về `FALSE`.
+  3. Khi chạy, [`resource.c: L85`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/resource.c#L85) kiểm tra `FALSE == RunningVar->pConst->CheckAccess(ResID)` và từ chối cấp tài nguyên với mã lỗi **`E_OS_ACCESS`**!
+
+---
+
+### 4.4 Bảng So Sánh Toàn Diện: AUTOSAR Resource vs FreeRTOS Mutex vs POSIX Mutex
+
+| Tiêu Chí So Sánh | 🚗 AUTOSAR OS / OSEK Resource | 📟 FreeRTOS Mutex | 💻 Linux POSIX Mutex (`pthread_mutex_t`) |
+| :--- | :--- | :--- | :--- |
+| **Bản chất đồng bộ** | **Priority Ceiling (IPCP):** Khóa nâng quyền tĩnh | **Priority Inheritance (PIP):** Kế thừa ưu tiên động | **Sleeping Lock / Futex:** Chặn và đưa luồng vào giấc ngủ |
+| **Hành vi khi gọi `GetResource / Lock`** | **Không bao giờ bị Block**, tài nguyên luôn luôn rảnh | Nếu bận $\to$ Task bị Block và ngủ | Nếu bận $\to$ Thread bị chặn và ngủ (trừ Spinlock) |
+| **Thời điểm xảy ra Context Switch** | **Không bao giờ xảy ra khi lấy**, chỉ xảy ra khi `Release` | Xảy ra ngay lập tức tại lệnh `take()` nếu Mutex bận | Xảy ra tại lệnh `lock()` nếu Mutex bận |
+| **Độ phức tạp thuật toán** | Hằng số tuyệt đối **$O(1)$** | $O(N)$ do phải duyệt và cập nhật danh sách chờ | $O(1)$ fast path qua Atomic, $O(N)$ slow path qua Kernel |
+| **Hàng đợi chờ (Wait Queue in RAM)** | ❌ **Zero Wait Queue (Không có hàng đợi)** | ✅ Bắt buộc có mảng Event List lưu các Task chờ | ✅ Bắt buộc có hàng đợi Waiters trong Kernel |
+| **Bộ nhớ RAM tiêu tốn cho 1 Lock** | **Cực nhỏ: Đúng 2 bytes** (`prevPrio` + `prevRes`) | **Lớn: 76 - 84 bytes** (`StaticQueue_t` struct) | **Trung bình: 40 bytes** trong User Space + Kernel node |
+| **Nguy cơ Deadlock** | ❌ **Bị triệt tiêu hoàn toàn 100% từ thiết kế** | ⚠️ Rất dễ xảy ra nếu tranh chấp chéo Mutex | ⚠️ Rất dễ xảy ra nếu tranh chấp chéo Mutex |
+
+> 📚 **Tài liệu chuyên đề đối chiếu toàn diện (Must-Read Masterclass):**  
+> Để hiểu sâu sắc hơn sự khác biệt bản chất giữa **Mutex (có Ownership), Binary/Counting Semaphore (báo hiệu Signalling) và AUTOSAR Resource**, giải mã chi tiết các khái niệm: *Khóa nâng quyền tĩnh (IPCP), Kế thừa ưu tiên động (PIP), Cơ chế chặn đưa luồng vào giấc ngủ, Giải phẫu phần cứng Context Switch thanh ghi Cortex-M, Cấu trúc Hàng đợi chờ trong RAM (Wait Queue), Chứng minh toán học vì sao tài nguyên luôn rảnh, và Kịch bản Deadlock chéo AB-BA*, mời bạn đọc chuyên đề đặc biệt tại:  
+> 👉 [`docs/supplementary_knowledge/04_Mutex_Semaphore_vs_AUTOSAR_Resource_Deep_Dive.md`](../supplementary_knowledge/04_Mutex_Semaphore_vs_AUTOSAR_Resource_Deep_Dive.md).
+
+---
+
+### 4.5 Các Quy Tắc Vàng & Điều Cấm Kỵ Tuyệt Đối Khi Dùng Resource Trong Kỹ Nghệ Xe Hơi
+
+Chuẩn **ISO 17356-3** và tài liệu an toàn chức năng **ISO 26262 ASIL-D** quy định 4 luật thép bắt buộc kỹ sư phải tuân thủ:
+
+1. **Quy Tắc Ngăn Xếp LIFO Nghiêm Ngặt (Strict Stacking Rule):**
+   - Khi một Task cần sử dụng nhiều Resource lồng nhau, thứ tự trả Resource bắt buộc phải là **thứ tự đảo ngược chính xác** lúc lấy:
+     $$\text{Get}(R_1) \longrightarrow \text{Get}(R_2) \longrightarrow \text{Release}(R_2) \longrightarrow \text{Release}(R_1)$$
+   - *Lý do:* Trường `prevRes` trong `ResourceVarType` hoạt động như một ngăn xếp liên kết đơn. Nếu gọi `Release(R_1)` trước khi gọi `Release(R_2)`, Kernel [`resource.c: L168`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/resource.c#L168) sẽ phát hiện `RunningVar->currentResource != ResID` và trả về lỗi **`E_OS_NOFUNC`**!
+
+2. **TUYỆT ĐỐI CẤM Gọi Các Hàm Đổi Ngữ Cảnh Bên Trong Resource Critical Section (`[SWS_Os_00093]`):**
+   - Bên trong phạm vi giữa `GetResource()` và `ReleaseResource()`, **NGHIÊM CẤM** gọi:
+     - `WaitEvent()`
+     - `TerminateTask()`
+     - `ChainTask()`
+     - `Schedule()`
+   - *Hậu quả nếu vi phạm:* Task bị đưa vào giấc ngủ hoặc kết thúc trong khi vẫn đang giữ mức trần ưu tiên Ceiling cao ngất ngưởng, khiến hệ điều hành bị "đóng băng" độ ưu tiên và toàn bộ các task khác bị bỏ đói (Starvation)!
+
+3. **CẤM Lồng Chính Mình (No Self-Nesting):**
+   - Một Task đang giữ `ResA` không được phép gọi lại `GetResource(ResA)`. Kernel sẽ phát hiện `ResourceVarArray[ResID].prevPrio != INVALID_PRIORITY` và trả về lỗi **`E_OS_ACCESS`** ([`resource.c: L80`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/resource.c#L80)).
+
+4. **CẤM Giữ Resource Vượt Quá Biên Giới Task hoặc ISR:**
+   - Một Resource được lấy trong hàm Task nào thì bắt buộc phải được giải phóng trước khi Task đó kết thúc.
+   - Resource được lấy trong ngắt ISR Cat 2 thì bắt buộc phải được giải phóng trước khi thoát khỏi ngắt. Không bao giờ được phép chia sẻ quyền trả Resource sang một luồng khác!
 
 ---
 
 ## 5. Phân Cấp Ngắt Phần Cứng: ISR Category 1 vs ISR Category 2
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **ISR** (*Interrupt Service Routine*): Hàm phục vụ sự kiện ngắt phần cứng.
-💡 **Ẩn dụ thực tế:**
-- **ISR Cat 1 (Chuông báo cháy):** Phản ứng ngay lập tức, đập vỡ kính, không cần xin phép bảo vệ (Hệ điều hành). Tốc độ cực nhanh, nhưng cấm dùng điện thoại nội bộ tòa nhà (Cấm dùng OS API).
-- **ISR Cat 2 (Người đưa thư đến):** Phải qua trạm gác bảo vệ (OS Wrapper) để ghi danh. Tuy chậm hơn một chút do làm thủ tục, nhưng được quyền nhờ bảo vệ đánh thức người trong tòa nhà (Gọi `SetEvent`, `ActivateTask`).
 
-### 🟡 LEVEL 2: INTERMEDIATE
 Để cân bằng giữa **độ trễ phản hồi ngắt cực ngắn** và **tính toàn vẹn của OS**, hệ thống chia ISR thành:
 
 ```mermaid
@@ -985,73 +1568,186 @@ sequenceDiagram
     OS-->>Task: Context Switch sang TaskA
 ```
 
-| Tiêu Chí So Sánh | ISR Category 1 (Cat 1) | ISR Category 2 (Cat 2) |
-|---|---|---|
-| **Sự can thiệp của OS** | **Hoàn toàn không qua OS**: Nhảy trực tiếp từ Vector Table phần cứng vào hàm xử lý C. | **Có OS can thiệp**: OS thực hiện lưu/khôi phục Register Context và kiểm tra lập lịch. |
-| **Độ trễ (Latency)** | **Cực nhỏ (Zero OS Overhead)**. Dùng cho ngắt khẩn (Over-current Inverter). | Trễ cao hơn do OS push toàn bộ thanh ghi. |
-| **Quyền gọi OS API** | ❌ **Tuyệt đối cấm** gọi bất kỳ API nào của OS (không `SetEvent`, không `ActivateTask`). | ✅ **Được phép** gọi các API hệ điều hành cho phép. |
+#### 📊 Bảng So Sánh Toàn Diện 8 Tiêu Chí Kỹ Thuật Chuẩn OEM Giữa ISR Cat 1 & Cat 2:
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive & Function-Call-Function Trace Thực Chiến)
+| STT | Tiêu Chí So Sánh | ISR Category 1 (Direct Hardware ISR) | ISR Category 2 (OS-Managed ISR) |
+| :---: | :--- | :--- | :--- |
+| **1** | **Bản chất kiến trúc** | Ngắt phần cứng thuần túy, hoàn toàn bypass tầng OS Kernel. | Ngắt được bao bọc bởi OS Prologue/Epilogue Wrapper (`Os_IsrEntry` / `Os_IsrExit`). |
+| **2** | **Định tuyến Vector Table** | Bảng vector của NVIC trỏ **trực tiếp** vào hàm C handler của người dùng. | Bảng vector của NVIC trỏ vào hàm **Wrapper hợp ngữ** của OS trước khi nhảy vào handler C. |
+| **3** | **Độ trễ phản hồi (Latency)** | **Cực thấp (~12-16 cycles)** trên Cortex-M, chỉ phụ thuộc vào phần cứng auto-stacking. | **Lớn hơn (vài chục đến hàng trăm cycles)** do OS phải lưu full context và cập nhật trạng thái ngắt. |
+| **4** | **Quyền gọi OS API** | **TUYỆT ĐỐI CẤM** gọi bất kỳ OS API nào (`SetEvent`, `ActivateTask`, `GetResource`...). | **ĐƯỢC PHÉP** gọi các OS API thuộc nhóm Interrupt-Safe (`SetEvent`, `ActivateTask`...). |
+| **5** | **Điểm lập lịch lại (Reschedule)** | **Không bao giờ**. Lệnh thoát ngắt `bx lr` đưa CPU quay lại đúng luồng lệnh bị gián đoạn. | **Có hỗ trợ**. Tại `Os_IsrExit`, nếu có task ưu tiên cao hơn được đánh thức, OS lập lịch đổi sang task đó ngay. |
+| **6** | **Quản trị Ngăn xếp (Stack)** | Sử dụng chung Main Stack Pointer (MSP) của MCU / IRQ Stack phần cứng. | Có thể dùng MSP hoặc chuyển sang ngăn xếp ngắt chuyên dụng (OS Dedicated ISR Stack). |
+| **7** | **Khai báo trong Toolchain** | Cấu hình trực tiếp trên thanh ghi NVIC/MCAL, không cần thẻ `<Isr>` trong file XML. | Bắt buộc phải khai báo thẻ `<Isr Category="2">` trong ARXML/OIL để ArGen sinh Wrapper và ID. |
+| **8** | **Trường hợp sử dụng điển hình** | Điều khiển góc đánh lửa/phun xăng động cơ, ngắt góc quay cảm biến Hall, bảo vệ ngắt mạch tức thì. | Nhận frame mạng CAN/LIN/Ethernet, ngắt Timer định thời OS, ngắt truyền nhận dữ liệu SPI/UART. |
+
+---
+
+#### 💣 "Thảm Họa Cat 1" (The Cat 1 Catastrophe — Vì Sao Cấm Gọi OS API Trong Cat 1?):
+
+> ❓ **Câu hỏi phỏng vấn Senior BSW:**  
+> *"Điều gì thực sự xảy ra ở cấp độ phần cứng nếu lập trình viên cố tình gọi `SetEvent()` hoặc `ActivateTask()` bên trong một ngắt ISR Category 1?"*
+
+1. **Sự nhầm lẫn ngữ cảnh của Kernel:**  
+   Trong ISR Cat 1, CPU đang ở **Handler Mode** và con trỏ ngăn xếp đang trỏ vào **MSP** với khung ngắt phần cứng (Hardware Stack Frame: R0-R3, R12, LR, PC, xPSR). Tuy nhiên, vì ISR Cat 1 bypass qua OS, biến trạng thái ngắt của nhân OS (`nested_isr_count`) vẫn giữ giá trị `0`. Kernel ngộ nhận rằng CPU đang thực thi trong **Thread Mode** bình thường của một Task!
+2. **Xung đột chuyển dịch con trỏ ngăn xếp (Stack Pointer Corrupt):**  
+   Khi `SetEvent()` phát hiện một task có độ ưu tiên cao hơn đang sẵn sàng, OS cố gắng kích hoạt cơ chế đổi ngữ cảnh (Dispatching). OS sẽ tìm cách lưu trạng thái của "task hiện tại" bằng cách đọc hoặc điều chỉnh con trỏ ngăn xếp (PSP/MSP).
+3. **Phá hủy khung trả về (Stack Frame Corruption):**  
+   Thao tác ghi đè hoặc tráo đổi con trỏ ngăn xếp của OS sẽ làm hỏng khung trả về mà phần cứng NVIC đã tự động tạo ra lúc nhận ngắt.
+4. **Hậu quả tức thì — HardFault / InvState Exception:**  
+   Khi hàm ISR Cat 1 kết thúc và thực hiện lệnh `bx lr` (với mã EXC_RETURN `0xFFFFFFF9`), vi điều khiển cố gắng nạp lại PC và xPSR từ một vùng stack đã bị sai lệch. CPU lập tức nhảy vào ngoại lệ **HardFault Exception**, rơi vào vòng lặp vô tận `HardFault_Handler` và toàn bộ ECU bị treo cứng!
+
+---
+
+#### 💡 CÂU HỎI PHỎNG VẤN KIẾN TRÚC SƯ BSW (Architect Interview — Phiên Bản Trả Lời Ngắn Gọn 45 Giây):
+
+> ❓ **Câu hỏi:** *"Tại sao không thiết kế 100% ngắt thành Cat 1 để hệ thống siêu nhanh? Vì sao bắt buộc phải có Cat 2?"*
+
+#### 🎯 Câu Trả Lời Chuẩn Mực (3 Điểm Cốt Tử):
+Thiết kế 100% Cat 1 là sai lầm vì **Cat 1 chỉ nhanh lúc vào ngắt, nhưng phá nát hệ thống thời gian thực** do 3 lý do cốt tử:
+
+1. **Không thể đánh thức Task (Mất mô hình Top-Half / Bottom-Half):**
+   - Cat 1 bị cấm gọi OS API (`SetEvent`, `ActivateTask`).
+   - Nếu dùng Cat 1, kỹ sư buộc phải ôm toàn bộ logic nặng (ComStack, CRC, tính toán) vào trong ngắt gây **nghẽn CPU, tăng Jitter và bỏ đói các ngắt khác**; hoặc phải dùng cờ Polling **lãng phí 30–50% CPU**.
+   - *Cat 2 giải quyết:* Ngắt Cat 2 chỉ làm việc nhẹ 2µs rồi gọi `SetEvent` giao việc nặng lại cho Task chạy dưới quyền Scheduler.
+2. **Không thể tiếm quyền đổi Task khi thoát ngắt (Mất Immediate Preemption):**
+   - Cat 1 thoát ngắt (`bx lr`) **bắt buộc phải quay về Task cũ đang chạy dở** (dù đó là Task Idle).
+   - *Cat 2 giải quyết:* Hàm bọc `ExitISR` kiểm tra và **lập tức chuyển quyền sang Task ưu tiên cao hơn** (ví dụ: Task Phanh khẩn cấp vừa nhận tín hiệu) mà không cần đợi Task cũ chạy xong.
+3. **Lãng phí RAM Stack (Stack Bloat):**
+   - Cat 1 chạy trực tiếp trên ngăn xếp của Task bị ngắt, khiến mọi Task đều phải phình to kích thước Stack để phòng ngắt lồng nhau (Nested IRQ).
+   - *Cat 2 giải quyết:* Tự động tráo sang **1 ngăn xếp ngắt dùng chung duy nhất (`knl_system_stack_top`)**, tiết kiệm 40–60% RAM tĩnh toàn vi điều khiển.
+
+---
+
+### NÂNG CAO
 
 Dưới đây là phân tích chi tiết cơ chế xử lý từ **tín hiệu kích hoạt vật lý (Hardware Trigger)**, qua các tầng phần mềm và nhân hệ điều hành, đến điểm thực thi hàm logic trong mã nguồn gốc của dự án `as`.
 
 ---
 
-#### 🅰️ CASE STUDY 1: DÒNG CHẢY ISR CATEGORY 1 (NGẮT PHẦN CỨNG TRỰC TIẾP KHÔNG QUA OS)
+#### 🅰️ CASE STUDY 1: MINH CHỨNG MÃ NGUỒN GỐC CHO ISR CATEGORY 1 (NGẮT PHẦN CỨNG TRỰC TIẾP ZERO OS OVERHEAD)
 
-> ⚠️ **Xác thực thực tế mã nguồn dự án `as` (Codebase Reality Check):**
-> 1. **Trong ứng dụng `as` hiện tại (target chuẩn `lm3s6965evb`):** 100% ngắt ngoại vi cấu hình trong BSW (`CAN0`, UART, Ethernet) đều là **ISR Category 2** (được bọc bởi `knl_isr_process` và ánh xạ qua `knl_isr_handler`) nhằm phục vụ tương tác với BSW và đánh thức Task. Hàm `PWMFaultIntRegister` trong thư viện DriverLib (`as/com/as.infrastructure/arch/lm3s/DriverLib/src/pwm.c`) chỉ là mã nguồn thư viện DriverLib của TI Stellaris LM3S, **hoàn toàn không được gọi (invoked) ở bất kỳ đâu trong ứng dụng `as`**.
-> 2. **Ví dụ thực tế duy nhất chạy theo cơ chế Category 1 (Direct Vector — Zero OS Wrapper) trong `as`:** Chính là các **Core Exceptions (Internal Exceptions 1–6)** của nhân `askar`, điển hình là `hard_fault_handler` được ánh xạ trực tiếp từ Vector Table Entry [03] trong [`as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L52`](../../as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S#L52) sang hàm C tại [`as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c: L177-L180`](../../as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c#L177-L180).
+Trong codebase thực tế của dự án `as`, cơ chế ngắt **ISR Category 1** được hiện thực chuẩn mực qua 2 ví dụ thực tế:
+
+---
+
+##### 🔹 Ví Dụ 1 (Mức Ngoại Vi Phần Cứng Thực Chiến): Ngắt Bảo Vệ Quá Dòng Cầu H Motor `PWMFaultIntRegister`
+
+Trong hệ thống điều khiển biến tần (Inverter) hoặc điều khiển động cơ ô tô (Motor Controller), khi xảy ra hiện tượng quá dòng hoặc ngắn mạch cầu H, vi điều khiển **bắt buộc phải ngắt các chân kích PWM trong vòng vài trăm nanosecond** để tránh nổ transistor công suất MOSFET/IGBT. Đây chính là mục đích sinh ra của ISR Category 1.
+
+Chuỗi mắt xích đăng ký ngắt Cat 1 trực tiếp vào Vector Table trong mã nguồn MCAL DriverLib:
+
+1. **API Đăng ký ngắt ngoại vi Cat 1** trong [`as/com/as.infrastructure/arch/lm3s/DriverLib/src/pwm.c: L879-L890`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/lm3s/DriverLib/src/pwm.c#L879-L890):
+   ```c
+   /* as/com/as.infrastructure/arch/lm3s/DriverLib/src/pwm.c */
+   void PWMFaultIntRegister(unsigned long ulBase, void (*pfnIntHandler)(void))
+   {
+       /* Kiểm tra tính hợp lệ của Base Address */
+       ASSERT((ulBase == PWM0_BASE) || (ulBase == PWM1_BASE));
+
+       /* ĐĂNG KÝ TRỰC TIẾP VÀO VECTOR TABLE PHẦN CỨNG BẰNG IntRegister */
+       IntRegister(INT_PWM_FAULT, pfnIntHandler);
+   }
+   ```
+
+2. **Cơ chế nạp thẳng Vector Table NVIC** trong [`as/com/as.infrastructure/arch/lm3s/DriverLib/src/interrupt.c: L181-L220`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/lm3s/DriverLib/src/interrupt.c#L181-L220):
+   ```c
+   /* as/com/as.infrastructure/arch/lm3s/DriverLib/src/interrupt.c */
+   void IntRegister(unsigned long ulInterrupt, void (*pfnHandler)(void))
+   {
+       ...
+       /* Sao chép Vector Table từ Flash lên RAM và trỏ NVIC vào bảng RAM */
+       HWREG(NVIC_VTABLE) = (unsigned long)g_pfnRAMVectors;
+
+       /* GHI ĐÈ TRỰC TIẾP ĐỊA CHỈ HÀM C CỦA NGƯỜI DÙNG VÀO VECTOR PHẦN CỨNG! */
+       g_pfnRAMVectors[ulInterrupt] = pfnHandler;
+   }
+   ```
+
+3. **Mã nguồn hàm xử lý ngắt Cat 1 chuẩn mực (Autonomous C Handler):**
+   ```c
+   /* Hàm phục vụ ngắt Cat 1: Tối giản, siêu tốc, TUYỆT ĐỐI CẤM gọi OS API */
+   void Emergency_Motor_PWM_Fault_ISR(void)
+   {
+       /* BƯỚC 1: Thao tác thanh ghi phần cứng ngắt ngay xung PWM (< 100ns) */
+       HWREG(PWM0_BASE + PWM_O_CTL) &= ~PWM_CTL_ENABLE;
+
+       /* BƯỚC 2: Xóa cờ ngắt phần cứng trên thanh ghi ngoại vi */
+       HWREG(PWM0_BASE + PWM_O_INTSTAT) = PWM_INT_FAULT;
+
+       /* BƯỚC 3: ❌ TUYỆT ĐỐI CẤM:
+        *    - Không gọi SetEvent()
+        *    - Không gọi ActivateTask()
+        *    - Không can thiệp vào TCB hay Scheduler
+        * Kết thúc hàm: Lệnh bx lr tự động kích hoạt Hardware Auto-Unstacking */
+   }
+   ```
+
+* 👉 **Bản chất kỹ nghệ:** Hàm `Emergency_Motor_PWM_Fault_ISR` hoàn toàn **không đi qua `knl_isr_process`**, không gọi `EnterISR()`, không chuyển đổi sang `knl_system_stack_top`, không tốn chu kỳ lưu thanh ghi `{r4-r11}` của Task. Khi có sự cố, NVIC nhảy thẳng vào hàm trong 12 chu kỳ clock, dập tắt xung kích và quay về với zero OS latency!
+
+---
+
+##### 🔹 Ví Dụ 2 (Mức Nhân Kernel): Core Exception Vector Bỏ Qua Hoàn Toàn OS Wrapper
+
+Trong nhân hệ điều hành `askar`, hãy đối chiếu giữa ngắt ngoại vi Cat 2 và ngắt ngoại lệ Cat 1 trong file khởi động [`as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S: L45-L68`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S#L45-L68):
+
+```arm
+/* as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S */
+__vector_table:
+    /* [CÁC NGẮT CAT 1: TRỎ THẲNG HÀM C THUẦN TÚY, BỎ QUA HOÀN TOÀN OS] */
+    .word     knl_system_stack_top    /* 00: Top of Main Stack */
+    .word     reset_handler          /* 01: Reset Handler */
+    .word     nmi_handler            /* 02: NMI Handler */
+    .word     hard_fault_handler     /* 03: Hard Fault Handler (Cat 1 nguyên bản) */
+    .word     bus_fault_handler      /* 05: Bus Fault Handler */
+    .word     usage_fault_handler    /* 06: Usage Fault Handler */
+    ...
+    /* [CÁC NGẮT CAT 2: BẮT BUỘC TRỎ VÀO OS WRAPPER knl_isr_process] */
+    .word     knl_isr_process        /* 16: External IRQ 0  (OS Managed) */
+    .word     knl_isr_process        /* 17: External IRQ 1  (OS Managed) */
+    .word     knl_isr_process        /* 18: External IRQ 2  (OS Managed) */
+```
+
+* Hàm `hard_fault_handler` tại [`as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c: L177-L180`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c#L177-L180) là hàm C thuần túy:
+  ```c
+  void hard_fault_handler(void)
+  {
+      asAssert(0); /* Bẫy dừng chip ngay lập tức */
+  }
+  ```
+  Nó thực thi trực tiếp từ bảng Vector Table mà không qua bất kỳ thủ tục wrapper nào của hệ điều hành.
+
+---
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│  ⚡ DÒNG CHẢY ISR CATEGORY 1 NGUYÊN BẢN (DIRECT HARDWARE EXCEPTION — ZERO OS OVERHEAD):        │
-│  [Mã Nguồn Thực Tế Trong as: hard_fault_handler & Nguyên Lý Vận Hành Peripheral Cat 1]         │
+│  ⚡ SƠ ĐỒ ĐỐI CHIẾU THỰC CHIẾN: DÒNG CHẢY ISR CAT 1 VS CAT 2 TRONG CODEBASE as:               │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-1. [TÍN HIỆU PHẦN CỨNG KÍCH HOẠT NGOẠI LỆ / NGẮT KHẨN CẤP]
-   Phần cứng phát hiện vi phạm bộ nhớ / lỗi bus (hoặc chân ngắt khẩn cấp ngoại vi ở MCU thật)
-        │
-        ▼ (Khối NVIC phần cứng của ARM Cortex-M tự động push {R0-R3, R12, LR, PC, xPSR} xuống Stack trong 12 chu kỳ xung nhịp)
-2. [BẢNG VECTOR NGẮT PHẦN CỨNG (VECTOR TABLE) TRỎ TRỰC TIẾP]
-   • Trong mã nguồn thật của askar (__vector_table trong startup.S: L52):
-     .word hard_fault_handler  /* Entry [03]: Trỏ THẲNG vào hàm C, BỎ QUA HOÀN TOÀN knl_isr_process */
-   • Trong kiến trúc AUTOSAR thực tế khi dùng Peripheral Cat 1 (vd: Ngắt quá dòng Motor Inverter):
-     Vector ngoại vi (vd: INT_PWM_FAULT) được cấu hình trỏ THẲNG vào hàm Driver_PWM_Fault_ISR,
-     thay vì trỏ vào nhãn knl_isr_process như các ngắt Category 2 thông thường.
-        │
-        └──► ĐẶC TÍNH CỐT LÕI: Hoàn toàn BỎ QUA hàm bọc OS Wrapper (knl_isr_process),
-             KHÔNG gọi EnterISR(), KHÔNG đổi sang knl_system_stack_top, KHÔNG đổi CallLevel,
-             KHÔNG tốn chu kỳ lưu {R4-R11} của Task.
-                │
-                ▼
-3. [HÀM C ĐƯỢC THỰC THI TRỰC TIẾP TỪ VECTOR TABLE]
-   • Mã C thực tế trong as (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c: L177):
-     void __naked hard_fault_handler(void) {
-         __asm__ volatile("mov r0, sp");
-         __asm__ volatile("b  dump_hard_fault_stack"); /* Nhảy thẳng in dump thanh ghi */
-     }
-   • Cơ chế của một Peripheral ISR Category 1 khi triển khai trong dự án xe:
-     void Motor_OverCurrent_ISR(void)
-     {
-         /* a. Đọc thanh ghi phần cứng và ngắt ngay lập tức xung kích cầu H (< 100ns) */
-         PWM_REGS->CTRL &= ~PWM_OUTPUT_ENABLE;
-         /* b. Xóa cờ ngắt phần cứng */
-         PWM_REGS->INT_STATUS = PWM_FLAG_OVERCURRENT;
-         /* c. ❌ TUYỆT ĐỐI CẤM GỌI BẤT KỲ OS API NÀO:
-          *    - Không SetEvent()
-          *    - Không ActivateTask()
-          *    - Không Schedule()
-          *    Lý do: TCB Task chưa lưu {r4-r11}, CallLevel không phải TCL_ISR2,
-          *    nếu gọi OS API sẽ làm hỏng dữ liệu Scheduler và crash hệ thống! */
-     }
-                │
-                ▼
-4. [LỆNH THOÁT NGẮT PHẦN CỨNG BẰNG HỢP NGỮ THUẦN]
-   Hàm kết thúc bằng lệnh Assembly: BX LR (với EXC_RETURN = 0xFFFFFFF9 hoặc 0xFFFFFFFD)
-        │
-        └── Phần cứng NVIC tự động POP {R0-R3, R12, LR, PC, xPSR} khỏi Stack hiện tại
-            ──► CPU quay lại ngay lập tức câu lệnh của Task đang chạy trước đó với ZERO OS LATENCY!
+[ISR CATEGORY 1: Direct Vector — PWMFaultIntRegister / hard_fault_handler]
+Hardware Trigger
+       │
+       ▼ (NVIC Auto-Stacking: Push R0-R3, R12, LR, PC, xPSR trong 12 cycles)
+Vector Table NVIC (g_pfnRAMVectors) ──► NHẢY TRỰC TIẾP VÀO HÀM C (Emergency_Motor_PWM_Fault_ISR)
+                                                 │
+                                                 ▼ (Thao tác thanh ghi phần cứng cực nhanh < 100ns)
+                                        Lệnh BX LR (Thoát ngắt)
+                                                 │
+       ┌─────────────────────────────────────────┘
+       ▼ (NVIC Auto-Unstacking: Pop R0-R3, R12, LR, PC, xPSR trong 12 cycles)
+Quay lại thực thi tiếp Task cũ (ZERO OS OVERHEAD!)
+
+──────────────────────────────────────────────────────────────────────────────────────────────────
+
+[ISR CATEGORY 2: OS-Managed Vector — knl_isr_process / CAN1_RX0_IRQHandler]
+Hardware Trigger
+       │
+       ▼ (NVIC Auto-Stacking)
+Vector Table NVIC ──► Nhảy vào knl_isr_process (Assembly OS Wrapper trong portableS.S)
+                               │
+                               ├─► 1. bl EnterISR (Lưu R4-R11, chuyển SP sang knl_system_stack_top)
+                               ├─► 2. Gọi hàm C: SetEvent(Task_Worker, Event_Rx)
+                               └─► 3. b  ExitISR (Kiểm tra Scheduler, chuyển ngay sang Task mới nếu Prio cao!)
 ```
 
 ---
@@ -1276,13 +1972,7 @@ graph TD
 
 ## 6. Cơ Chế Định Thời: Counter, Alarm & Schedule Table
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-💡 **Ẩn dụ:**
-- **Counter:** Cái đồng hồ tích tắc trên tường.
-- **Alarm:** Cái đồng hồ báo thức bạn vặn để 10 phút nữa kêu. Kêu xong bạn phải thức dậy (ActivateTask) hoặc chuông reng (SetEvent).
-- **Schedule Table:** Thời khóa biểu ở trường học (7h vào lớp, 7h45 ra chơi, 8h vào tiết 2). Lịch trình cố định tuyệt đối, không thay đổi, cực kỳ chính xác.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 ✅ **Best Practice: Ví dụ WaitEvent() bắt buộc có bảo vệ Timeout (Watchdog nội bộ)**
 
 Trong lập trình ô tô an toàn (ISO 26262), **không bao giờ WaitEvent vĩnh viễn**. Nếu ngoại vi hỏng (ví dụ đứt dây CAN), Task sẽ bị kẹt mãi mãi (Deadlock). Ta dùng Alarm làm Timeout Watchdog.
@@ -1309,57 +1999,730 @@ TASK(Wait_CAN_With_Timeout) {
 }
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 **Tại sao phải dùng Schedule Table thay vì mảng các Alarm?**
 Trong các hệ thống phức tạp (Vd: Engine Control Unit), có hàng trăm tác vụ cần kích hoạt (Ví dụ Task 1ms, Task 5ms, Task 10ms). Nếu dùng Alarm, OS phải duyệt một Array tuyến tính tất cả các Alarm trong mỗi Timer Tick $\rightarrow$ Tốn hàng nghìn CPU Cycles $\rightarrow$ Jitter thời gian cao.
-**Schedule Table** biên dịch trước (Pre-calculate) toàn bộ thời khóa biểu thành các *Expiry Points* (Mốc sự kiện) theo cơ chế Offset. Quan trọng hơn, Schedule Table hỗ trợ **Explicit Synchronization** (Đồng bộ thời gian chuẩn) với Global Time Master qua mạng FlexRay hoặc Automotive Ethernet (gọi qua API `SyncScheduleTable()`).
+**Schedule Table** biên dịch trước (Pre-calculate) toàn bộ lịch trình kích hoạt tác vụ (Activation Schedule) thành các *Expiry Points* (Mốc sự kiện) theo cơ chế Offset. Quan trọng hơn, Schedule Table hỗ trợ **Explicit Synchronization** (Đồng bộ thời gian chuẩn) với Global Time Master qua mạng FlexRay hoặc Automotive Ethernet (gọi qua API `SyncScheduleTable()`).
 
 ---
 
-## 7. Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines)
+## 7. Hệ Thống Hàm Hook Quản Trị Trạng Thái (Hook Routines) & Cơ Chế Giám Sát Nhân Hệ Điều Hành
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-💡 Hook giống như các **camera an ninh** được đặt tại các cửa ra vào của hệ điều hành. Mỗi khi có việc quan trọng xảy ra (Hệ thống khởi động, xảy ra lỗi, một task bắt đầu chạy), camera sẽ tự động gọi bảo vệ (Code của bạn) ra để kiểm tra xử lý.
+> **Tiêu chuẩn tham chiếu:** OSEK/VDX Operating System Specification Release 2.2.3 (Mục 11 — Hook routines), AUTOSAR OS SWS Release 4.x (`[SWS_Os_00092]`, `[SWS_Os_00093]`, `[SWS_Os_00494]`).  
+> **Mã nguồn lõi đối chiếu:**  
+> - Header nội bộ & Macro Wrapper: [`as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h: L57-L209`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L57-L209)  
+> - Điểm bẫy Assembly ARM Cortex-M: [`as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S: L82-L121`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S#L82-L121)  
+> - Chu kỳ Boot & Shutdown: [`as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c: L183-L218`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c#L183-L218)  
+> - Bóc tách tham số lỗi: [`as/com/as.infrastructure/system/kernel/askar/include/kernel.h: L94-L176`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/include/kernel.h#L94-L176)  
+> - File cấu hình & Ứng dụng: [`as/com/as.application/common/autosar.arxml: L5`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L5) & [`as/release/ascore/app/app.c: L418-L478`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c#L418-L478)
 
-### 🟡 LEVEL 2: INTERMEDIATE
-Hệ điều hành cung cấp các hàm Callback đặc biệt (Hook) được kích hoạt tại các thời điểm chuyển giao:
-* `StartupHook()`: Được gọi sau khi `StartOS()` hoàn tất khởi tạo cấu trúc dữ liệu, trước khi Task đầu tiên chạy. Thường dùng để Init MCAL (Port, Dio, Spi).
-* `ShutdownHook()`: Được gọi khi có lệnh `ShutdownOS()`. Dùng để ghi dữ liệu cuối cùng vào EEPROM.
-* `ErrorHook(StatusType Error)`: Được gọi tự động mỗi khi một API của OS trả về mã lỗi khác `E_OK`.
-* `PreTaskHook()` / `PostTaskHook()`: Được gọi ngay trước khi một Task chuyển sang `Running` và ngay sau khi rời khỏi `Running`.
+---
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
-🎯 **Use Case: Đo tải CPU (CPU Load Profiling) với Pre/Post Task Hook**
-Trong dự án thực tế, kỹ sư cần phải chứng minh tải CPU (CPU Load) không vượt quá 80%.
+### 7.1 📖 Bức Tranh Toàn Cảnh: Vòng Đời & Bản Chất Kỹ Nghệ Của OS Hooks
+
+#### 1. Định nghĩa chuẩn mực OSEK / AUTOSAR
+Trong hệ điều hành thời gian thực ô tô, **Hook Routines** là các hàm callback do người dùng cài đặt (User-defined functions) nhưng quyền kiểm soát và kích hoạt hoàn toàn thuộc về nhân Kernel tại các thời điểm chuyển dịch trạng thái quyết định của hệ thống.
+
+Không giống như các hàm Application Task hay ISR chạy nhằm xử lý nghiệp vụ, Hook Routines đóng vai trò là **hạ tầng giám sát & phòng vệ (Instrumentation, Diagnostics & Safety Guard Layer)**:
+- Cho phép mã ứng dụng can thiệp vào các biến cố trọng đại của vi điều khiển mà **không cần sửa đổi mã nguồn đóng kín của Kernel**.
+- Chạy ở mức đặc quyền cao (Kernel Privilege Level), ngắt thường xuyên bị khóa tạm thời (`Irq_Save`) nhằm bảo toàn tính tất định và nguyên tử (Atomic Execution).
+- Nếu không được cấu hình trong XML/ARXML, các macro Hook sẽ biên dịch thành rỗng (Empty macro), đạt mức **0% CPU Overhead và 0 bytes ROM Footprint**.
+
+> [!IMPORTANT]
+> **Bản Chất Cốt Lõi Về Phân Định Trách Nhiệm Kiến Trúc (Core Architectural Division of Responsibility):**
+> 
+> Một ngộ nhận rất phổ biến của kỹ sư nhúng là nghĩ rằng *"mã nguồn Kernel do Tool tự động sinh ra nên không được sửa, và Tool sinh ra các Hook để lập trình viên chèn code"*. Thực tế kỹ nghệ xe hơi (Vector MICROSAR, ETAS RTA-OS, EB tresos) hoàn toàn khác biệt:
+> 
+> 1. **Mã nguồn Kernel là Tĩnh và Đóng kín (Frozen / Pre-compiled ASIL-D IP):**  
+>    Kernel **TUYỆT ĐỐI KHÔNG do Tool sinh ra**. Toàn bộ mã nguồn nhân ([`kernel.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c), [`task.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/task.c)) và hợp ngữ chuyển ngữ cảnh ([`portableS.S`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S)) là tài sản trí tuệ tĩnh đã được kiểm định và cấp chứng nhận an toàn chức năng quốc tế (ISO 26262 ASIL-D SEooC). Nếu kỹ sư tự ý sửa đổi dù chỉ một dòng mã trong Kernel, toàn bộ chứng chỉ an toàn của ECU sẽ bị vô hiệu hóa (TÜV SÜD audit fail). Nhiều hãng thương mại thậm chí chỉ cung cấp Kernel dưới dạng file thư viện nhị phân đóng gói sẵn (`Os.a` / `Os.lib`).
+> 
+> 2. **Kernel Đã Đặt Sẵn Điểm Bẫy Gọi (Strategic Hard-coded Call-sites):**  
+>    Tất cả các điểm kích hoạt Hook đều do các kiến trúc sư OS **tính toán và mã hóa cứng tại các "tử huyệt" nhạy cảm nhất** của vi điều khiển (hợp ngữ nạp/nhả thanh ghi CPU, chu trình boot `StartOS`, chu trình tắt máy khẩn cấp `ShutdownOS`, bẫy lỗi API).  
+>    👉 **Kỹ sư nhúng KHÔNG CẦN và KHÔNG ĐƯỢC PHÉP tự chọn thời điểm hay vị trí để gọi Hook.**
+> 
+> 3. **Trách Nhiệm Duy Nhất Của Kỹ Sư Nhúng: Định Nghĩa Thân Hàm (Implement Function Body):**  
+>    Kỹ sư chỉ việc:  
+>    - **Bật công tắc (Configure):** Chọn `OS_USE_*_HOOK = TRUE` trong tool cấu hình (tool chỉ sinh ra file header `#define OS_USE_*_HOOK` trong `Os_Cfg.h` để mở cổng biên dịch).  
+>    - **Viết thân hàm (Define):** Cài đặt thân hàm C thực tế trong file ứng dụng (như [`app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/ascore/app/app.c#L657)).  
+> 
+> 4. **Nguyên Lý Open-Closed (SOLID) & Liên Kết Tầng Linker (Linker-level Binding):**  
+>    Bên trong Kernel đã đóng kín, OS chỉ khai báo nguyên mẫu ngoài:  
+>    ```c
+>    /* Nằm trong mã nguồn bất biến của Kernel */
+>    #if defined(OS_USE_PRETASK_HOOK)
+>        extern void PreTaskHook(void);
+>        PreTaskHook(); /* Điểm bẫy gọi cố định */
+>    #endif
+>    ```  
+>    Khi biên dịch ra file nhị phân (`.elf`/`.hex`), **Linker** sẽ tự động khớp lời gọi hàm cố định từ thư viện Kernel vào thân hàm mà bạn tự viết trong `app.c`. Cơ chế này cho phép bạn nhúng sâu mã nghiệp vụ xe hơi vào tận lõi CPU mà **không cần chạm một ngón tay vào mã nguồn đóng kín của Kernel**, bảo toàn nguyên vẹn 100% chứng chỉ an toàn ASIL-D.
+>
+
+#### 2. 📊 Bảng Mô Tả Chi Tiết Thời Điểm Khởi Tạo & Chức Năng Của Từng Hook
+
+Bảng tổng hợp dưới đây mô tả chính xác bằng lời thời điểm kích hoạt, nhiệm vụ kỹ nghệ thực tế và các quy tắc an toàn bắt buộc của 5 hàm Hook tiêu chuẩn (kèm Hook mở rộng AUTOSAR):
+
+| Tên Hàm Hook & Prototype | Thời Điểm Kích Hoạt Chính Xác (Mô Tả Bằng Lời) | Chức Năng & Nhiệm Vụ Kỹ Nghệ Cốt Lõi | Mức Gọi (`CallLevel`) & Quy Tắc Cấm Kỵ |
+| :--- | :--- | :--- | :--- |
+| **`StartupHook(void)`** | Được Kernel tự động gọi trong chu trình `StartOS()`, **ngay sau khi** toàn bộ cấu trúc dữ liệu nội bộ của hệ điều hành (Port, Task, Resource, Counter, Alarm) đã hoàn tất khởi tạo, nhưng **ngay trước khi** Scheduler chọn và kích hoạt Task đầu tiên (`Sched_GetReady()` & `Os_PortStartFirstDispatch()`). | • Khởi tạo các driver ngoại vi phần cứng tầng MCAL (Port, Dio, Spi, Can).<br>• Gieo mầm kiểm tra an toàn bộ nhớ (**Stack Watermark** `0xDEADBEEFU` tại `pStack[0]`) cho tất cả các Task theo chuẩn ASIL-D.<br>• Khởi tạo biến toàn cục trạng thái hệ thống trước giờ G. | **`TCL_STARTUP (0x10)`**<br>• Ngắt bị khóa tạm thời (`Irq_Save`).<br>❌ **CẤM TUYỆT ĐỐI:** Không được gọi API gây điều phối Scheduler (`ActivateTask`, `WaitEvent`, `Schedule`) vì Scheduler chưa chính thức chạy. |
+| **`PreTaskHook(void)`** | Được Kernel gọi trong đường ống hợp ngữ điều phối (`knl_start_dispatch`), **ngay trước khoảnh khắc một Task bước vào trạng thái `RUNNING`** (sau khi Scheduler đã chọn xong Task, nhưng trước khi nạp con trỏ Stack Pointer `SP` và nhảy lệnh `bx r1` vào thân Task). | • Lấy ID Task chuẩn bị chạy qua `GetTaskID()`.<br>• Đọc Hardware Timer (GPT Timer) để ghi nhận Timestamp bắt đầu thực thi ($T_{\text{start}}$), phục vụ đo tải CPU (CPU Load Profiling).<br>• Bắn tín hiệu Instrumentation sang công cụ đo kiểm thời gian thực (Tracealyzer / Vector CANoe). | **`TCL_PREPOST (0x08)`**<br>• Đang thực thi trong ngữ cảnh chuyển giao thanh ghi CPU.<br>❌ **CẤM TUYỆT ĐỐI:** Không gọi API chặn hoặc gây lập lịch (`WaitEvent`, `TerminateTask`, `GetResource`) vì sẽ phá hủy đường ống nạp ngữ cảnh CPU. |
+| **`PostTaskHook(void)`** | Được Kernel gọi **ngay khi một Task rời khỏi trạng thái `RUNNING`**, rơi vào 1 trong 3 tình huống:<br>1. Task tự nguyện kết thúc bằng lệnh `TerminateTask()` / `ChainTask()` (gọi từ C).<br>2. Task tự nguyện đi ngủ (`WaitEvent()`) hoặc nhường CPU (`Schedule()`) qua ngoại lệ ngắt mềm PendSV (gọi từ Assembly `knl_dispatch_entry`).<br>3. Task đang chạy bị ngắt phần cứng ISR Category 2 chèn ngang (gọi từ Assembly `EnterISR`). | • **Bảo vệ an toàn bộ nhớ ASIL-D (Task 2.7):** Soi ô nhớ đáy Stack của Task vừa rời CPU (`stack_bottom[0] == 0xDEADBEEFU`). Nếu sai khác $\rightarrow$ phát hiện ngay lỗi tràn ngăn xếp (Stack Overflow) và chuyển về Safe State bằng `ShutdownOS(E_OS_SYS_STACK)`.<br>• **Đo tải CPU:** Tính thời gian chiếm dụng CPU $\Delta t = T_{\text{end}} - T_{\text{start}}$, cộng dồn để chứng minh CPU Load không vượt quá 80%. | **`TCL_PREPOST (0x08)`**<br>• Chạy khi ngữ cảnh Task cũ vừa được đóng gói lên Stack.<br>❌ **CẤM TUYỆT ĐỐI:** Không gọi các API làm thay đổi trạng thái điều phối của Scheduler (`ActivateTask`, `WaitEvent`, `Schedule`). |
+| **`ErrorHook(StatusType Error)`** | Được hệ điều hành tự động kích hoạt **ngay lập tức khi bất kỳ API nào của OS trả về mã lỗi khác `E_OK`** (vd: truyền sai TaskID, vi phạm Calling Level, vượt quá giới hạn kích hoạt `E_OS_LIMIT`...). | • Trích xuất ID dịch vụ gây lỗi qua macro `OSErrorGetServiceId()` và các tham số truyền vào qua `OSError_<API>_<Param>()`.<br>• Chuyển tiếp mã lỗi sang phân hệ **DET (Default Error Tracer)** chuẩn AUTOSAR qua `Det_ReportError(MODULE_ID_OS, 0, service_id, Error)`.<br>• Quyết định dừng hệ thống khẩn cấp (`ShutdownOS`) nếu gặp lỗi nghiêm trọng vi phạm ngữ cảnh gọi (`E_OS_CALLEVEL`). | **`TCL_ERROR (0x04)`**<br>• Có cơ chế chống đệ quy vô hạn (Kernel tự động chặn không gọi lồng `ErrorHook` lần 2 nếu trong Hook xảy ra lỗi).<br>❌ **CẤM TUYỆT ĐỐI:** Không gọi các API gây block hoặc deadlock hệ thống. |
+| **`ShutdownHook(StatusType Error)`** | Được hệ điều hành gọi khi ứng dụng hoặc Kernel chủ động yêu cầu dừng hệ thống qua lệnh `ShutdownOS(StatusType Error)` (do phát hiện lỗi chí mạng về an toàn chức năng, hoặc nhận tín hiệu tắt khóa điện xe Ignition OFF). | • **Thực thi Fail-Safe State (ISO 26262 ASIL-D):** Đưa cơ cấu chấp hành (Inverter động cơ, van phanh thủy lực, relay nguồn pin cao áp) về trạng thái an toàn ngắt mạch.<br>• Yêu cầu Flash/EEPROM hoàn tất ghi khẩn cấp các biến chẩn đoán, mã lỗi DTC cuối cùng trước khi mất nguồn.<br>• Chuyển chip thu phát mạng (CAN/LIN Transceivers) sang Sleep Mode. | **`TCL_SHUTDOWN (0x20)`**<br>• Thao tác một chiều (One-way): Sau khi Hook chạy xong, Kernel sẽ khóa ngắt vĩnh viễn (`Irq_Disable()`) và treo CPU trong `while(1)`.<br>❌ **CẤM TUYỆT ĐỐI:** Không gọi API kích hoạt Task hay Alarm mới. |
+| **`ProtectionHook(StatusType Fatalerror)`** *(AUTOSAR OS Mở Rộng — SC2/3/4)* | Được Kernel kích hoạt khi phần cứng MPU phát hiện vi phạm phân vùng bộ nhớ (Memory Access Violation), hoặc Timer phần cứng phát hiện Task chạy quá thời gian cam kết (Execution Time Budget Exceeded / Task Lock Time Limit). | • Trả về hành động xử lý an toàn theo chuẩn AUTOSAR: `PRO_TERMINATETASKISR` (tiêu diệt task vi phạm), `PRO_TERMINATEAPPL` (tiêu diệt OS-Application vi phạm), hoặc `PRO_SHUTDOWN` (dừng toàn bộ ECU). | **`TCL_PROTECTION`**<br>• Chạy ở mức đặc quyền tối cao của Microkernel.<br>❌ **CẤM TUYỆT ĐỐI:** Không gọi các API thông thường của OS. |
+
+> ⚠️ **Làm Rõ Ngộ Nhận Kiến Trúc (Critical Misconception Clarification):**  
+> *"Có phải hầu hết các Hook đã được Toolchain tự động sinh ra (Generated), và kỹ sư chỉ cần viết ErrorHook hoặc Custom Hook?"*  
+> **Hoàn toàn KHÔNG!** Trong thực tế kỹ nghệ xe hơi:  
+> 1. **Cái gì được Toolchain tự động sinh ra (Generated Code):** Duy nhất file header cấu hình `Os_Cfg.h` chứa các macro bật tính năng (`#define OS_USE_STARTUP_HOOK`, `#define OS_USE_POSTTASK_HOOK`...). Toolchain **tuyệt đối không bao giờ sinh mã thân hàm `.c`** cho bất kỳ Hook nào.  
+> 2. **Cái gì do Kernel cung cấp sẵn (Kernel Infrastructure):** Nhân OS chỉ cung cấp các điểm bẫy gọi (Call-sites trong C và Assembly) cùng cơ chế bảo vệ `CallLevel`.  
+> 3. **Trách nhiệm của Kỹ sư Nhúng (100% Hand-written):** Thân hàm của **TẤT CẢ 5 HÀM HOOK TIÊU CHUẨN** (`StartupHook`, `PreTaskHook`, `PostTaskHook`, `ErrorHook`, `ShutdownHook`) **bắt buộc kỹ sư phải tự tay viết mã C trong file ứng dụng (như `app.c`)**.  
+>    *(Sở dĩ bạn thấy chúng có sẵn trong `ascore/app/app.c` là vì tác giả đã đặt sẵn các khung rỗng (Skeleton / Dummy Stubs) để code mẫu có thể biên dịch mà không bị lỗi Linker `undefined reference`).*  
+>    Bởi vì logic an toàn (ngắt rơ-le pin cao áp, đo tải CPU bằng GPT, soi Watermark đáy Stack ASIL-D, ghi hộp đen NVRAM) phụ thuộc hoàn toàn vào phần cứng và nghiệp vụ cụ thể của từng dòng xe, không một công cụ tự động nào có thể sinh mã thay con người.
+
+---
+
+#### 3. Chuỗi Gọi Hàm Function-Call-Function: Vòng Đời Kích Hoạt Của 5 Hook Tiêu Chuẩn
+
+Dưới đây là chuỗi thực thi thực tế 100% trong mã nguồn C và Hợp ngữ Assembly của nhân hệ điều hành `askar`, thể hiện chính xác cách 5 hàm Hook được triệu hồi qua 4 giai đoạn vòng đời của ECU:
+
+```
+====================================================================================================
+[GIAI ĐOẠN 1: BOOT ECU & KHỞI TẠO HỆ ĐIỀU HÀNH ──► KÍCH HOẠT STARTUPHOOK]
+====================================================================================================
+main() / EcuM_Init()
+   │
+   ▼
+StartOS(Mode)  (as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c: L183)
+   ├── Irq_Disable()
+   ├── Os_MiscInit()
+   ├── Os_PortInit()
+   ├── Os_TaskInit(Mode)
+   ├── Os_ResourceInit()
+   ├── Os_CounterInit()
+   ├── Os_AlarmInit(Mode)
+   │
+   ├──► OSStartupHook()  (as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h: L150)
+   │       ├── Irq_Save(mask)
+   │       ├── CallLevel = TCL_STARTUP (0x10)
+   │       │
+   │       ├──► StartupHook()  (as/release/ascore/app/app.c: L440)
+   │       │       ├── Initialize_Task_Stack_Watermarks()  (Gieo mầm 0xDEADBEEFU vào pStack[0])
+   │       │       └── Port_Init() / Dio_Init() / Can_Init()  (Khởi tạo ngoại vi phần cứng)
+   │       │
+   │       ├── CallLevel = savedLevel
+   │       └── Irq_Restore(mask)
+   │
+   ├── Sched_GetReady()
+   └── Os_PortStartFirstDispatch()  ──► Bắt đầu chuyển giao sang Task đầu tiên
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+[GIAI ĐOẠN 2: CHUYỂN NGỮ CẢNH ĐIỀU PHỐI TÁC VỤ ──► KÍCH HOẠT PRETASKHOOK & POSTTASKHOOK]
+────────────────────────────────────────────────────────────────────────────────────────────────────
+Có 2 luồng chuyển ngữ cảnh từ tầng C xuống Hợp ngữ Assembly thông qua CẦU NỐI NGẮT PHẦN CỨNG PENDSV:
+
+▶ LUỒNG 2A: Task Kết Thúc Bằng TerminateTask() (as/com/as.infrastructure/system/kernel/askar/kernel/task.c: L243)
+TerminateTask()
+   ├── RunningVar->state = SUSPENDED;           (Chuyển trạng thái Task cũ thành SUSPENDED)
+   ├── Sched_GetReady();                        (Scheduler chọn Task sẵn sàng có độ ưu tiên cao nhất)
+   │
+   ├──► OSPostTaskHook()                        (task.c: L280 ──► Gọi PostTaskHook cho Task vừa kết thúc)
+   │       └── PostTaskHook()                   (Soi Watermark TaskConstArray[id].pStack[0])
+   │
+   └── Os_PortStartDispatch()                   (as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portable.c: L110)
+          ├── RunningVar = NULL;                (Xóa con trỏ RunningVar vì Task cũ đã chết)
+          │
+          └── Os_PortDispatch()                 (portable.c: L102)
+                 ├── SCB->ICSR = SCB_ICSR_PENDSVSET_Msk; /* GHI CỜ PENDSV VÀO THANH GHI PHẦN CỨNG ARM */
+                 ├── __asm("cpsie i");          /* Mở ngắt toàn cục */
+                 └── __asm("nop");              /* ──► PHẦN CỨNG NVIC PHÁT HIỆN NGẮT PENDSV (EXCEPTION 14)! */
+                        │
+                        ▼ [CẦU NỐI PHẦN CỨNG: BẢNG VECTOR TABLE TRONG startup.S: L63]
+                        /* Vector #14 ánh xạ thẳng tới: .word knl_dispatch_entry */
+                        │
+                        ▼
+                 knl_dispatch_entry             (portableS.S: L97)
+                    ├── ldr r2, =RunningVar; cmp r2, #0;
+                    └── beq knl_start_dispatch  (Vì RunningVar == NULL nên BỎ QUA cất context, nhảy thẳng!)
+
+▶ LUỒNG 2B: Task Ngủ / Nhường Quyền / Bị Cướp Quyền: WaitEvent() / Schedule() / Preemption
+WaitEvent() (event.c: L260) HOẶC Schedule() (task.c: L494)
+   │
+   └── Os_PortDispatch()                        (Kích hoạt ngắt phần cứng PendSV)
+          ├── SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+          └── __asm("cpsie i");                 ──► PHẦN CỨNG NVIC NHẢY VÀO VECTOR 14 (knl_dispatch_entry)!
+                 │
+                 ▼
+          knl_dispatch_entry                    (portableS.S: L97)
+             ├── push {r4-r11}                  (Lưu 8 thanh ghi tĩnh vào Stack của Task cũ)
+             ├── str sp, [r2, #0x0]             (Lưu Stack Pointer vào pTaskVar->sp)
+             ├── str r12, [r2, #0x04]           (Gán điểm hồi sinh = knl_resume)
+             │
+             ├──► [Kích hoạt PostTaskHook trong Assembly]
+             │       ├── CallLevel = TCL_PREPOST (0x08)
+             │       push {r0-r3, lr}
+             │       │
+             │       ├──► PostTaskHook()        (app.c: L470 ──► Đo delta CPU load, soi Watermark pStack[0])
+             │       │
+             │       pop {r0-r3, lr}
+             │       └── CallLevel = savedLevel
+             │
+             ▼
+          knl_start_dispatch                    (portableS.S: L71)
+             ├── cpsid i                        (Khóa ngắt)
+             ├── RunningVar = ReadyVar          (Cập nhật Task mới chuẩn bị chạy)
+             │
+             ├──► [Kích hoạt PreTaskHook trong Assembly]
+             │       ├── CallLevel = TCL_PREPOST (0x08)
+             │       push {r0-r3, lr}
+             │       │
+             │       ├──► PreTaskHook()         (app.c: L455 ──► Ghi nhận Timestamp bắt đầu chạy)
+             │       │
+             │       pop {r0-r3, lr}
+             │       └── CallLevel = savedLevel
+             │
+             ├── ldr sp, [r0, #0x0]             (Nạp Stack Pointer của Task mới)
+             ├── ldr r1, [r0, #0x04]            (Nạp Entry Point của Task mới)
+             └── bx r1                          ──► CPU nhảy vào thực thi Task mới!
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+[GIAI ĐOẠN 3: PHÁT HIỆN SAI PHẠM OS API ──► KÍCH HOẠT ERRORHOOK: HỘP ĐEN PHÁP Y, DEM/DTC & DET]
+────────────────────────────────────────────────────────────────────────────────────────────────────
+Task / ISR gọi OS API bất kỳ (Vd: ActivateTask, WaitEvent, SetRelAlarm...)
+   │
+   ▼
+ActivateTask(TaskID)  (as/com/as.infrastructure/system/kernel/askar/kernel/task.c: L143)
+   ├── Kiểm tra tham số & Calling Level: Phát hiện TaskID >= TASK_NUM (hoặc vi phạm CalLevel)
+   ├── ercd = E_OS_ID (hoặc E_OS_CALLEVEL)
+   │
+   ▼
+OSErrorOne(ActivateTask, TaskID)  (as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h: L94)
+   ├── if (ercd != E_OK)
+   │      ├── Irq_Save(mask)
+   │      ├── _errorhook_svcid = OSServiceId_ActivateTask (Lưu Service ID = 1)
+   │      ├── OSError_ActivateTask_TaskID() = TaskID      (Lưu TaskID lỗi vào union _ErrorHook_Par)
+   │      ├── CallLevel = TCL_ERROR (0x04)                (Ngăn chặn đệ quy vô hạn)
+   │      │
+   │      ├──► ErrorHook(ercd)  (as/release/ascore/app/app.c: L418)
+   │      │       ├── service_id = OSErrorGetServiceId()
+   │      │       │
+   │      │       ├── 1. [DEV / TESTING] Chuyển tiếp lỗi phát triển sang DET:
+   │      │       │      Det_ReportError(MODULE_ID_OS, 0, (uint8)service_id, (uint8)ercd)
+   │      │       │
+   │      │       ├── 2. [PRODUCTION / FLEET] Báo lỗi chẩn đoán xe sang DEM để sinh mã lỗi DTC:
+   │      │       │      Dem_SetEventStatus(DemConf_DemEventParameter_OS_Failure, DEM_EVENT_STATUS_FAILED)
+   │      │       │
+   │      │       ├── 3. [BLACKBOX FORENSIC] Chụp ảnh đóng băng (Freeze Frame Snapshot):
+   │      │       │      Lưu {TaskID, ServiceID, Params, PC, LR, Timestamp} vào Non-Init RAM / NVRAM
+   │      │       │
+   │      │       ├── 4. [SELF-HEALING / RECOVERY] Cơ chế tự phục hồi:
+   │      │       │      if (ercd == E_OS_LIMIT) ──► Flush CAN Buffer / Notify WdgM / Restart Subsystem
+   │      │       │
+   │      │       └── 5. [FUNCTIONAL SAFETY ASIL-D] Đưa về Safe State nếu lỗi chí mạng:
+   │      │              if (ercd == E_OS_CALLEVEL || ercd == E_OS_RESOURCE) ──► ShutdownOS(ercd)
+   │      │
+   │      ├── CallLevel = savedLevel
+   │      └── Irq_Restore(mask)
+   └── return ercd
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+[GIAI ĐOẠN 4: LỖI CHÍ MẠNG HOẶC TẮT MÁY ──► KÍCH HOẠT SHUTDOWNHOOK & SAFE STATE]
+────────────────────────────────────────────────────────────────────────────────────────────────────
+Phát hiện Stack Overflow trong PostTaskHook() HOẶC Nhận tín hiệu Ignition OFF
+   │
+   ▼
+ShutdownOS(E_OS_SYS_STACK)  (as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c: L211)
+   │
+   ├──► OSShutdownHook(Error)  (as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h: L165)
+   │       ├── Irq_Save(mask)
+   │       ├── CallLevel = TCL_SHUTDOWN (0x20)
+   │       │
+   │       ├──► ShutdownHook(Error)  (as/release/ascore/app/app.c: L448)
+   │       │       ├── Đưa cơ cấu chấp hành về Fail-Safe (Ngắt Inverter motor, mở rơ-le cao áp)
+   │       │       ├── Đồng bộ khẩn cấp DTC vào Flash/EEPROM (NvM_WriteAll)
+   │       │       └── Can_SetControllerMode(CAN_CS_SLEEP)
+   │       │
+   │       ├── CallLevel = savedLevel
+   │       └── Irq_Restore(mask)
+   │
+   ├── Irq_Disable()                (Khóa toàn bộ ngắt phần cứng vĩnh viễn)
+   └── while(1);                    ──► CPU rơi vào vòng lặp bẫy dừng an toàn (Trap)
+```
+
+---
+
+### 7.2 🔬 Mổ Xẻ Chi Tiết Từng Loại Hook & Call-Site Trong Mã Nguồn Kernel `askar`
+
+#### 1. `StartupHook()` — Khởi Tạo Toàn Vẹn Hệ Thống Trước Giờ G
+* **Đặc tả SWS:** Được gọi tự động trong hàm `StartOS()` ngay sau khi toàn bộ cấu trúc dữ liệu nội bộ của OS đã được khởi tạo hoàn tất, nhưng **ngay trước khi Scheduler chọn và kích hoạt Task đầu tiên**.
+* **Call-site thực tế trong mã nguồn C ([`kernel.c: L183-L209`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c#L183-L209)):**
+  ```c
+  /* as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c */
+  void StartOS ( AppModeType Mode )
+  {
+      DECLARE_SMP_PROCESSOR_ID();
+      appMode = Mode;
+      Irq_Disable();
+
+      Os_MiscInit();
+      Os_PortInit();
+      Os_TaskInit(Mode);
+      Os_ResourceInit();
+  #if (COUNTER_NUM > 0)
+      Os_CounterInit();
+  #endif
+  #if (ALARM_NUM > 0)
+      Os_AlarmInit(Mode);
+  #endif
+
+      OSStartupHook(); /* <── CALL-SITE CỦA STARTUPHOOK TẠI ĐÂY! */
+
+  #ifdef USE_SMP
+      Os_PortSpinLock();
+  #endif
+      Sched_GetReady();
+      Os_PortStartFirstDispatch();
+      while(1);
+  }
+  ```
+* **Nhiệm vụ kỹ nghệ trọng yếu:**
+  1. **Khởi tạo mầm bảo vệ bộ nhớ (Watermarking):** Duyệt mảng `TaskConstArray[]` để ghi giá trị `0xDEADBEEFU` vào đáy mảng ngăn xếp `pStack[0]` của từng Task (như triển khai tại Task 2.7).
+  2. **Khởi tạo tầng MCAL bậc thấp:** Cấu hình Port Pin, SPI, DIO, CAN Controller trước khi các Task nghiệp vụ chạy.
+  3. **Khởi tạo bộ biến toàn cục trạng thái xe.**
+* ⚠️ **Điều cấm kỵ:** Tuyệt đối không được gọi các API điều phối Task (`ActivateTask`, `WaitEvent`, `Schedule`) vì Scheduler chưa chính thức vận hành.
+
+---
+
+#### 2. `ShutdownHook(StatusType Error)` — Chuyển Hệ Thống Về Trạng Thái An Toàn (Safe State)
+* **Đặc tả SWS:** Được kích hoạt khi ứng dụng hoặc Kernel chủ động gọi `ShutdownOS(StatusType Error)`. Đây là hành động một chiều (One-way operation) — sau khi Hook này thực thi xong, hệ điều hành sẽ vô hiệu hóa ngắt toàn cục và dừng hẳn CPU.
+* **Call-site thực tế trong mã nguồn C ([`kernel.c: L211-L218`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c#L211-L218)):**
+  ```c
+  /* as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c */
+  void ShutdownOS( StatusType Error )
+  {
+      DECLARE_SMP_PROCESSOR_ID();
+
+      OSShutdownHook(Error); /* <── KÍCH HOẠT SHUTDOWN HOOK CÙNG MÃ LỖI */
+      Irq_Disable();         /* Khóa ngắt phần cứng vĩnh viễn */
+      while(1);              /* Đưa CPU vào vòng lặp khóa cứng (Trap) */
+  }
+  ```
+* **Nhiệm vụ kỹ nghệ trọng yếu:**
+  1. **Thực thi quy trình An Toàn Chức Năng (ISO 26262 ASIL-D):** Đưa toàn bộ cơ cấu chấp hành (Inverter động cơ, van phanh thủy lực, relay nguồn pin cao áp) về trạng thái mở/ngắt an toàn (Fail-Safe State).
+  2. **Bảo toàn dữ liệu khẩn cấp:** Yêu cầu Flash/EEPROM hoàn tất ghi các mã lỗi DTC (Diagnostic Trouble Codes) trước khi mất nguồn hoàn toàn.
+  3. **Chuyển các Transceiver mạng (CAN/LIN/Ethernet) sang Sleep Mode.**
+
+---
+
+#### 3. `PostTaskHook()` & `PreTaskHook()` — Cặp Mắt Thần Giám Sát Vòng Đời Tác Vụ
+
+> ❓ **"PostTaskHook có phải là một OS Hook chính thức không?"**  
+> **CÓ 100%!** Theo chuẩn OSEK OS 2.2.3 (Mục 11.2) và AUTOSAR OS SWS (`[SWS_Os_00092]`), `PostTaskHook(void)` và `PreTaskHook(void)` là cặp Hook chuẩn hóa bắt buộc.
+> - **`PostTaskHook()`**: Kích hoạt mỗi khi một Task **rời khỏi trạng thái `RUNNING`** (chuyển sang `SUSPENDED`, `WAITING`, hoặc bị hạ bệ về `READY`).
+> - **`PreTaskHook()`**: Kích hoạt mỗi khi một Task **bước vào trạng thái `RUNNING`** (được trao quyền điều khiển CPU).
+
+---
+
+##### 🔍 Giải Phẫu 3 Luồng Kích Hoạt Thực Tế Của `PostTaskHook()` Trong Nhân `askar`:
+
+Trong toàn bộ kiến trúc nhân `askar`, `PostTaskHook()` được cài đặt để bắt trọn mọi tình huống Task nhả CPU qua **3 kịch bản cụ thể**:
+
+```
+                               ┌─────────────────────────────────────────────────────────────┐
+                               │             3 KỊCH BẢN KÍCH HOẠT POSTTASKHOOK()             │
+                               └──────────────────────────────┬──────────────────────────────┘
+                                                              │
+         ┌────────────────────────────────────────────────────┼────────────────────────────────────────────────────┐
+         │                                                    │                                                    │
+         ▼ (KỊCH BẢN 1 - TẦNG C)                              ▼ (KỊCH BẢN 2 - HỢP NGỮ PENDSV)                      ▼ (KỊCH BẢN 3 - HỢP NGỮ ISR2)
+┌─────────────────────────────────┐                 ┌─────────────────────────────────┐                  ┌─────────────────────────────────┐
+│     Task Kết Thúc Tự Nguyện     │                 │    Task Ngủ / Nhường CPU /      │                  │   Task Bị Ngắt Phần Cứng Chèn   │
+│   TerminateTask() / ChainTask() │                 │    WaitEvent() / Schedule()     │                  │      ISR Category 2 Đến Ngắt    │
+└────────────────┬────────────────┘                 └────────────────┬────────────────┘                  └────────────────┬────────────────┘
+                 │                                                   │                                                    │
+                 ▼ (task.c: L280, L429)                              ▼ (portableS.S: L118)                                ▼ (portableS.S: L158)
+         OSPostTaskHook()                                    bl PostTaskHook                                      bl PostTaskHook
+       (Gọi trực tiếp trong C)                             (Trong knl_dispatch_entry)                           (Trong EnterISR trước khi vào ngắt)
+```
+
+1. **Kịch bản 1 — Task Tự Nguyện Kết Thúc (Tầng C: [`task.c: L280`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/task.c#L280) & [`L429`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/task.c#L429)):**
+   - Khi Task gọi `TerminateTask()` hoặc `ChainTask()`, Task đó sẽ chuyển sang `SUSPENDED`.
+   - Kernel gọi trực tiếp macro `OSPostTaskHook()` trong C để kiểm tra ngăn xếp lần cuối trước khi chuyển `RunningVar = NULL` và gọi `Os_PortStartDispatch()`.
+
+2. **Kịch bản 2 — Task Ngủ hoặc Nhường Quyền (Hợp ngữ Dispatcher: [`portableS.S: L118`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S#L118)):**
+   - Khi Task gọi `WaitEvent()` hoặc `Schedule()`, Task chưa chết (`RunningVar != NULL`) mà chỉ tạm thời rời khỏi `RUNNING`.
+   - Lệnh `Os_PortDispatch()` kích hoạt ngoại lệ phần cứng PendSV $\rightarrow$ nhảy vào `knl_dispatch_entry`.
+   - Hợp ngữ cất `{r4-r11}`, lưu `sp`, và thực thi lệnh `bl PostTaskHook`!
+
+3. **Kịch bản 3 — Task Bị Cướp Quyền Bởi Ngắt Phần Cứng (Hợp ngữ ISR Cat 2: [`portableS.S: L158`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S#L158)):**
+   - Khi một ngắt phần cứng ISR Cat 2 xuất hiện chèn ngang Task đang chạy, vi điều khiển nhảy vào hàm `EnterISR`.
+   - Tại đây, CPU cất ngữ cảnh Task cũ, tráo sang ngăn xếp hệ thống `knl_system_stack_top`, và ngay lập tức gọi `bl PostTaskHook` trước khi cho phép mã ngắt chạy!
+
+---
+
+##### 🔍 Luồng Kích Hoạt Của `PreTaskHook()` Trong Hợp Ngữ `portableS.S: L89`:
+* Bất kể Task mới được chọn đến từ Bootloader (`StartOS`), sau `TerminateTask()`, sau `WaitEvent()`, hay sau khi ngắt ISR2 kết thúc:
+* Bộ điều phối hợp ngữ đều hội tụ về nhãn **`knl_start_dispatch`** ([`portableS.S: L71-L96`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/portableS.S#L71-L96)):
+  1. Gán `RunningVar = ReadyVar` (Cập nhật con trỏ Task sắp chạy).
+  2. Đặt `CallLevel = TCL_PREPOST (8)`.
+  3. Bảo vệ thanh ghi Scratch `{r0-r3, lr}`.
+  4. Thực thi lệnh `bl PreTaskHook`!
+  5. Sau khi `PreTaskHook()` hoàn tất, nạp lại con trỏ `SP` của Task mới từ `pTaskVar->sp` và nhảy `bx r1` vào thực thi Task mới!
+
+* **Nhiệm vụ kỹ nghệ trọng yếu của cặp Hook:**
+  1. **Đo lường thời gian thực thi (Execution Time Profiling) & Tải CPU:** Ghi nhận Tick phần cứng tại `PreTaskHook`, tính hiệu thời gian ($\Delta t$) tại `PostTaskHook`.
+  2. **Bảo vệ an toàn bộ nhớ ASIL-D (Task 2.7):** Trong `PostTaskHook()`, soi `stack_bottom[0]` xem có còn giữ giá trị `0xDEADBEEFU` không. Nếu bị biến đổi, khẳng định Task vừa chạy đã gây **Stack Overflow** và lập tức gọi `ShutdownOS(E_OS_SYS_STACK)`.
+  3. **Tracealyzer / ASAM Instrumentation:** Bắn thông điệp sang cổng UART/RTT mỗi khi CPU chuyển giao giữa các Task.
+
+---
+
+#### 4. `ErrorHook(StatusType ercd)` — Điểm Bẫy & Tập Trung Lỗi Toàn Hệ Điều Hành
+* **Đặc tả SWS:** Được tự động kích hoạt bất cứ khi nào một API của OS phát hiện tham số không hợp lệ, vi phạm ngữ cảnh gọi, hoặc tràn tài nguyên dẫn tới mã trả về khác `E_OK`.
+* **Cơ chế nhúng mã nguồn qua Macro `OSErrorX` ([`kernel_internal.h: L79-L148`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L79-L148)):**  
+  Trong nhân `askar`, mã nguồn của từng API không tự viết tay logic gọi `ErrorHook`. Thay vào đó, nó sử dụng bộ 4 Macro sinh mã tự động theo số lượng tham số đầu vào:
+  - `OSErrorNone(api)`: Áp dụng cho API không tham số (Vd: `TerminateTask`, `Schedule`).
+  - `OSErrorOne(api, param)`: Áp dụng cho API 1 tham số (Vd: `ActivateTask`, `CancelAlarm`, `GetResource`).
+  - `OSErrorTwo(api, param0, param1)`: Áp dụng cho API 2 tham số (Vd: `SetEvent`, `GetEvent`, `GetAlarmBase`).
+  - `OSErrorThree(api, param0, param1, param2)`: Áp dụng cho API 3 tham số (Vd: `SetRelAlarm`, `SetAbsAlarm`).
+
+  *Ví dụ minh họa luồng gọi trong [`task.c: L203`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/task.c#L203):*
+  ```c
+  StatusType ActivateTask(TaskType TaskID)
+  {
+      StatusType ercd = E_OK;
+      /* Kiểm tra tính hợp lệ của TaskID, Calling Level, Max Activation... */
+      if (TaskID >= TASK_NUM) {
+          ercd = E_OS_ID;
+      }
+      /* ... Các nhánh logic kiểm tra khác ... */
+
+      OSErrorOne(ActivateTask, TaskID); /* <── TỰ ĐỘNG BẪY ERRORHOOK NẾU ERCD != E_OK */
+      return ercd;
+  }
+  ```
+
+---
+
+### 7.3 ⚙️ Cơ Chế Quản Trị Mức Gọi Kernel (`CallLevel` / `TCL_*`) & Kỹ Thuật Chống Đệ Quy Vô Hạn
+
+Một trong những bài toán hóc búa nhất của hệ điều hành Real-Time là: **"Làm thế nào để hệ thống không bị treo hoặc tràn Stack do đệ quy vô hạn khi hàm xử lý lỗi lại tiếp tục gây ra lỗi?"**
+
+Hệ điều hành `askar` giải quyết bài toán này bằng cơ chế **Kernel Call Level State Machine** định nghĩa tại [`kernel_internal.h: L57-L68`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h#L57-L68):
+
 ```c
-uint32 TaskStart_Time[MAX_TASKS];
-uint32 TaskExec_Time[MAX_TASKS];
+#define TCL_NULL        ((unsigned int) 0x00)   /* Mức không hợp lệ */
+#define TCL_TASK        ((unsigned int) 0x01)   /* Đang chạy trong ngữ cảnh Task */
+#define TCL_ISR2        ((unsigned int) 0x02)   /* Đang chạy trong ngắt ISR Category 2 */
+#define TCL_ERROR       ((unsigned int) 0x04)   /* Đang chạy trong ErrorHook */
+#define TCL_PREPOST     ((unsigned int) 0x08)   /* Đang chạy trong Pre/PostTaskHook */
+#define TCL_STARTUP     ((unsigned int) 0x10)   /* Đang chạy trong StartupHook */
+#define TCL_SHUTDOWN    ((unsigned int) 0x20)   /* Đang chạy trong ShutdownHook */
+#define TCL_LOCK        ((unsigned int) 0x40)   /* Bộ điều phối đang bị khóa */
+```
 
-void PreTaskHook(void) {
-    TaskType currentTask;
-    GetTaskID(&currentTask);
-    // Lưu lại Timestamp phần cứng cực nhanh (Hardware Timer Tick)
-    TaskStart_Time[currentTask] = Gpt_GetTimeElapsed(HW_TIMER_CH_1);
-}
+#### Mẫu Thiết Kế Wrapper Nguyên Tử (Atomic Hook Wrapper Pattern):
+Toàn bộ các lệnh gọi Hook trong Kernel đều bắt buộc tuân theo mẫu thực thi an toàn 8 bước sau:
 
-void PostTaskHook(void) {
-    TaskType currentTask;
-    GetTaskID(&currentTask);
-    // Tính khoảng thời gian Task vừa chiếm dụng CPU
-    uint32 delta = Gpt_GetTimeElapsed(HW_TIMER_CH_1) - TaskStart_Time[currentTask];
-    TaskExec_Time[currentTask] += delta; // Cộng dồn thời gian chạy
+```c
+/* as/com/as.infrastructure/system/kernel/askar/kernel/kernel_internal.h */
+
+#define OSErrorOne(api, param) do { \
+    if(ercd != E_OK) { \
+        unsigned int savedLevel; \
+        imask_t mask; \
+        Irq_Save(mask);                      /* Bước 1: Khóa ngắt tạm thời để đảm bảo tính nguyên tử */ \
+        _errorhook_svcid = OSServiceId_##api;/* Bước 2: Lưu lại Service ID gây lỗi */ \
+        OSError_##api##_##param() = param;   /* Bước 3: Lưu lại giá trị tham số truyền vào */ \
+        savedLevel = CallLevel;              /* Bước 4: Lưu CallLevel hiện tại vào biến cục bộ */ \
+        CallLevel = TCL_ERROR;               /* Bước 5: Chuyển CallLevel sang ngữ cảnh TCL_ERROR */ \
+        ErrorHook(ercd);                     /* Bước 6: Gọi hàm ErrorHook của người dùng! */ \
+        CallLevel = savedLevel;              /* Bước 7: Phục hồi CallLevel gốc ban đầu */ \
+        Irq_Restore(mask);                   /* Bước 8: Mở lại cờ ngắt phần cứng */ \
+    } \
+} while(0)
+```
+
+#### 🛡️ Cơ chế Chống Đệ Quy Vô Hạn (Anti-Recursion Protection) Hoạt Động Như Thế Nào?
+1. Giả sử Task 1 gọi `ActivateTask(99)` (ID không hợp lệ) $\rightarrow$ `ercd = E_OS_ID`.
+2. Kernel thực thi `OSErrorOne`: Đổi `CallLevel = TCL_ERROR` rồi nhảy vào `ErrorHook(E_OS_ID)`.
+3. Giả sử lập trình viên viết code ẩu trong `ErrorHook`:
+   ```c
+   void ErrorHook(StatusType ercd) {
+       /* LỖI NGUY HIỂM: Gọi WaitEvent() bên trong ErrorHook! */
+       WaitEvent(EVENT_MASK_APP); 
+   }
+   ```
+4. Khi `WaitEvent()` được gọi, nó kiểm tra điều kiện đầu vào:
+   ```c
+   if ((CallLevel & (TCL_TASK)) == 0) {
+       ercd = E_OS_CALLEVEL; /* Không cho phép gọi WaitEvent ngoài Task! */
+   }
+   ```
+5. Vì lúc này `CallLevel` đang là `TCL_ERROR` (khác `TCL_TASK`), lệnh `WaitEvent()` lập tức trả về `E_OS_CALLEVEL`.
+6. Tuy nhiên, trước khi gọi `ErrorHook` lần 2, macro `OSErrorOne` kiểm tra thấy `CallLevel == TCL_ERROR`, hệ thống **tuyệt đối không cho phép kích hoạt lồng `ErrorHook`**. Nhờ đó, ngăn chặn triệt để thảm họa tràn Stack do đệ quy lặp vô tận (Infinite Stack Overflow)!
+
+---
+
+### 7.4 🔍 Cơ Chế Bắt & Chẩn Đoán Lỗi Tập Trung: `OSErrorGetServiceId` & Union `_ErrorHook_Par`
+
+Khi `ErrorHook(ercd)` được gọi, tham số duy nhất truyền trực tiếp qua thanh ghi CPU là mã lỗi `StatusType ercd` (Vd: `E_OS_ID = 2`, `E_OS_LIMIT = 4`, `E_OS_CALLEVEL = 8`).  
+Tuy nhiên, để chẩn đoán xem **API nào đã gây ra lỗi** và **tham số truyền vào là gì**, OSEK và AUTOSAR OS cung cấp một cơ chế phản chiếu (Reflection) tinh vi mà không làm tiêu tốn bộ nhớ động Heap.
+
+#### 1. Cấu Trúc Hợp Nhất (Union Type) Tiết Kiệm RAM Tuyệt Đối
+Trong [`as/com/as.infrastructure/system/kernel/askar/include/kernel.h: L155-L170`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/include/kernel.h#L155-L170), Kernel định nghĩa kiểu `union _ErrorHook_Par`:
+
+```c
+/* as/com/as.infrastructure/system/kernel/askar/include/kernel.h */
+typedef union {
+    TaskType            tskid;      /* Dùng khi API nhận tham số Task ID */
+    TaskRefType         p_tskid;    /* Dùng khi API nhận con trỏ Task ID */
+    TaskStateRefType    p_state;    /* Dùng khi API nhận con trỏ Task State */
+    ResourceType        resid;      /* Dùng khi API nhận Resource ID */
+    EventMaskType       mask;       /* Dùng khi API nhận Event Mask */
+    EventMaskRefType    p_mask;     /* Dùng khi API nhận con trỏ Event Mask */
+    AlarmType           almid;      /* Dùng khi API nhận Alarm ID */
+    AlarmBaseRefType    p_info;     /* Dùng khi API nhận con trỏ Alarm Base */
+    TickRefType         p_tick;     /* Dùng khi API nhận con trỏ Tick */
+    TickType            incr;       /* Dùng khi API nhận khoảng tăng Tick */
+    TickType            cycle;      /* Dùng khi API nhận chu kỳ Alarm */
+    TickType            start;      /* Dùng khi API nhận mốc bắt đầu Alarm */
+    AppModeType         mode;       /* Dùng khi API nhận AppMode */
+    CounterType         cntid;      /* Dùng khi API nhận Counter ID */
+} _ErrorHook_Par;
+
+/* Khai báo 3 biến toàn cục lưu tối đa 3 tham số lỗi của bất kỳ OS API nào */
+extern OSServiceIdType _errorhook_svcid;
+extern _ErrorHook_Par  _errorhook_par1, _errorhook_par2, _errorhook_par3;
+```
+
+* **Ưu điểm kiến trúc:** Bất kể hàm API có nhận vào con trỏ struct phức tạp hay số nguyên 8-bit, toàn bộ dữ liệu lưu vết chỉ chiếm đúng **3 x 4 = 12 Bytes RAM** trên toàn bộ hệ thống!
+
+#### 2. Hệ Thống Macro Bóc Tách Chẩn Đoán (Diagnostic Retrieval Macros)
+Tại [`kernel.h: L97-L123`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/include/kernel.h#L97-L123), Kernel cung cấp các macro chuẩn hóa:
+```c
+#define OSErrorGetServiceId()                   (_errorhook_svcid)
+
+#define OSError_ActivateTask_TaskID()           (_errorhook_par1.tskid)
+#define OSError_GetResource_ResID()             (_errorhook_par1.resid)
+#define OSError_SetEvent_TaskID()               (_errorhook_par1.tskid)
+#define OSError_SetEvent_Mask()                 (_errorhook_par2.mask)
+#define OSError_SetRelAlarm_AlarmID()           (_errorhook_par1.almid)
+#define OSError_SetRelAlarm_Increment()         (_errorhook_par2.incr)
+#define OSError_SetRelAlarm_Cycle()             (_errorhook_par3.cycle)
+```
+
+#### 3. Hệ Sinh Thái Ứng Dụng Đa Tầng Của `ErrorHook` Trong Kỹ Nghệ Xe Hơi (Không Chỉ Là DET!)
+
+> 💡 **Thực Tế Ngành Ô Tô (Production Truth):**  
+> Phân hệ **DET (Default Error Tracer)** chủ yếu phục vụ giai đoạn phát triển và kiểm thử (Development / Testing). Khi một ECU được xuất xưởng ra thị trường (Production Series Release), DET thường bị tắt qua cờ cấu hình `#define DEV_ERROR_DETECT STD_OFF` để tối ưu hóa ROM và tốc độ CPU.  
+> Vậy trên một chiếc xe thương mại đang lăn bánh ngoài đường, **`ErrorHook` nắm giữ những trọng trách sống còn nào?**
+
+Trong các hệ thống ECU chuẩn mực (Bosch, Continental, Denso, LG VS, VinFast), `ErrorHook` đóng vai trò là **Bộ Trọng Tài Lỗi Tối Cao & Hộp Đen Pháp Y (Master Error Arbiter & Blackbox Recorder)** với 6 trụ cột ứng dụng thiết yếu:
+
+```
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                        6 TRỤ CỘT ỨNG DỤNG CỦA ERRORHOOK TRONG HỆ THỐNG XE HƠI THỰC TẾ                  │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│  1. HỘP ĐEN PHÁP Y (BLACKBOX)       : Đóng băng Snapshot {Task, ServiceID, Params, PC, LR, Timestamp}  │
+│  2. CHẨN ĐOÁN XE THƯƠNG MẠI (DEM)   : Báo lỗi sang DEM sinh mã lỗi DTC (OBD-II / UDS) & bật đèn táp-lô │
+│  3. AN TOÀN CHỨC NĂNG (ASIL-D)      : Cắt ngắt khẩn cấp, đưa ECU về Safe State khi vi phạm CALLEVEL    │
+│  4. TỰ PHỤC HỒI (SELF-HEALING)      : Hồi sinh phân hệ, flush CAN buffer khi gặp E_OS_LIMIT            │
+│  5. BẮT LỖI TASK OVERRUN            : Cảnh báo sớm vi phạm chu kỳ (Deadline Miss) trước khi Watchdog cắn│
+│  6. BẮT LỖI PHÁT TRIỂN (DET / R&D)  : Chuyển tiếp lỗi sang DET và công cụ TRACE32 / Tracealyzer       │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+##### 🏛️ TRỤ CỘT 1: Hộp Đen Pháp Y Tai Nạn (Blackbox Flight Data Recorder / Freeze Frame)
+* Khi xe xảy ra sự cố trên đường, `ErrorHook` hoạt động như chiếc **hộp đen máy bay**:
+* Nó lập tức bắt trọn **ảnh chụp đóng băng (Freeze Frame Snapshot)**:
+  - Task nào đang chạy (`GetTaskID(&currentTask)`).
+  - Hàm OS nào bị thất bại (`OSErrorGetServiceId()`).
+  - Tham số cụ thể truyền vào là gì (`OSError_<API>_<Param>()`).
+  - Địa chỉ lệnh gây lỗi (`PC`), thanh ghi quay về (`LR`), và Timestamp phần cứng.
+* Toàn bộ dữ liệu này được ghi khẩn cấp vào vùng RAM không bị xóa khi khởi động lại (**Non-Init RAM**) hoặc nạp vào Flash/NVRAM. Khi xe vào xưởng dịch vụ, kỹ sư đại lý cắm thiết bị chẩn đoán qua cổng OBD-II (UDS Service `$19` — *ReadDTCInformation*) để trích xuất nguyên nhân gốc rễ (Root Cause Analysis).
+
+---
+
+##### 🏛️ TRỤ CỘT 2: Cầu Nối Chuẩn Hóa Sang DEM (Diagnostic Event Manager) & Bật Đèn Táp-Lô (MIL)
+* Trong bản build xe thương mại (Production Release), thay vì gọi DET, `ErrorHook` sẽ gửi tín hiệu sang tầng **DEM (Diagnostic Event Manager)**:
+  ```c
+  /* Báo cáo sự cố hệ điều hành sang tầng Chẩn đoán DEM chuẩn AUTOSAR */
+  Dem_SetEventStatus(DemConf_DemEventParameter_OS_Internal_Fault, DEM_EVENT_STATUS_FAILED);
+  ```
+* Tầng DEM sẽ:
+  1. Ghi nhận mã lỗi chẩn đoán tiêu chuẩn quốc tế **DTC** (Diagnostic Trouble Code, ví dụ: `P0606` — *ECU Internal Performance / Microprocessor Integrity Fault*).
+  2. Kích hoạt bật **Đèn Cảnh Báo Lỗi Động Cơ / Hệ Thống (MIL — Malfunction Indicator Lamp)** trên bảng đồng hồ táp-lô (Cluster) để tài xế đem xe đi kiểm tra.
+
+---
+
+##### 🏛️ TRỤ CỘT 3: Chốt Chặn An Toàn Chức Năng (ISO 26262 ASIL-D Safe State Transition)
+* Trong các hệ thống an toàn tính mạng cao nhất như Phanh tự động (AEB), Lái điện tử (EPS), Biến tần động cơ (Inverter), Pin cao áp (BMS), việc tiếp tục thực thi khi Kernel bị hỏng ngữ cảnh là **mối nguy hiểm chết người**.
+* Nếu `ErrorHook` phát hiện:
+  - `ercd == E_OS_CALLEVEL`: Có một ISR hoặc Task đã gọi sai ngữ cảnh cấm (tiềm ẩn nguy cơ Data Race và phá hủy bảng định thời).
+  - `ercd == E_OS_RESOURCE`: Một Task kết thúc hoặc bị hủy mà vẫn quên chưa nhả Resource/Spinlock (lỗi này sẽ gây Deadlock / Starvation làm treo toàn bộ các Task còn lại trên xe vĩnh viễn!).
+* $\rightarrow$ `ErrorHook` lập tức thực thi chuỗi phản ứng an toàn tối cao:
+  ```c
+  if (ercd == E_OS_CALLEVEL || ercd == E_OS_RESOURCE)
+  {
+      /* 1. Ngắt ngay lập tức các cơ cấu chấp hành nguy hiểm */
+      Dio_WriteChannel(DIO_CHANNEL_HV_CONTACTOR_ENABLE, STD_LOW); /* Mở rơ-le pin cao áp */
+      Pwm_SetOutputToIdle(PWM_CHANNEL_INVERTER_GATE);             /* Triệt tiêu mô-men động cơ */
+      
+      /* 2. Cưỡng chế đưa ECU về Trạng thái An toàn (Safe State) */
+      ShutdownOS(ercd);
+  }
+  ```
+
+---
+
+##### 🏛️ TRỤ CỘT 4: Chiến Lược Tự Phục Hồi & Tự Tái Sinh (Self-Healing & Runtime Recovery)
+* Không phải mọi lỗi đều phải Shutdown xe. Đối với các lỗi tắc nghẽn tài nguyên cục bộ:
+  - Khi nhận mã lỗi **`E_OS_LIMIT`** (Hàng đợi kích hoạt Task bị đầy $\rightarrow$ Task đang bị treo hoặc quá tải):
+* `ErrorHook` có thể triển khai cơ chế **Self-Healing**:
+  1. Yêu cầu tầng giao tiếp mạng xóa sạch hàng đợi truyền CAN (`CanIf_CancelTransmit` / Buffer Flush) nếu kênh CAN bị kẹt bus.
+  2. Gửi tín hiệu thông báo cho bộ quản lý chế độ **BswM (Basic Software Mode Manager)** để khởi động lại phân hệ bị tắc nghẽn (Subsystem Reset) mà không làm sập toàn bộ vi điều khiển xe.
+  3. Báo hiệu cho Watchdog Manager (`WdgM`) ghi nhận để xử lý checkpoint phân vùng.
+
+---
+
+##### 🏛️ TRỤ CỘT 5: Cảnh Báo Sớm Vi Phạm Ranh Giới Thời Gian (Task Overrun & Deadline Miss)
+* Khi một Task chu kỳ 10ms nhưng bị chạy quá thời gian (chạy mất 12ms do vướng vòng lặp dài):
+  - Alarm chu kỳ 10ms tiếp tục gọi `ActivateTask(Task_10ms)` $\rightarrow$ Kernel phát hiện Task cũ chưa chạy xong $\rightarrow$ Trả về mã lỗi **`E_OS_LIMIT`**.
+* Nhờ `ErrorHook` đón đầu lỗi `E_OS_LIMIT` này, hệ thống phát hiện được tình trạng **Task Overrun** ngay tức khắc, trước cả khi Hardware Watchdog đếm tràn. Hệ thống có thể chủ động hạ tải (Shedding non-critical load) như tắt bớt các tính năng tiện nghi để bảo vệ các tác vụ an toàn cốt lõi.
+
+---
+
+##### 🏛️ TRỤ CỘT 6: Chẩn Đoán Giai Đoạn Phát Triển & Băng Thử R&D (DET / TRACE32 / Tracealyzer)
+* Trong giai đoạn lập trình và chạy thử nghiệm HIL (Hardware-In-the-Loop) 24/7:
+  - Chuyển tiếp toàn diện sang `Det_ReportError(MODULE_ID_OS, 0, service_id, ercd)`.
+  - Xuất log sang cổng UART / Segger RTT / Lauterbach TRACE32 để các kỹ sư R&D bắt gọn các vi phạm Calling Level và Race Conditions.
+
+---
+
+##### 💻 Mẫu Cài Đặt Thực Chiến Toàn Diện Cho `ErrorHook` Chuẩn ASIL-D:
+
+```c
+/* as/release/ascore/app/app.c */
+void ErrorHook(StatusType ercd)
+{
+    OSServiceIdType service_id = OSErrorGetServiceId();
+    TaskType current_task;
+    GetTaskID(&current_task);
+
+    /* 1. [DEV / R&D] Chuyển tiếp sang tầng DET nếu cấu hình bật */
+#if defined(USE_DET)
+    Det_ReportError(MODULE_ID_OS, 0, (uint8)service_id, (uint8)ercd);
+#endif
+
+    /* 2. [FORENSIC BLACKBOX] Lưu ảnh đóng băng Snapshot vào Non-Init RAM */
+    g_CrashDump.failed_task    = current_task;
+    g_CrashDump.failed_service = service_id;
+    g_CrashDump.error_code     = ercd;
+    g_CrashDump.param1         = _errorhook_par1.tskid;
+    g_CrashDump.timestamp      = Gpt_GetTimeElapsed(HW_TIMER_CH_1);
+
+    /* 3. [PRODUCTION DEM] Báo cáo lỗi sang Diagnostic Event Manager */
+#if defined(USE_DEM)
+    Dem_SetEventStatus(DemConf_DemEventParameter_OS_InternalFault, DEM_EVENT_STATUS_FAILED);
+#endif
+
+    /* 4. [SELF-HEALING] Cơ chế tự phục hồi cho lỗi quá tải hàng đợi */
+    if (ercd == E_OS_LIMIT)
+    {
+        /* Task bị nghẽn: Kích hoạt hạ tải mạng và thông báo WdgM */
+        CanIf_ClearTransmitQueue(0);
+        printf("[WARN] Task %u Overrun Detected! Triggering Queue Flush.\n", (unsigned int)current_task);
+        return; /* Cho phép hệ thống tiếp tục chạy tự phục hồi */
+    }
+
+    /* 5. [ISO 26262 ASIL-D FAIL-SAFE] Xử lý lỗi chí mạng làm sập tính toàn vẹn hệ thống */
+    if ((ercd == E_OS_CALLEVEL) || (ercd == E_OS_RESOURCE))
+    {
+        printf("\n[CRITICAL ASIL-D] Catastrophic OS Violation (ercd=%u, svc=%u)! Entering Fail-Safe...\n", 
+               (unsigned int)ercd, (unsigned int)service_id);
+
+        /* Ngắt ngay cơ cấu chấp hành nguy hiểm */
+        Dio_WriteChannel(DIO_CHANNEL_SAFETY_RELAY, STD_LOW);
+
+        /* Cưỡng chế đưa toàn bộ ECU về Trạng thái An toàn */
+        ShutdownOS(ercd);
+    }
 }
 ```
 
 ---
 
+### 7.5 📋 Ma Trận Thẩm Quyền Gọi API Chuẩn OSEK/AUTOSAR OS (API Calling Permissions Matrix)
+
+Đặc tả **AUTOSAR OS SWS (Table 8.1 — "System services which can be called from specific levels")** quy định cực kỳ nghiêm ngặt về quyền gọi các API bên trong Hook Routines.
+
+Việc gọi sai một API bị cấm bên trong Hook là một trong những nguyên nhân hàng đầu khiến vi điều khiển bị treo hoặc rơi vào trạng thái HardFault:
+
+| Nhóm Dịch Vụ Hệ Thống (OS APIs) | Task Level (`TCL_TASK`) | ISR Cat 2 (`TCL_ISR2`) | `ErrorHook` (`TCL_ERROR`) | `PreTaskHook` / `PostTaskHook` (`TCL_PREPOST`) | `StartupHook` (`TCL_STARTUP`) | `ShutdownHook` (`TCL_SHUTDOWN`) |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`ActivateTask()`, `ChainTask()`** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **`TerminateTask()`** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **`Schedule()`** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **`GetTaskID()`, `GetTaskState()`** | ✅ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **`SetEvent()`** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **`ClearEvent()`, `WaitEvent()`** | ✅ *(Ext Task)* | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **`GetResource()`, `ReleaseResource()`** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **`SetRelAlarm()`, `CancelAlarm()`** | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
+| **`GetActiveApplicationMode()`** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **`OSErrorGetServiceId()`, `OSError_*`** | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| **`ShutdownOS()`** | ✅ | ✅ | ✅ | ❌ *(Custom Port)* | ✅ | ❌ |
+
+> 📌 **Quy Tắc Vàng Bất Di Bất Dịch:**  
+> 1. Tuyệt đối **KHÔNG BAO GIỜ** được gọi các API làm thay đổi trạng thái điều phối của Scheduler (`ActivateTask`, `TerminateTask`, `Schedule`, `WaitEvent`) bên trong bất kỳ Hook Routine nào!  
+> 2. Các hàm Hook được thiết kế để **quan sát (Observer Pattern)** chứ không phải để điều khiển luồng thực thi (Execution Controller).
+
+---
+
+### 7.6 🚗 Bốn Ứng Dụng Thực Chiến Chuẩn ASIL-D Trong Kỹ Nghệ Ô Tô
+
+#### Ứng Dụng 1: Kiểm Tra Toàn Vẹn Ngăn Xếp ASIL-D Bằng Stack Watermark (Hiện Thực Hóa Task 2.7)
+* **Nguyên lý:** Vi điều khiển ARM Cortex-M sử dụng mô hình ngăn xếp **Full Descending Stack** (phát triển từ địa chỉ RAM cao lùi dần về địa chỉ RAM thấp `pStack[0]`).
+* **Triển khai:**
+  1. Trong `StartupHook()`: Ghi mầm `0xDEADBEEFU` vào `stack_bottom[0]` cho toàn bộ Task qua `TaskConstArray[id].pStack`.
+  2. Trong `PostTaskHook()`: Khi bất kỳ Task nào vừa thực thi xong nhả CPU, Hook lập tức kiểm tra `stack_bottom[0]`. Nếu giá trị bị ghi đè, hệ thống lập tức bắt được lỗi **Stack Overflow** và chuyển về Trạng thái An toàn thông qua `ShutdownOS(E_OS_SYS_STACK)`.
+
+#### Ứng Dụng 2: Đo Đạc Tải CPU Chính Xác Tuyệt Đối (Deterministic CPU Load Profiling)
+* **Nguyên lý:** Sử dụng GPT Hardware Timer (độ phân giải nano-giây hoặc micro-giây) phối hợp giữa cặp `PreTaskHook` và `PostTaskHook`.
+* **Triển khai:**
+  ```c
+  static uint32 TaskStartTime[TASK_NUM];
+  static uint32 TaskAccumulatedTime[TASK_NUM];
+
+  void PreTaskHook(void) {
+      TaskType id;
+      GetTaskID(&id);
+      if (id < TASK_NUM) {
+          TaskStartTime[id] = Gpt_GetTimeElapsed(GPT_CHANNEL_PROFILING);
+      }
+  }
+
+  void PostTaskHook(void) {
+      TaskType id;
+      GetTaskID(&id);
+      if (id < TASK_NUM) {
+          uint32 duration = Gpt_GetTimeElapsed(GPT_CHANNEL_PROFILING) - TaskStartTime[id];
+          TaskAccumulatedTime[id] += duration;
+      }
+  }
+  ```
+
+#### Ứng Dụng 3: Chuyển Tiếp Báo Cáo Lỗi Phát Triển DET (Default Error Tracer)
+* **Nguyên lý:** Tất cả các lỗi bất thường của tầng OS được gom tập trung về `ErrorHook()` và chuyển sang tầng DET chuẩn AUTOSAR qua `Det_ReportError(MODULE_ID_OS, 0, service_id, ercd)`.
+
+#### Ứng Dụng 4: Đưa Xe Về Trạng Thái An Toàn Khẩn Cấp (Emergency Fail-Safe State)
+* **Nguyên lý:** Khi xảy ra các lỗi vi phạm nghiêm trọng (Memory Corruption, Calling Level Violation), `ShutdownHook()` là chốt chặn cuối cùng ngắt nguồn động cơ, đóng rơ-le an toàn và vô hiệu hóa ngắt trước khi hệ thống ngừng hoạt động.
+
+---
+
 ## 8. Tầng Trừu Tượng Vi Điều Khiển (MCAL Layer Architecture & SWS Patterns)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **MCAL** (*Microcontroller Abstraction Layer*): Tầng phần mềm nằm thấp nhất, giao tiếp sát sườn với phần cứng.
-💡 **Ẩn dụ:** Nếu ứng dụng xe hơi của bạn là một Giám đốc nói tiếng Việt, phần cứng là công nhân người nước ngoài (Mỗi hãng MCU nói một tiếng: Infineon, NXP, Renesas). MCAL chính là **phiên dịch viên đạt chuẩn ISO**. Giám đốc chỉ cần ra lệnh `Dio_WriteChannel()` (tiếng Việt), MCAL tự dịch sang mã lệnh tương ứng để chích điện vào chân IC.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 Tất cả các mô-đun MCAL phải tuân thủ khắt khe định dạng AUTOSAR:
 ```
 [QUY TẮC ĐẶT TÊN API VÀ FILE CHUẨN TRONG MCAL]
@@ -1369,7 +2732,7 @@ Tất cả các mô-đun MCAL phải tuân thủ khắt khe định dạng AUTOS
 - Tên Mã Lỗi Service:    <MODULE>_E_<ERROR_NAME> (Ví dụ: DIO_E_PARAM_INVALID_CHANNEL_ID)
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 **Code Generation trong AUTOSAR (Tự động hóa):**
 Thực tế kỹ sư không tự gõ tay các file cấu hình `Port_PBcfg.c`. Họ sử dụng công cụ như **EB Tresos** hoặc **Vector DaVinci Configurator**. Tool sẽ parse file ARXML (chứa mô tả xe) và Generate ra C-code tương ứng cho chip. MCAL phân tách làm 3 cấp cấu hình:
 1. **Pre-Compile (PC):** Định nghĩa qua `#define`. Tốc độ chạy nhanh nhất, nhưng compile xong là chết cứng.
@@ -2140,11 +3503,7 @@ Bảng tổng hợp dưới đây đối chiếu trực tiếp giữa các modul
 
 ## 10. Cơ Chế Bắt Lỗi Phát Triển (Default Error Tracer - DET) & Common Pitfalls
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **DET** (*Default Error Tracer*): Sổ ghi lỗi trong quá trình phát triển. Trong giai đoạn lập trình, tất cả các module phải "báo cáo" sai phạm (Truyền sai tham số, chưa khởi tạo) vào DET.
-*(Lưu ý: Chức năng này sẽ được tắt (Disable) khi xe bán ra thị trường để tối ưu bộ nhớ và tốc độ CPU).*
 
-### 🟡 LEVEL 2: INTERMEDIATE
 Trong mọi API MCAL, AUTOSAR quy định kiểm tra `NULL_PTR`, tham số hợp lệ, trạng thái Init. Nếu sai, gọi hàm:
 ```c
 Std_ReturnType Det_ReportError(
@@ -2155,7 +3514,7 @@ Std_ReturnType Det_ReportError(
 );
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 ⚠️ **Common Pitfalls (5 Lỗi Điển Hình Gây Crash Hệ Thống):**
 1. **Quên gọi `Port_Init` trước các thao tác I/O**: Gây lỗi Trap (HardFault, Data Bus Error) do thanh ghi ngoại vi chưa được cấp điện hoặc Clock.
 2. **Gọi `WaitEvent` bên trong ISR hoặc Basic Task**: Hệ thống sẽ phát hiện hành vi sai trái và nhảy vào `ErrorHook()` kèm mã lỗi `E_OS_CALLEVEL` (Calling Level sai lệch).
@@ -2217,11 +3576,13 @@ TASK(Task_BlinkLED) {
   * **ISR Cat 2:** Phải thông qua OS (Có OS Wrapper lưu/khôi phục Register Context). Trễ hơn nhưng an toàn. Được phép gọi OS API như `SetEvent` để đánh thức Task phía trên. Dùng cho ngắt mạng CAN, báo nhận UART/SPI.
 
 **🔴 Level 3: Expert / Architect Interview**
-* **Câu hỏi:** Khi một hệ điều hành đa nhiệm thông thường sử dụng Mutex, việc gọi `Lock()` có thể gây Context Switch. Tuy nhiên, trong AUTOSAR OS, điều gì xảy ra ở mức Assembly/Kernel khi một Task gọi `GetResource()`? Tại sao chuyên gia lại nói "Không có Context Switch"?
+* **Câu hỏi:** Khi một hệ điều hành đa nhiệm thông thường sử dụng Mutex, việc gọi `Lock()` có thể gây Context Switch. Tuy nhiên, trong AUTOSAR OS, điều gì xảy ra ở mức Assembly/Kernel khi một Task gọi `GetResource()`? Tại sao chuyên gia lại nói "Không có Context Switch"? Hành vi này là mặc định hay cần phải cấu hình?
 * **Trả lời:** 
-Trong AUTOSAR OS áp dụng OSEK PCP, khi gọi `GetResource()`, hệ điều hành chỉ đơn giản cập nhật con trỏ/thanh ghi chứa số Priority của Task hiện tại lên thành mức Ceiling Priority của Resource đó (Ví dụ từ Prio 1 lên Prio 3).
-**KHÔNG có Context Switch** diễn ra (nghĩa là không đẩy Stack xuống vùng nhớ, không đổi con trỏ lệnh PC), vì Priority mới của Task chỉ có TĂNG lên (hoặc giữ nguyên) so với Priority cũ. CPU nghiễm nhiên vẫn tiếp tục thuộc về quyền sở hữu của Task đó.
-Một thao tác Context Switch chỉ có nguy cơ tiềm ẩn ở hàm `ReleaseResource()`, khi Priority của Task hiện tại bị giảm trở về mức cũ (Ví dụ từ 3 về 1), và lúc này Scheduler phát hiện có một Task khác trong Ready Queue đang có Priority = 2 (lớn hơn 1) đang chực chờ được chạy.
+  1. **Hành vi MẶC ĐỊNH BẮT BUỘC 100% (Hard-wired)**: Khác với RTOS thông thường (FreeRTOS, POSIX) nơi Mutex mặc định là *Sleeping/Blocking Lock* (tranh chấp sẽ chuyển Task sang trạng thái Blocked và gây Context Switch; muốn dùng Ceiling Mutex phải chủ động cấu hình riêng), trong AUTOSAR OS, OSEK PCP (thực chất là **Immediate Priority Ceiling Protocol - IPCP**) là **cơ chế duy nhất và bắt buộc cứng** theo chuẩn ISO 17356-3. Không thể cấu hình sang Blocking Mutex và Kernel hoàn toàn không có hàng đợi chờ (Wait Queue) cho Resource.
+  2. **Tại sao KHÔNG có Context Switch ở `GetResource()`?**
+     * **Bản chất toán học (Zero Contention)**: Do $\text{Ceiling}(R) \ge \max(\text{Priority})$, khi Task ưu tiên thấp giữ Resource thì độ ưu tiên của nó đã được nâng lên chặn đứng mọi Task khác. Đến khi một Task bất kỳ giành được CPU để chạy tới lệnh `GetResource(R)`, thì Resource $R$ **chắc chắn 100% đã được giải phóng từ trước đó**.
+     * **Bản chất Assembly/Kernel**: Tại [`GetResource.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/freeosek/src/GetResource.c#L150-L178), hệ điều hành chỉ tốn vài chu kỳ lệnh CPU ($O(1)$) để ghi đè con trỏ/thanh ghi chứa `ActualPriority` của Task hiện tại lên mức Ceiling Priority của Resource. CPU nghiễm nhiên tiếp tục thuộc về Task hiện tại, **tuyệt đối không có Context Switch** (không lưu/khôi phục Stack, không đổi con trỏ lệnh PC).
+  3. **Context Switch chỉ có thể xảy ra ở đâu?**: Chỉ tiềm ẩn tại [`ReleaseResource.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/freeosek/src/ReleaseResource.c#L186-L202), khi Task trả Resource, độ ưu tiên bị hạ về mức cũ và Kernel gọi `Schedule()` để nhường CPU cho Task ưu tiên cao hơn đang chực chờ trong Ready Queue.
 
 ---
 > **Báo cáo Kỹ Nghệ Nâng Cấp Document:**

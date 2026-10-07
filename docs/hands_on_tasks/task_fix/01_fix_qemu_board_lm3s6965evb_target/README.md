@@ -1,4 +1,4 @@
-# BÁO CÁO KỸ THUẬT & SOURCE DIFF: FIX TARGET BOARD QEMU (LM3S6965EVB)
+﻿# BÁO CÁO KỸ THUẬT & SOURCE DIFF: FIX TARGET BOARD QEMU (LM3S6965EVB)
 
 > 📅 **Ngày thực hiện:** 25/08/2026  
 > 🏷️ **Loại tài liệu:** Task Fix / Porting & Build System Configuration  

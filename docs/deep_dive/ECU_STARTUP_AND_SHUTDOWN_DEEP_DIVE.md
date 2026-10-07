@@ -1,4 +1,4 @@
-# ECU STARTUP & SHUTDOWN DEEP DIVE
+﻿# ECU STARTUP & SHUTDOWN DEEP DIVE
 **Tác giả:** Principal BSW Integration Engineer
 **Kinh nghiệm:** 15 năm trong lĩnh vực AUTOSAR & Automotive Software
 

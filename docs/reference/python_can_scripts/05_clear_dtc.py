@@ -1,4 +1,4 @@
-"""
+﻿"""
 Clear Diagnostic Information (Service 0x14)
 XoÃ¡ mÃ£ lá»—i.
 """

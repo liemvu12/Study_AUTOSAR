@@ -1,4 +1,4 @@
-"""
+﻿"""
 General CAN sniffer vá»›i DBC decode
 DÃ¹ng cantools Ä‘á»ƒ decode dá»¯ liá»‡u thÃ´ (raw byte) sang tÃ­n hiá»‡u váº­t lÃ½.
 """

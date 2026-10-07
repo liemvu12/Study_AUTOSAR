@@ -354,8 +354,7 @@ Dưới đây là ma trận phân tích các gói tin CAN gốc có mặt trong 
 #### 🅱️ Nhóm 2: Quản Trị Mạng Xe Tự Động (`0x401` & `0x502` — TX NATIVE)
 1. **`OSEK_NM_TX` (CAN ID `0x401` — TX):**
    * **Nội dung:** Token quản trị mạng dạng vòng Ring của tiêu chuẩn OSEK NM (Node ID = 1).
-   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L455` gọi `StartNM(0)`, nhân OSEK NM trong [`OsekNm_Cfg.c: L71`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L71) tự động khởi động máy trạng thái và định kỳ phát chu kỳ `0x401` (`t40180101...`) qua `CanIf_Transmit()` $
-ightarrow$ `Can_Write()` để duy trì mạng thức.
+   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L455` gọi `StartNM(0)`, nhân OSEK NM trong [`OsekNm_Cfg.c: L71`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L71) tự động khởi động máy trạng thái và định kỳ phát chu kỳ `0x401` (`t40180101...`) qua `CanIf_Transmit()` $\rightarrow$ `Can_Write()` để duy trì mạng thức.
 2. **`LS_NM_TX` (CAN ID `0x502` — TX):**
    * **Nội dung:** Gói tin quản trị mạng theo tiêu chuẩn AUTOSAR CAN NM.
    * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L448` gọi `Nm_NetworkRequest(i)`, module `CanNm` trong [`CanNm.c: L524`](../../as/com/as.infrastructure/communication/CanNm/CanNm.c#L524) tự động phát chu kỳ `0x502` (`t50280050...`).

@@ -1,0 +1,225 @@
+﻿diff --git a/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_before/app.c b/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_after/app.c
+index 631dcc9..b1e9c42 100644
+--- a/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_before/app.c
++++ b/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_after/app.c
+@@ -398,6 +398,156 @@ TASK(Task_Mid)
+ 	(void)TerminateTask();
+ }
+ 
++/* ========================================================================= */
++/* TASK 2.6: TIER-1 SOFTWARE CYCLIC SCHEDULE TABLE DISPATCHER ARCHITECTURE   */
++/* ========================================================================= */
++
++/* --- TH├ÇNH PHß║ªN 1: ─Éß╗èNH NGH─¿A Cß║ñU TR├ÜC Dß╗« LIß╗åU EXPIRY POINT (AUTOSAR DATA MODEL) --- */
++typedef struct {
++	uint32_t offset_tick;               /* Mß╗æc Expiry Point (0..9, mß╗ùi tick = 10ms) */
++	uint32_t offset_ms;                 /* Mß╗æc thß╗¥i gian danh ─æß╗ïnh tr├¬n Major Cycle (0..90ms) */
++	TaskType task_id;                   /* Task OS ─æ╞░ß╗úc ß╗ºy th├íc thß╗▒c thi */
++	const char* task_name;              /* T├¬n Task OS */
++	const char* runnable_name;          /* T├¬n Runnable BSW */
++} SchedTable_ExpiryPoint_Type;
++
++/* --- TH├ÇNH PHß║ªN 2: C├üC H├ÇM BSW RUNNABLE THß╗░C THI NGHIß╗åP Vß╗ñ --- */
++static void Bsw_Runnable_Can_10ms(void)
++{
++	/* Xß╗¡ l├╜ tß║ºng giao vß║¡n CAN: Mailbox Rx/Tx, Polling & Th├┤ng ─æiß╗çp khß║⌐n cß║Ñp */
++}
++
++static void Bsw_Runnable_Com_20ms(void)
++{
++	/* Xß╗¡ l├╜ tß║ºng t╞░╞íng t├íc COM: ─É├│ng g├│i t├¡n hiß╗çu PDU, Routing v├á Gi├ím s├ít Deadline */
++}
++
++static void Bsw_Runnable_Diag_50ms(void)
++{
++	/* Xß╗¡ l├╜ tß║ºng chß║⌐n ─æo├ín DCM: Quß║ún l├╜ phi├¬n UDS, Security Access, ─Éß╗ìc/Ghi DTC */
++}
++
++/* --- TH├ÇNH PHß║ªN 3: Bß║óNG THß╗£I KH├ôA BIß╗éU ─Éß╗èNH THß╗£I Cß╗É ─Éß╗èNH (STATIC SCHEDULE TABLE) --- */
++/* Ph├ón bß╗ò c├íc Expiry Points so le t─⌐nh tr├¬n Major Cycle 100ms (10 Ticks)              */
++static const SchedTable_ExpiryPoint_Type Software_Schedule_Table[] = {
++	/* Tick 0 ( 0ms): CAN + COM */
++	{ 0,  0, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++	{ 0,  0, TASK_ID_Task_Com_20ms,  "Task_Com_20ms",  "Com_MainFunctionTx/Rx" },
++
++	/* Tick 1 (10ms): CAN */
++	{ 1, 10, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++
++	/* Tick 2 (20ms): CAN + COM */
++	{ 2, 20, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++	{ 2, 20, TASK_ID_Task_Com_20ms,  "Task_Com_20ms",  "Com_MainFunctionTx/Rx" },
++
++	/* Tick 3 (30ms): CAN */
++	{ 3, 30, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++
++	/* Tick 4 (40ms): CAN + COM */
++	{ 4, 40, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++	{ 4, 40, TASK_ID_Task_Com_20ms,  "Task_Com_20ms",  "Com_MainFunctionTx/Rx" },
++
++	/* Tick 5 (50ms): CAN + Diag (So le t─⌐nh: Diag chiß║┐m tick lß║╗ 5, COM chiß║┐m tick chß║╡n) */
++	{ 5, 50, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++	{ 5, 50, TASK_ID_Task_Diag_50ms, "Task_Diag_50ms", "Dcm_MainFunction (UDS Session)" },
++
++	/* Tick 6 (60ms): CAN + COM */
++	{ 6, 60, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++	{ 6, 60, TASK_ID_Task_Com_20ms,  "Task_Com_20ms",  "Com_MainFunctionTx/Rx" },
++
++	/* Tick 7 (70ms): CAN */
++	{ 7, 70, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++
++	/* Tick 8 (80ms): CAN + COM */
++	{ 8, 80, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++	{ 8, 80, TASK_ID_Task_Com_20ms,  "Task_Com_20ms",  "Com_MainFunctionTx/Rx" },
++
++	/* Tick 9 (90ms): CAN */
++	{ 9, 90, TASK_ID_Task_Can_10ms,  "Task_Can_10ms",  "Can_MainFunction_Write/Read" },
++};
++
++#define SCHED_TABLE_EXPIRY_COUNT  (sizeof(Software_Schedule_Table) / sizeof(Software_Schedule_Table[0]))
++#define MAJOR_CYCLE_TICKS         10
++
++static uint32_t schedule_tick = 0;
++static uint32_t major_cycle_count = 0;
++static uint32_t current_offset_ms = 0;
++
++/* --- TH├ÇNH PHß║ªN 4: ─Éß╗ÿNG C╞á ─ÉIß╗ÇU PHß╗ÉI Bß║óNG ─Éß╗èNH THß╗£I (SCHEDULE TABLE DISPATCHER ENGINE) --- */
++static void SchedTable_Dispatcher_Step(uint32_t tick)
++{
++	uint32_t i;
++	for (i = 0; i < SCHED_TABLE_EXPIRY_COUNT; i++)
++	{
++		if (Software_Schedule_Table[i].offset_tick == tick)
++		{
++			/* K├¡ch hoß║ít Task theo Expiry Point tra cß╗⌐u ─æ╞░ß╗úc tß╗½ Bß║úng */
++			(void)ActivateTask(Software_Schedule_Table[i].task_id);
++		}
++	}
++}
++
++/* Task Dispatcher ─æ├│ng vai tr├▓ nh╞░ mß╗Öt Schedule Table Engine ─æ╞░ß╗úc k├¡ch hoß║ít bß╗ƒi Base Alarm 10ms */
++TASK(Task_SchedTableDispatcher)
++{
++	current_offset_ms = schedule_tick * 10;
++
++	if (schedule_tick == 0 && major_cycle_count < 2)
++	{
++		printf("\n=================================================================\n");
++		printf("[TASK 2.6] SCHEDULE TABLE MAJOR CYCLE #%lu (100ms Window - Table Lookup Engine)\n", 
++		       (unsigned long)(major_cycle_count + 1));
++		printf("=================================================================\n");
++	}
++
++	/* THß╗░C THI Bß╗ÿ ─ÉIß╗ÇU PHß╗ÉI Bß║óNG: Tra cß╗⌐u v├á k├¡ch hoß║ít c├íc Expiry Points cß╗ºa tick hiß╗çn tß║íi */
++	SchedTable_Dispatcher_Step(schedule_tick);
++
++	schedule_tick = (schedule_tick + 1) % MAJOR_CYCLE_TICKS;
++	if (schedule_tick == 0)
++	{
++		major_cycle_count++;
++	}
++
++	(void)TerminateTask();
++}
++
++/* C├íc OS Tasks ─æ├│ng vai tr├▓ Wrapper thß╗▒c thi c├íc BSW Runnables */
++TASK(Task_Can_10ms)
++{
++	Bsw_Runnable_Can_10ms();
++	if (major_cycle_count < 2)
++	{
++		printf("  [SCHED TABLE | Offset %2lums] Executing Task_Can_10ms  (Priority 8, Runnable: Can_MainFunction)\n", 
++		       (unsigned long)current_offset_ms);
++	}
++	(void)TerminateTask();
++}
++
++TASK(Task_Com_20ms)
++{
++	Bsw_Runnable_Com_20ms();
++	if (major_cycle_count < 2)
++	{
++		printf("  [SCHED TABLE | Offset %2lums] Executing Task_Com_20ms  (Priority 6, Runnable: Com_MainFunction)\n", 
++		       (unsigned long)current_offset_ms);
++	}
++	(void)TerminateTask();
++}
++
++TASK(Task_Diag_50ms)
++{
++	Bsw_Runnable_Diag_50ms();
++	if (major_cycle_count < 2)
++	{
++		printf("  [SCHED TABLE | Offset %2lums] Executing Task_Diag_50ms (Priority 4, Runnable: Dcm_MainFunction)\n", 
++		       (unsigned long)current_offset_ms);
++	}
++	(void)TerminateTask();
++}
++
++
+ 
+ #if defined(USE_PROTOTHREAD) && defined(PROTOTHREAD_TEST)
+ PROCESS(protoDemoProductProc,"protoDemoProductProc");
+diff --git a/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_before/app.xml b/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_after/app.xml
+index 40b0b7c..30ae64b 100644
+--- a/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_before/app.xml
++++ b/docs/hands_on_tasks/task_fix/06_task_2_6_schedule_table_dispatcher/src_after/app.xml
+@@ -130,5 +130,58 @@
+ 				<Resource Name="Res_SharedBuffer" />
+ 			</ResourceList>
+ 		</Task>
++
++		<!-- ================= TASK 2.6: SCHEDULE TABLE DISPATCHER ================= -->
++		<Task Name="Task_SchedTableDispatcher"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="9" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" />
++
++		<Task Name="Task_Can_10ms"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="8" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" />
++
++		<Task Name="Task_Com_20ms"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="6" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" />
++
++		<Task Name="Task_Diag_50ms"  
++	    		Activation="1" 
++				Autostart="False" 
++				Priority="4" 
++				Schedule="FULL" 
++				StackSize="1024"
++				Application="OsDefaultApp"
++	     		Comment="*" />
++
++		<Alarm Name="Alarm_SchedTable" 
++			Autostart="True" 
++			Period="10" 
++			StartTime="10" 
++			Counter="OsClock" 
++			Action="ActivateTask" 
++			Task="Task_SchedTableDispatcher" 
++			Event="TBD" 
++			Callback="TBD" 
++			Application="OsDefaultApp" 
++			Comment="*" >
++			<ApplicationModeList Max="TBD">
++				<ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE" />
++			</ApplicationModeList>
++		</Alarm>
+  	</Os>
+ </AS>
+\ No newline at end of file

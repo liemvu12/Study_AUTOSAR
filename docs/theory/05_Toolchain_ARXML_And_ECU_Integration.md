@@ -13,9 +13,12 @@
 
 1. [Bản Chất Kỹ Thuật Của ARXML & Mô Hình AUTOSAR Meta-Model](#1-bản-chất-kỹ-thuật-của-arxml--mô-hình-autosar-meta-model)
 2. [Phân Loại 4 Tệp ARXML Cốt Lõi Trong Dự Án Ô Tô](#2-phân-loại-4-tệp-arxml-cốt-lõi-trong-dự-án-ô-tô)
+   - [2.4 Bảng Đối Chiếu Thực Chiến: ARXML Chuẩn Công Nghiệp (Vector/EB Multi-ECU) vs ARXML Dự Án Này (`parai/as`)](#24-bảng-đối-chiếu-thực-chiến-arxml-chuẩn-công-nghiệp-vectoreb-multi-ecu-vs-arxml-dự-án-này-paraias)
 3. [Quy Trình Công Cụ Kỹ Nghệ Ô Tô (Industry Toolchain Workflow)](#3-quy-trình-công-cụ-kỹ-nghệ-ô-tô-industry-toolchain-workflow)
    - [3.4 Bản Chất Kỹ Nghệ: File ARXML Sinh Ra Những Gì? (BSW Static Core vs. Generated Code)](#34--bản-chất-kỹ-nghệ-file-arxml-sinh-ra-những-gì-bsw-static-core-vs-generated-code)
    - [3.5 Nghịch Lý Linker Script Trong Toolchain & ECU Integration (So Sánh AUTOSAR vs Bare-Metal vs Linux/Zephyr)](#35--nghịch-lý-linker-script-trong-toolchain--ecu-integration-so-sánh-toàn-diện-autosar-linker-vs-bare-metal-vs-linuxzephyr)
+     - [3.5.5 Thực Tế Nghề Nghiệp: Kỹ Sư BSW Có Cần Đụng Vào Linker Script Không? Tôi Có Cần Học Không?](#5-thực-tế-nghề-nghiệp-kỹ-sư-bsw-có-cần-đụng-vào-linker-script-không-tôi-có-cần-học-không)
+   - [3.6 Kiến Trúc Hợp Nhất Cấu Hình Đa Tệp (Multi-File XML Aggregation) & Cơ Chế Đóng Gói Module](#36--kiến-trúc-hợp-nhất-cấu-hình-đa-tệp-multi-file-xml-aggregation--cơ-chế-đóng-gói-module-trong-paraias-vs-chuẩn-công-nghiệp)
 4. [Chu Trình Khởi Động & Vòng Đời Tích Hợp ECU (ECU Integration & Lifecycle)](#4-chu-trình-khởi-động--vòng-đời-tích-hợp-ecu-ecu-integration--lifecycle)
 5. [Giám Sát An Toàn Chương Trình (Watchdog Manager - WdgM Masterclass)](#5-giám-sát-an-toàn-chương-trình-watchdog-manager---wdgm-masterclass)
 6. [Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp Trong `parai/as`](#6-bằng-chứng-mã-nguồn--định-nghĩa-giao-tiếp-trong-paraias)
@@ -25,11 +28,7 @@
 
 ## 1. Bản Chất Kỹ Thuật Của ARXML & Mô Hình AUTOSAR Meta-Model
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **Glossary - ARXML (*AUTOSAR XML*)**: Định dạng file tiêu chuẩn dùng để mô tả kiến trúc phần mềm và phần cứng của xe hơi. 
-💡 **Ẩn dụ thực tế**: Giống như bản vẽ thiết kế (Blueprint) của một ngôi nhà. Bạn đưa bản vẽ này cho các nhà thầu khác nhau (thợ điện, thợ nước), họ sẽ dựa vào đó để xây nhà. ARXML giúp các công cụ phần mềm khác nhau (Vector, ETAS) hiểu và trao đổi dữ liệu mà không bị sai lệch.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 Trong kỹ nghệ phần mềm ô tô, **ARXML** không phải là file XML thông thường mà là sự cụ thể hóa tuần tự (*Serialization*) của mô hình dữ liệu trừu tượng **AUTOSAR Meta-Model**:
 
 ```mermaid
@@ -40,7 +39,7 @@ graph TD
 ```
 ✅ **Best Practice**: Luôn validate file ARXML với AUTOSAR Schema (.xsd) tương ứng trước khi import vào project.
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 
 **Phân Định Khởi Tạo Ngoại Vi: Standalone Mode vs Bootloader Integration**:
 - **Không có BIOS trên MCU:** Tầng MCAL (`Mcu_Init`, `Port_Init`, `Can_Init`) chính là lớp khởi tạo phần cứng từ con số 0 trong Application.
@@ -95,19 +94,7 @@ Dưới đây là một ví dụ 💡 **ARXML snippet thực tế** khai báo m�
 
 ## 2. Phân Loại 4 Tệp ARXML Cốt Lõi Trong Dự Án Ô Tô
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **Glossary - OEM (*Original Equipment Manufacturer*)**: Hãng xe ô tô (ví dụ: BMW, Toyota, VinFast).
-📖 **Glossary - Tier-1**: Nhà cung cấp linh kiện và tích hợp hệ thống cho OEM (ví dụ: Bosch, Denso).
-📖 **Glossary - SWCD (*Software Component Description*)**: File ARXML mô tả SWC.
-📖 **Glossary - BSWMD (*Basic Software Module Description*)**: File ARXML mô tả BSW.
 
-💡 **Ẩn dụ thực tế**: 
-- `System.arxml`: Bản đồ thành phố (của hãng xe).
-- `EcuExtract.arxml`: Bản đồ của 1 quận (cho 1 ECU).
-- `SWCD.arxml`: Thiết kế nội thất các ngôi nhà.
-- `BSWMD.arxml`: Sơ đồ hệ thống móng, đường ống ngầm (hệ thống cơ bản).
-
-### 🟡 LEVEL 2: INTERMEDIATE
 Trong một dự án phát triển ECU thực tế, có 4 loại tệp ARXML chính được luân chuyển:
 ```mermaid
 graph TD
@@ -129,22 +116,48 @@ graph TD
 ```
 🎯 **Use Case**: Sử dụng `System.arxml` để quản lý giao tiếp giữa các ECU trên mạng CAN.
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 Quá trình map tín hiệu từ System.arxml xuống EcuExtract đòi hỏi sự chính xác tuyệt đối ở tầng COM và PDU Router.
 ⚠️ **Warning / Pitfall**: ARXML version mismatch! Nếu `System.arxml` của OEM dùng ARXML 4.3 mà Toolchain chỉ hỗ trợ tối đa 4.2.2, các thẻ `<GLOBAL-TIME-DOMAIN>` có thể bị bỏ qua, gây lỗi đồng bộ thời gian.
 ✅ **Best Practice**: Sử dụng các công cụ Migration (như AUTOSAR XML Migration Tool) để chuẩn hóa ARXML trước khi tích hợp.
+
+### 2.4 Bảng Đối Chiếu Thực Chiến: ARXML Chuẩn Công Nghiệp (Vector/EB Multi-ECU) vs ARXML Dự Án Này (`parai/as`)
+
+Khi quan sát tệp cấu hình [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml), một câu hỏi kiến trúc kinh điển thường xuất hiện:
+> *"Tại sao file này lại chứa nhiều chỉ thị tiền xử lý `#ifdef USE_SMP`, `#ifdef USE_LWIP`, `#else`, `#endif` của ngôn ngữ C và gộp chung toàn bộ vi điều khiển (lm3s6965evb, posix, versatilepb, stm32f107vc) vào 1 file? Liệu đây có phải là cách viết đúng chuẩn công nghiệp không, hay chuẩn thực tế mỗi ECU phải có tệp ARXML riêng biệt?"*
+
+#### 1. Bản Chất Kỹ Nghệ: Phản Biện Dứt Khoát
+- **Cú pháp phi chuẩn (Malformed XML):** Theo tiêu chuẩn quốc tế AUTOSAR (Release 4.x), tệp ARXML bắt buộc phải là XML thuần túy tuân thủ nghiêm ngặt lược đồ XML Schema (`AUTOSAR_4-x-x.xsd`). Việc chèn `#ifdef` khiến cú pháp XML bị phá vỡ. Mọi bộ công cụ chính quy như **Vector DaVinci Configurator Pro**, **Elektrobit tresos Studio** hay **ETAS ISOLAR** sẽ quăng ngoại lệ cú pháp (*Fatal XML Parsing Error*) ngay tại dòng `#ifdef` đầu tiên và từ chối xử lý.
+- **Nguyên tắc phân định Multi-ECU độc lập:** Trên một phương tiện giao thông hiện đại (Passenger Car/Commercial Vehicle) có từ 50 đến hơn 100 hộp ECU (Engine ECM, Body Control BCM, ADAS Domain Controller, Radar, BMS,...). Mỗi ECU sở hữu vi điều khiển khác nhau, sơ đồ chân I/O khác nhau và ma trận truyền thông CAN khác nhau. **Không bao giờ có chuyện gộp chung nhiều ECU vào 1 tệp ARXML duy nhất rồi dùng `#ifdef` để bật tắt!**
+- **Cơ chế quản lý biến thể chính quy (AUTOSAR Variation Points):** Chuẩn AUTOSAR hỗ trợ quản lý biến thể (ví dụ: dòng xe Sedan dùng 1 Radar vs SUV dùng 2 Radar) thông qua các thẻ XML hợp lệ như `<VARIATION-POINT>`, `<POST-BUILD-VARIANT-CONDITION>` và `<PREDEFINED-VARIANT>`. Kỹ sư tích chọn Variant trên giao diện đồ họa (GUI) của DaVinci/Tresos, bảo toàn tính toàn vẹn 100% của tệp XML.
+
+#### 2. Giải Mã "Hack Kỹ Thuật" Của Dự Án Mã Nguồn Mở (`parai/as`)
+Tác giả dự án `parai/as` đã sử dụng một lối tắt kỹ thuật (Pragmatic Engineering Shortcut) nhằm phục vụ mục đích nghiên cứu, học tập:
+- Dự án hỗ trợ cùng lúc hơn 10 loại bo mạch vi điều khiển khác nhau. Nếu làm đúng chuẩn OEM, tác giả sẽ phải duy trì 10 thư mục riêng với hàng trăm tệp XML bị lặp lại 90% nội dung (Boilerplate code).
+- **Giải pháp:** Coi file `autosar.arxml` như một **C-Header Template**. Trong quy trình build SCons ([`building.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/building.py#L1239-L1265)), hàm `PreProcess()` gọi trình tiền xử lý GNU C:
+  ```bash
+  arm-none-eabi-gcc -E --include asmconfig.h autosar.arxml.h -o autosar.arxml
+  ```
+  Trình tiền xử lý `gcc -E` sẽ bóc sạch toàn bộ `#ifdef` và xuất ra tệp XML chuẩn hợp lệ tại [`as/build/nt/lm3s6965evb/ascore/config/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml). Sau đó, generator Python [`GenOS.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenOS.py) mới phân tích tệp sạch này để sinh code C.
+
+#### 3. Bảng So Sánh Đối Chiếu Toàn Diện: Chuẩn Công Nghiệp vs Dự Án Nghiên Cứu
+
+| Tiêu Chí So Sánh | Dự Án AUTOSAR Chuẩn Công Nghiệp (OEM / Tier-1) | Dự Án Mã Nguồn Mở `Study_AUTOSAR` (`parai/as`) |
+| :--- | :--- | :--- |
+| **Cú Pháp Tệp Nguồn** | **100% Well-formed XML**, tuân thủ nghiêm ngặt Schema W3C (`AUTOSAR_4-x-x.xsd`). | **Hybrid XML + C Preprocessor** (chứa `#ifdef`, `#else`, `#endif`). |
+| **Cấu Trúc Tệp (File Granularity)** | **Module hóa phân tán:** Chia nhỏ theo từng ECU và từng module BSW (`Os_Ecuc.arxml`, `Can_Ecuc.arxml`, `Dem_Ecuc.arxml`...). | **Tập trung hóa:** 1 tệp duy nhất `autosar.arxml` (~1050 dòng) gộp toàn bộ OS, CAN, Chẩn đoán và 10+ bo mạch. |
+| **Phân Định Multi-ECU** | **Mỗi ECU một Workspace riêng biệt:** OEM trích xuất `EcuExtract.arxml` riêng cho từng ECU (BCM, Engine, ADAS). Không bao giờ gộp chung. | **Gộp chung 1 file template:** Cấu hình cho nhiều target phần cứng nằm xen kẽ nhau trong cùng một cây thẻ XML. |
+| **Quản Lý Biến Thể (Variants)** | Dùng cơ chế chính quy **`<VARIATION-POINT>`**, `<POST-BUILD-VARIANT-CONDITION>`, điều khiển qua GUI của tool. | Dùng các cờ Macro C (`USE_SMP`, `USE_LWIP`, `USE_ECUM`, `USE_SHELL`) để tiền xử lý biên dịch có điều kiện. |
+| **Giai Đoạn Tiền Xử Lý (Pre-processing)** | Không có. Các công cụ DaVinci/Tresos đọc trực tiếp XML Schema bằng Java/C++ engine chuyên dụng. | Có. Sử dụng `arm-none-eabi-gcc -E` để strip sạch `#ifdef` trước khi đưa vào bộ parser Python. |
+| **Toolchain Cấu Hình & Sinh Mã** | **Bộ công cụ thương mại bản quyền triệu đô:** Vector DaVinci Configurator Pro, EB tresos Studio, ETAS ISOLAR. | **Bộ công cụ Python tự xây dựng (In-house scripts):** SCons + `GenOS.py`, `GenCan.py`, `GenEcuC.py`. |
+| **Ưu Điểm Cốt Lõi** | Chuẩn hóa toàn cầu, hỗ trợ an toàn chức năng ISO 26262, ASPICE, quản lý dự án hàng trăm kỹ sư đa quốc gia. | Cực kỳ tinh gọn, trực quan, chi phí 0 đồng, rất phù hợp cho kỹ sư nghiên cứu bản chất sâu bên dưới RTOS/MCAL. |
+| **Nhược Điểm / Rào Cản** | Cấu hình cực kỳ đồ sộ, phức tạp, cồng kềnh, bản quyền đắt đỏ, đòi hỏi chứng chỉ và đào tạo bài bản. | Phi chuẩn so với công nghiệp, không thể import trực tiếp vào các phần mềm của hãng (Vector/Elektrobit). |
 
 ---
 
 ## 3. Quy Trình Công Cụ Kỹ Nghệ Ô Tô (Industry Toolchain Workflow)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-💡 **Ẩn dụ thực tế**: Giống như việc bạn nấu một món ăn phức tạp.
-- **DaVinci Developer**: Là lúc bạn chuẩn bị nguyên liệu (thiết kế các SWC, định nghĩa các hàm).
-- **DaVinci Configurator Pro**: Là lúc bạn nêm nếm gia vị và thiết lập nồi/bếp (cấu hình các module BSW, mạng CAN, hệ điều hành).
-- **Code Generator**: Là chiếc lò vi sóng thông minh tự động nấu ra món ăn (sinh mã nguồn C).
 
-### 🟡 LEVEL 2: INTERMEDIATE
 **Quy Trình Công Cụ Vector DaVinci (Developer & Configurator Pro)**:
 
 ```
@@ -166,7 +179,7 @@ Quá trình map tín hiệu từ System.arxml xuống EcuExtract đòi hỏi s�
 - Linux Device Tree (dts) ⇔ EcuExtract.arxml (Mô tả Hardware/Network cho 1 ECU).
 - Linux Kernel Build (make bzImage) ⇔ Toolchain Build (Compiler + Linker sinh ra file hex).
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 **Step-by-step hướng dẫn config DaVinci**:
 1. **Khởi tạo Project**: Tạo SIP (Software Integration Package). Import thư mục BSW và Base.
 2. **Import EcuExtract**: Kéo thả `EcuExtract.arxml` vào Configurator.
@@ -325,8 +338,7 @@ Khi Fls Driver thực hiện xóa hoặc ghi một Sector Flash, cấu trúc bá
 ##### Trọng trách 3: Phân vùng MPU và Quy tắc "Lũy Thừa 2" (Power-of-2 Alignment)
 Để đạt chứng chỉ ASIL-D theo tiêu chuẩn ISO 26262, các OS-Application có mức an toàn khác nhau phải được cách ly hoàn toàn bằng phần cứng MPU.  
 Phần cứng MPU của vi điều khiển (ARM Cortex-M/R MPU, TriCore MPU) không cho phép đặt biên giới tùy tiện. Vùng nhớ được giám sát bắt buộc phải có kích thước và địa chỉ khởi đầu căn chỉnh theo $2^N$ (32 bytes, 64 bytes, 512 bytes, 4 KB, 16 KB...).  
-Nếu kỹ sư cấu hình Linker Script thiếu chỉ thị `. = ALIGN(4096);`, chỉ cần compiler dịch code lệch 1 byte là phần cứng MPU sẽ từ chối thiết lập boundary $
-ightarrow$ ECU sập ngay khi vừa boot!
+Nếu kỹ sư cấu hình Linker Script thiếu chỉ thị `. = ALIGN(4096);`, chỉ cần compiler dịch code lệch 1 byte là phần cứng MPU sẽ từ chối thiết lập boundary $\rightarrow$ ECU sập ngay khi vừa boot!
 
 ##### Trọng trách 4: Vùng Calibration Hiệu Chuẩn Tham Số Xe (A2L / XCP)
 Trong ngành ô tô, các thông số điều khiển (Bản đồ phun xăng, góc mở bướm ga, giới hạn dòng pin BMS) không được biên dịch lẫn vào code thông thường.  
@@ -364,17 +376,387 @@ Ngay trong dự án `Study_AUTOSAR`, hệ thống cung cấp tới **17 file Lin
 
 ---
 
+#### 5. Thực Tế Nghề Nghiệp: Kỹ Sư BSW Có Cần Đụng Vào Linker Script Không? Tôi Có Cần Học Không?
+
+Rất nhiều kỹ sư nhúng và sinh viên khi định hướng làm việc trong ngành phần mềm ô tô (Automotive Embedded) đều băn khoăn:  
+> *"Linker Script trong AUTOSAR phức tạp và dài hàng nghìn dòng như vậy, liệu trong công việc thực tế (các job BSW, MCAL, Integration) kỹ sư có phải đụng vào không? Và một kỹ sư BSW có bắt buộc phải học Linker Script không?"*
+
+Dưới đây là câu trả lời toàn diện, chân thực và bóc tách theo đúng các vị trí công việc thực tế tại các công ty ô tô (OEM như VinFast, Ford, BMW; Tier-1 như Bosch, Denso, Continental, LG Electronics, Hyundai Mobis; và Software Houses như Vector, Elektrobit, ETAS, FPT Automotive):
+
+---
+
+##### 1️⃣ Phân Định Theo Vị Trí Công Việc (Job Roles & Linker Script Involvement)
+
+Trong một dự án AUTOSAR, mức độ làm việc với Linker Script được phân hóa rất rõ rệt theo 4 vai trò chính:
+
+| Vị Trí Công Việc (Job Role) | Mô Tả Trách Nhiệm Chính | Mức Độ Đụng Vào Linker Script | Tình Huống Thực Tế Cần Can Thiệp |
+| :--- | :--- | :---: | :--- |
+| **1. BSW Integration Engineer / ECU Integrator / Platform Engineer** | Tích hợp toàn bộ MCAL + BSW + OS + RTE + Code SWC ứng dụng thành một file binary hoàn chỉnh (`.hex` / `.elf` / `.s19`). Thiết lập Toolchain, compiler flags và hệ thống build. | **BẮT BUỘC & LIÊN TỤC (100%)** *(Chủ sở hữu chính của Linker Script)* | • Quy hoạch Memory Map cho toàn ECU.<br>• Phân bổ RAM/Flash cho Multi-core (Core0, Core1, Core2).<br>• Cấu hình phân vùng MPU đạt chuẩn ISO 26262 ASIL-D (Power-of-2 Alignment).<br>• Phân vùng OTA Flash A/B Swap, Dual-Bank Bootloader.<br>• Ghim địa chỉ cố định `.calib` cho các kỹ sư chạy CANape/INCA.<br>• **Xử lý các sự cố tràn bộ nhớ (Flash/RAM Overflow)** khi thêm tính năng mới. |
+| **2. BSW Developer (MCAL & BSW Module Dev)** | Phát triển, cấu hình và bảo trì các driver tầng thấp MCAL (Can, Spi, Adc, Fls) hoặc các stack BSW (ComStack, DiagStack, MemoryStack). | **THỈNH THOẢNG (20% – 30%)** *(Tùy module phụ trách)* | • **Nếu làm Flash Driver (`Fls` / FLS Loader):** Bắt buộc phải hiểu và cấu hình `.ramcode` để giải quyết hiện tượng Read-While-Write.<br>• **Nếu làm Driver Ethernet / CAN-FD DMA:** Phải cấu hình vùng nhớ Non-cacheable Buffer trong Linker Script để tránh DMA Cache Incoherency.<br>• **Nếu làm Bootloader (FBL):** Bắt buộc phải viết và chỉnh sửa Linker Script riêng cho Bootloader (`linker-boot.lds`).<br>• Còn nếu chỉ làm các stack thuần logic như `Com`, `PduR`, `Dcm` thì chỉ cần tuân thủ khai báo qua `MemMap.h`, hiếm khi phải sửa trực tiếp file `.lds`. |
+| **3. Software / System Architect** | Thiết kế kiến trúc phần mềm, hoạch định tài nguyên phần cứng (Memory Budgeting, ASIL safety concept). | **GIÁN TIẾP (Review & Quy hoạch)** | Thiết kế tài liệu Memory Layout Spec (quy định Core nào được dùng bao nhiêu KB RAM, dải địa chỉ từ đâu đến đâu) để chuyển giao cho Integration Engineer cấu hình vào Linker Script. |
+| **4. Application / SWC Developer** | Phát triển thuật toán điều khiển xe (Matlab Simulink hoặc C), kết nối cổng qua RTE. | **GẦN NHƯ KHÔNG (0% – 5%)** | Tầng RTE và BSW đã trừu tượng hóa 100% bộ nhớ. Kỹ sư Application chỉ cần code logic nghiệp vụ mà không cần quan tâm biến của mình nằm ở địa chỉ vật lý nào trong RAM. |
+
+---
+
+##### 2️⃣ Bạn Có Cần Học Linker Script Không? Và Cần Học Đến Mức Nào?
+
+👉 **CÂU TRẢ LỜI:** **BẮT BUỘC PHẢI HỌC, NHƯNG HỌC ĐÚNG TRỌNG TÂM, ĐÚNG CẤP ĐỘ — KHÔNG CẦN PHẢI TỰ TAY VIẾT TỪ ĐẦU (FROM SCRATCH) 5.000 DÒNG!**
+
+###### ❌ Những điều bạn KHÔNG CẦN phải lo lắng:
+- Bạn **không bao giờ phải ngồi gõ trắng một file Linker Script 10.000 dòng từ con số 0**.
+- Trong mọi dự án ô tô thương mại, nhà cung cấp vi điều khiển (NXP, Infineon, Renesas, ST) hoặc hãng làm Compiler (Tasking, Green Hills Multi, Wind River Diab, HighTec GCC) luôn bàn giao kèm một **File Linker Script Mẫu (BSP Template Linker Script)** đã định nghĩa sẵn toàn bộ thanh ghi phần cứng và các dải địa chỉ Flash/RAM vật lý của chip.
+
+###### ✅ 3 Năng Lực Cốt Lõi Bạn BẮT BUỘC Phải Thành Thạo:
+
+1. **Năng Lực 1: Đọc, Hiểu & Chỉnh Sửa (Read, Understand & Customize):**  
+   Bạn phải đọc hiểu được cú pháp Linker Script để khi dự án yêu cầu:
+   - *"Hãy tạo thêm một section mới để đưa mảng dữ liệu 4KB của driver Ethernet vào vùng SRAM không qua cache (Non-cacheable RAM)!"*
+   - *"Hãy tăng kích thước System Stack của OS từ 2KB lên 4KB!"*
+   - *"Hãy chuyển hàm xóa Flash `Fls_WriteSector()` từ Flash vào RAM để chạy!"*  
+   $\rightarrow$ Bạn phải biết mở file `.lds` ra và thêm đúng cú pháp `AT>FLASH >RAM` hoặc `ALIGN(4)`.
+
+2. **Năng Lực 2: Kỹ Năng Debug "Cứu Hộ" Khi Build Thất Bại Hoặc Chip Sập (Crash Debugging):**  
+   Đây là sự khác biệt giữa một kỹ sư tay mơ và một kỹ sư chuyên nghiệp:
+   - **Khi Build báo lỗi tràn bộ nhớ:** `region 'RAM' overflowed by 2048 bytes`. Nếu không hiểu Linker Script và không biết cách đọc file ánh xạ bộ nhớ [`.map`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/lm3s6965evb.map), bạn sẽ không thể biết được module nào, file C nào hay biến nào đang ngốn dung lượng RAM bất thường để tối ưu.
+   - **Khi nạp chip bị lỗi phần cứng:** Chip vừa boot lên đã văng ngay vào **HardFault**, **BusFault** hoặc **MemManage Fault** (do MPU chặn). 90% trường hợp lỗi này xuất phát từ việc căn chỉnh địa chỉ sai (Alignment mismatch) hoặc con trỏ nhảy vào vùng nhớ chưa được Linker Script cấp quyền thực thi (`NOEXEC`).
+
+3. **Năng Lực 3: Vượt Qua Vòng Phỏng Vấn Kỹ Thuật (Senior BSW / Automotive Interview):**  
+   Tại các công ty ô tô hàng đầu (Bosch, VinFast, LG, Aptiv...), các Senior Technical Interviewer luôn dùng các câu hỏi về Linker Script để **phân loại ứng viên**:
+   - Ứng viên bậc thấp (Junior) thường chỉ biết dùng giao diện đồ họa GUI của Vector DaVinci để gen code và không hiểu bên dưới file `.hex` được tạo ra thế nào.
+   - Ứng viên xuất sắc (Solid Mid/Senior) sẽ giải thích vanh vách: VMA (*Virtual Memory Address*) vs LMA (*Load Memory Address*), cơ chế copy `.data` từ Flash sang RAM trong file Startup, và cách Linker Script phối hợp với `MemMap.h`.
+
+---
+
+##### 3️⃣ Cẩm Nang Trọng Tâm: Kỹ Sư BSW Cần Nắm Vững Những Khái Niệm Nào?
+
+Để tự tin làm chủ Linker Script trong các dự án AUTOSAR, bạn chỉ cần nắm vững **6 khái niệm nền tảng** sau:
+
+1. **Khai báo vùng nhớ vật lý (`MEMORY` command):**  
+   Hiểu lệnh khai báo `ORIGIN` (địa chỉ bắt đầu) và `LENGTH` (dung lượng tối đa) của từng bank Flash, SRAM, Data Flash.
+2. **4 Phân đoạn cơ bản của ngôn ngữ C trong nhúng:**  
+   - `.text`: Mã máy thực thi (Flash).
+   - `.rodata`: Hằng số tĩnh `const`, chuỗi ký tự (Flash).
+   - `.data`: Biến toàn cục có giá trị khởi tạo khác 0 (LMA ở Flash, VMA ở RAM).
+   - `.bss`: Biến toàn cục không khởi tạo hoặc khởi tạo bằng 0 (chỉ chiếm RAM, được Startup xóa về 0).
+3. **Phân đoạn đặc thù trong AUTOSAR:**  
+   - `.noinit`: Vùng RAM lưu cờ chẩn đoán xe, vết tai nạn hoặc lý do reset mà mã Startup **tuyệt đối không được xóa về 0**.
+   - `.ramcode`: Mã máy được lưu ở Flash nhưng khi chạy được copy sang RAM để CPU thực thi (cho Flash Driver / Bootloader).
+4. **Cơ chế nạp địa chỉ VMA vs LMA (`> REGION AT > REGION`):**  
+   Hiểu rõ sự khác nhau giữa địa chỉ lưu trữ lúc nạp ROM (LMA - Load Memory Address) và địa chỉ CPU nhảy đến lúc chạy (VMA - Virtual/Run Memory Address).
+5. **Căn chỉnh địa chỉ (`ALIGN(n)`) & Giữ Section (`KEEP(*(...))`):**  
+   - `ALIGN(n)` để đảm bảo địa chỉ chia hết cho $n$ (đặc biệt là lũy thừa của 2 cho MPU).
+   - `KEEP()` để ngăn Linker cờ trảm (`--gc-sections`) vô tình xóa mất Bảng Vector Ngắt hoặc các biến quan trọng không có hàm nào gọi trực tiếp.
+6. **Kỹ năng đọc tệp Bản Đồ Bộ Nhớ (`.map` file):**  
+   Biết cách dùng Text Editor mở file `.map` (được sinh ra sau khi gõ lệnh `scons`) để kiểm tra địa chỉ thực tế và kích thước chiếm dụng của từng Task, từng biến và từng hàm.
+
+> 📖 **Khảo cứu chuyên sâu & Cẩm nang 3 năng lực thực chiến:**  
+> Toàn bộ kiến thức lý thuyết gắn liền mã nguồn thực nghiệm (cú pháp `linker.lds`, đối chiếu hợp ngữ `startup.S`, phân tích tệp ánh xạ `lm3s6965evb.map`, kịch bản cứu hộ tràn RAM / sập HardFault, và Bộ 10 câu hỏi phỏng vấn Senior BSW) được hệ thống hóa toàn diện tại:  
+> 👉 [**Chuyên Đề Bổ Trợ 03: Cẩm Nang Toàn Diện Về Linker Script & Ánh Xạ Bộ Nhớ Trong AUTOSAR**](../supplementary_knowledge/03_Linker_Script_And_Memory_Mapping_Masterclass.md).
+
+---
+
+### 3.6 🧩 Kiến Trúc Hợp Nhất Cấu Hình Đa Tệp (Multi-File XML Aggregation) & Cơ Chế Đóng Gói Module
+
+#### 1. Hiện Tượng Thực Tế & Câu Hỏi Kỹ Nghệ Cốt Lõi
+Khi thực hiện cấu hình hệ điều hành OSEK/AUTOSAR OS (ví dụ trong [Task 2.3](../hands_on_tasks/02_OS_MCAL_Tasks.md#task-23-basic-task-định-kỳ--khảo-sát-conformance-classes-bcc1-vs-bcc2-🟢-dễ--vừa--2h)), kỹ sư đối soát tệp [`as/build/nt/lm3s6965evb/ascore/config/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml) và nhận thấy:
+- Trong danh sách `<TaskList>`, tệp này **chỉ có 2 task gốc ban đầu**: `SchM_Startup` và `SchM_BswService` (cùng 2 task người dùng vừa bổ sung là `Task_Periodic_50ms` và `Task_QueueTester`).
+- Tuy nhiên, khi mở tệp mã nguồn sinh tự động [`as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h), hệ thống lại có tổng cộng **8 Task**:
+  ```c
+  #define TASK_ID_TaskApp                          0   /* priority = 5 */
+  #define TASK_ID_TaskCanIf                        1   /* priority = 9 */
+  #define TASK_ID_TaskNmInd                        2   /* priority = 7 */
+  #define TASK_ID_TaskIdle                         3   /* priority = 0 */
+  #define TASK_ID_SchM_Startup                     4   /* priority = 7 */
+  #define TASK_ID_SchM_BswService                  5   /* priority = 8 */
+  #define TASK_ID_Task_Periodic_50ms               6   /* priority = 2 */
+  #define TASK_ID_Task_QueueTester                 7   /* priority = 5 */
+  #define TASK_NUM                                 8
+  ```
+
+Hai câu hỏi kỹ nghệ lớn được đặt ra:
+1. **Tại sao `autosar.arxml` chỉ có 2 task gốc mà `Os_Cfg.h` lại có 8 task? 4 task còn lại (`TaskApp`, `TaskCanIf`, `TaskNmInd`, `TaskIdle`) chui từ đâu ra?**
+2. **Tại sao ta lại chọn file `app.c` để viết thân hàm `TASK(Task_Periodic_50ms)`? Các Task khác trong hệ thống (`TaskIdle`, `SchM_Startup`, `TaskCanIf`...) đang được định nghĩa ở đâu, tại sao chúng lại nằm ở các vị trí đó, và đoạn mã nào trong hệ thống chứng minh khai báo gốc khác nhau dẫn đến định nghĩa ở các file khác nhau?**
+
+---
+
+#### 2. Bản Chất Kiến Trúc: Phân Mảnh Cấu Hình (Configuration Splitting) & Hợp Nhất Đa Tệp
+Trong các dự án ECU ô tô thương mại (sử dụng Vector DaVinci Configurator hoặc Elektrobit EB tresos):
+- Một ECU có hàng trăm module phần mềm (BSW Com, Diag, Mem, IO, OS, RTE) và hàng chục kỹ sư tham gia phát triển đồng thời.
+- **Nếu toàn bộ hệ thống lưu trên một file ARXML duy nhất**, xung đột mã nguồn (Git Merge Conflict) sẽ xảy ra liên tục và làm tê liệt dự án.
+- Do đó, chuẩn AUTOSAR áp dụng nguyên tắc **Splitable ARXML Packages (Phân mảnh cấu hình theo module)**:
+  - Module CAN Interface tự quản lý file mô tả của nó (`CanIf_EcucValues.arxml`).
+  - Module Network Management tự quản lý file của nó (`Nm_EcucValues.arxml`).
+  - Tầng Application tự quản lý cấu hình Application (`App_Swc.arxml`).
+- Khi nhấn Generate hoặc Build, Toolchain sẽ **quét và hợp nhất (Merge)** tất cả các mảnh cấu hình rời rạc này thành một cây mô hình dữ liệu tổng thể (Unified System Data Model) trước khi sinh ra mã nguồn C (`Os_Cfg.h`, `Os_Cfg.c`).
+
+Dự án mã nguồn mở `as` (open-source AUTOSAR stack) hiện thực hóa chính xác triết lý công nghiệp này thông qua **Quy trình Hợp nhất Đa tệp (Multi-file XML Aggregation)**:
+
+```mermaid
+flowchart TD
+    subgraph Module_Sources ["1. CÁC GÓI MODULE ĐỘC LẬP (Phân bố phi tập trung)"]
+        APP_PKG["as/release/ascore/app/<br/>• app.xml (TaskApp)<br/>• app.c (TASK(TaskApp))"]
+        CANIF_PKG["as/com/as.infrastructure/communication/CanIf/<br/>• canif.xml (TaskCanIf)<br/>• CanIf.c (TASK(TaskCanIf))"]
+        NM_PKG["as/com/as.application/common/<br/>• config/config.xml (TaskNmInd)<br/>• config/OsekNm_Cfg.c (TASK(TaskNmInd))"]
+        INFRA_PKG["as/com/as.application/common/ & kernel/<br/>• infrastructure.xml (TaskIdle)<br/>• Os.c (TASK(TaskIdle))"]
+        ARXML_ROOT["as/com/as.application/common/<br/>• autosar.arxml (SchM_Startup, SchM_BswService,<br/>Task_Periodic_50ms, Task_QueueTester)"]
+    end
+
+    subgraph SCons_Phase ["2. SCONS THU THẬP & TÁCH FILE (building.py)"]
+        SCONS_PARSE["building.py duyệt SConscript từng package:<br/>• File *.xml / *.arxml đưa vào danh sách 'xmls'<br/>• File *.c đưa vào danh sách biên dịch 'objs'"]
+        MKSYMLINK["MKSymlink() & PreProcess():<br/>Sao chép/Symlink toàn bộ XML vào thư mục build:<br/>as/build/nt/lm3s6965evb/ascore/config/"]
+    end
+
+    subgraph ArGen_Phase ["3. QUÉT GỘP & SINH MÃ HỆ ĐIỀU HÀNH (ArGen Engine)"]
+        SCAN_XML["util.py -> ScanXML(gendir, 'Os'):<br/>Quét TẤT CẢ các file *.xml và *.arxml trong config/<br/>Dùng OsAppend() khử trùng lặp và gộp TaskList"]
+        GEN_OS["GenOS.py -> GenH() & GenC():<br/>Duyệt task_list đã gộp (8 Task):<br/>• Sinh Os_Cfg.h (TASK_ID_*, extern TASK(...))<br/>• Sinh Os_Cfg.c (TaskConstArray, Entry points)"]
+    end
+
+    subgraph Link_Phase ["4. BIÊN DỊCH & LIÊN KẾT (Linker Symbol Binding)"]
+        GCC["arm-none-eabi-gcc biên dịch độc lập:<br/>app.o, CanIf.o, OsekNm_Cfg.o, Os.o, SchM.o, Os_Cfg.o"]
+        LINKER["arm-none-eabi-ld (Linker):<br/>Khớp entry TaskMain##TaskName trong Os_Cfg.o<br/>với symbol TASK(TaskName) từ từng object file tương ứng"]
+    end
+
+    APP_PKG --> SCONS_PARSE
+    CANIF_PKG --> SCONS_PARSE
+    NM_PKG --> SCONS_PARSE
+    INFRA_PKG --> SCONS_PARSE
+    ARXML_ROOT --> SCONS_PARSE
+
+    SCONS_PARSE --> MKSYMLINK
+    MKSYMLINK --> SCAN_XML
+    SCAN_XML --> GEN_OS
+
+    SCONS_PARSE --> GCC
+    GEN_OS --> GCC
+    GCC --> LINKER
+```
+
+---
+
+#### 3. Bằng Chứng Mã Nguồn: Đoạn Mã Chứng Minh Khai Báo Gốc Khác Nhau Dẫn Đến Định Nghĩa Ở Các File Khác Nhau
+
+Dưới đây là 4 mắt xích mã nguồn thực tế chứng minh quy trình liên kết chặt chẽ giữa **khai báo XML** và **định nghĩa C**:
+
+##### 📌 Mắt xích 1: Tính Đóng Gói Theo Cặp (Coupling) Trong `SConscript` Từng Module
+Trong kiến trúc phần mềm nhúng ô tô, mỗi module phải là một đơn vị độc lập (Self-contained & Plug-and-Play). Nếu bật tính năng nào trong file cấu hình board, module đó sẽ đóng góp cả **cấu hình XML** lẫn **mã thực thi C**:
+
+- **Module CanIf** ([`as/com/as.infrastructure/communication/SConscript`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/SConscript#L28-L31)):
+  ```python
+  if('CANIF' in MODULES):
+      objs += Glob('CanIf/*.c')    # Thu thập CanIf.c (Chứa TASK(TaskCanIf))
+      objs += Glob('CanIf/*.xml')  # Thu thập canif.xml (Chứa <Task Name="TaskCanIf">)
+  ```
+- **Module OsekNm** ([`as/com/as.application/common/SConscript`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/SConscript#L55-L58)):
+  ```python
+  if('OSEKNM' in MODULES):
+      objs += Glob('config/OsekNm*.c')  # Thu thập OsekNm_Cfg.c (Chứa TASK(TaskNmInd))
+      objs += Glob('config/config.xml') # Thu thập config.xml (Chứa <Task Name="TaskNmInd">)
+  ```
+- **Module Tầng Ứng Dụng (Application Layer)** ([`as/release/ascore/app/SConscript`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/SConscript#L12-L13)):
+  ```python
+  objs += Glob('*.c')    # Thu thập app.c (Chứa TASK(TaskApp))
+  objs += Glob('*.xml')  # Thu thập app.xml (Chứa <Task Name="TaskApp">)
+  ```
+
+> 🎯 **Chứng minh bản chất Plug-and-Play:**  
+> Nếu một ECU không sử dụng giao tiếp CAN (bỏ cờ `CANIF` khỏi `MODULES`), hệ thống build sẽ đồng thời loại bỏ cả `canif.xml` và `CanIf.c`.  
+> - Vì `canif.xml` bị loại bỏ $\rightarrow$ `Os_Cfg.h` sẽ không sinh ra `TASK_ID_TaskCanIf`.  
+> - Vì `CanIf.c` bị loại bỏ $\rightarrow$ Linker không tốn ROM/RAM cho driver CAN, và không hề bị lỗi thiếu symbol!  
+> **Nếu ai đó viết `TASK(TaskCanIf)` vào `app.c` thay vì `CanIf.c`, tính đóng gói này lập tức bị phá vỡ hoàn toàn.**
+
+###### 💡 Cơ Chế Bật / Tắt Tính Năng (Feature Toggling): Biến `MODULES` Được Nạp Từ Đâu?
+Một câu hỏi thực tế rất hay: *"Trước giờ khi build chỉ chọn board (`$env:BOARD="lm3s6965evb"`), tại sao không phải cấu hình tính năng cho board? Có phải tác giả đã fix sẵn theo phần cứng không? Và làm thế nào để TẮT một tính năng mà board sẵn có?"*
+
+**Câu trả lời:**
+1. **Tại sao trước giờ build không cần cấu hình thêm?**  
+   Đúng như dự đoán, tác giả đã cấu hình sẵn một **Danh mục tính năng mặc định (Default Module Profile)** đi kèm theo từng bo mạch phần cứng. Tại tệp cấu hình của board [`as/com/as.application/board.lm3s6965evb/SConscript`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.lm3s6965evb/SConscript#L20-L31):
+   ```python
+   MODULES = ['ECUM','SCHM','MCU',
+              'DET',
+              'CAN','CANIF','PDUR','COM','COMM','CANTP','CANNM',
+              'DCM','CANNM','CANSM','NM','OSEKNM','XCP',
+              'CLIB_MISCLIB','CLIB_STDIO_PRINTF',
+              'ASKAR','COMMONXML'
+              ]
+   asenv['MODULES'] = MODULES
+   ```
+   Do vi điều khiển LM3S6965 không có phần cứng USB hay thẻ nhớ SD, danh sách trên chỉ bật các tính năng mà vi điều khiển hỗ trợ (CAN, UART, Flash, Timer). Ngược lại, ở bo mạch [`board.stm32f107vc/SConscript`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/SConscript#L17-L28), tác giả bật thêm các module: `'USB'`, `'USB_CAN'`, `'FATFS'`, `'SDCARD'`, `'SHELL'` vì phần cứng STM32F107 có các ngoại vi này.
+
+2. **Làm thế nào để TẮT một tính năng mà bo mạch sẵn có?**  
+   Hệ thống cung cấp **2 phương pháp kỹ nghệ** để can thiệp:
+   - **Phương pháp 1: Tắt trực tiếp trong `SConscript` của bo mạch (Trực quan & Nhanh nhất)**  
+     Nếu dự án của bạn trên LM3S6965 không sử dụng Quản trị mạng OSEK (`OSEKNM`), bạn chỉ cần mở [`as/com/as.application/board.lm3s6965evb/SConscript`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.lm3s6965evb/SConscript#L23) và xóa `'OSEKNM'` ra khỏi mảng `MODULES`.  
+     Ngay lập tức:
+     - `communication/SConscript` sẽ bỏ qua toàn bộ mã nguồn `OsekNm/*.c`.
+     - `common/SConscript` sẽ không nạp `config.xml` (chứa `<Task Name="TaskNmInd">`) và `OsekNm_Cfg.c`.
+     - `OsGen` khi sinh mã sẽ không tìm thấy `TaskNmInd` $\rightarrow$ `Os_Cfg.h` tự động giảm từ 8 Task xuống còn 7 Task!
+   - **Phương pháp 2: Sử dụng Menuconfig / `.config` chuẩn Linux Kernel (`scons --menuconfig`)**  
+     Dự án tích hợp đầy đủ hệ thống Kconfig (file `as/Kconfig`, `as/com/as.infrastructure/communication/Kconfig`). Tại hàm `GetConfig()` trong [`as/com/as.tool/config.infrastructure.system/building.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/building.py#L328-L352):
+     ```python
+     def GetConfig(cfg, env):
+         # Đọc file build/.../.config sinh ra từ menuconfig
+         for el in fp.readlines():
+             if(value == 'y'):
+                 env['MODULES'].append(name) # Nạp module nếu CONFIG_XXX=y
+     ```
+     Tại các board như `stm32f107vc`, `posix`, `virt`, đoạn mã sau được thực thi:
+     ```python
+     if(asenv['MODULES'] is None):
+         asenv['MODULES'] = MODULES      # Dùng mặc định nếu chưa chạy menuconfig
+     else:
+         MODULES = asenv['MODULES']      # Ưu tiên cấu hình từ file .config đã chọn
+     ```
+     Nhờ đó, kỹ sư có thể gõ `scons --menuconfig` để bật/tắt từng checkbox module như trong nhân Linux.
+
+3. **Đối chiếu thực tế tại các công ty lớn (Vector DaVinci / Elektrobit EB tresos):**  
+   Tại các dự án OEM/Tier-1, việc bật/tắt module tương đương với:
+   - **Module Package Selection (SIP):** Kỹ sư thêm/bớt module trong giao diện cấu hình ECU.
+   - **Pre-compile Feature Macros (`*_Cfg.h`):** Bật/tắt các tính năng con qua macro (ví dụ `#define CANIF_PUBLIC_TX_BUFFERING STD_OFF`), các khối code không dùng sẽ bị tiền xử lý C `#if (CANIF_PUBLIC_TX_BUFFERING == STD_ON)` loại bỏ hoàn toàn khỏi bộ nhớ Flash/RAM.
+
+---
+
+##### 📌 Mắt xích 2: Hệ Thống Build Tập Hợp File Về Thư Mục Cấu Hình (`building.py`)
+Tại [`as/com/as.tool/config.infrastructure.system/building.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/building.py#L1307-L1344), SCons phân tách các tệp:
+```python
+# Lọc các file từ tất cả SConscript
+for obj in sobjs:
+    if(str(obj)[-6:]=='.arxml'):
+        arxml = obj             # Nhận diện as/com/as.application/common/autosar.arxml
+    elif(str(obj)[-4:]=='.xml'):
+        xmls.append(obj)        # Gom app.xml, canif.xml, config.xml, infrastructure.xml
+    else:
+        objs.append(obj)        # Gom các file .c vào danh sách compile (app.c, CanIf.c, Os.c,...)
+
+# Đưa tất cả vào thư mục cấu hình build: as/build/nt/lm3s6965evb/ascore/config/
+if(arxml != None):
+    arxmlR = PreProcess(cfgdir, str(arxml))
+    for xml in xmls:
+        MKSymlink(str(xml), '%s/%s'%(cfgdir, os.path.basename(str(xml))))
+    xcc.XCC(cfgdir)             # Khởi chạy bộ sinh mã ArGen
+```
+
+---
+
+##### 📌 Mắt xích 3: Bộ Sinh Mã Quét Toàn Bộ File XML (`ScanXML`)
+Bộ sinh mã OS không chỉ đọc một file đơn lẻ. Tại [`as/com/as.tool/config.infrastructure.system/argen/util.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/util.py#L46-L62):
+```python
+def ScanXML(gendir, tag):
+    a_list = []
+    # ĐỌC TẤT CẢ CÁC TỆP .xml VÀ .arxml CÓ MẶT TRONG THƯ MỤC CONFIG:
+    for xml in glob.glob('%s/*.xml'%(gendir)) + glob.glob('%s/*.arxml'%(gendir)):
+        root = ET.parse(xml).getroot()
+        if((root.tag=='AS') or (root.tag=='AUTOSAR')):
+            for each in root:
+                if(each.tag==tag):
+                    for sub in each:
+                        a_list.append(sub)
+                elif((each.tag=='OS') and (tag=='Os')):
+                    for sub in each:
+                        if(sub.tag == 'General'):
+                            OsAppend(a_list, sub)
+                        else:
+                            for ss in sub:
+                                OsAppend(a_list, ss) # Khử trùng lặp và gộp Task
+    return a_list
+```
+Chính vòng lặp `glob.glob('*.xml') + glob.glob('*.arxml')` này đã gộp các tệp cấu hình độc lập thành một danh sách 8 Task duy nhất.
+
+---
+
+##### 📌 Mắt xích 4: Liên Kết Symbol Của Trình Liên Kết (Linker Symbol Binding)
+Sau khi quét xong danh sách Task, [`GenOS.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenOS.py#L177-L179) sinh ra:
+1. File header [`Os_Cfg.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.h#L121-L128):
+   ```c
+   extern TASK(TaskApp);
+   extern TASK(TaskCanIf);
+   extern TASK(TaskNmInd);
+   extern TASK(TaskIdle);
+   extern TASK(SchM_Startup);
+   extern TASK(SchM_BswService);
+   extern TASK(Task_Periodic_50ms);
+   extern TASK(Task_QueueTester);
+   ```
+2. File cấu hình [`Os_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Os_Cfg.c#L162-L210):
+   ```c
+   const TaskConstType TaskConstArray[TASK_NUM] =
+   {
+       { /*.entry =*/ TaskMainTaskApp,              /*.name =*/ "TaskApp",        ... },
+       { /*.entry =*/ TaskMainTaskCanIf,            /*.name =*/ "TaskCanIf",      ... },
+       { /*.entry =*/ TaskMainTaskNmInd,            /*.name =*/ "TaskNmInd",      ... },
+       { /*.entry =*/ TaskMainTaskIdle,             /*.name =*/ "TaskIdle",       ... },
+       { /*.entry =*/ TaskMainSchM_Startup,         /*.name =*/ "SchM_Startup",   ... },
+       { /*.entry =*/ TaskMainSchM_BswService,      /*.name =*/ "SchM_BswService",... },
+       { /*.entry =*/ TaskMainTask_Periodic_50ms,   /*.name =*/ "Task_Periodic_50ms", ... },
+       { /*.entry =*/ TaskMainTask_QueueTester,     /*.name =*/ "Task_QueueTester",   ... },
+   };
+   ```
+   *Lưu ý:* Macro `TASK(X)` chuẩn OSEK mở rộng thành `void TaskMain##X(void)`.
+3. **Cơ chế phân giải của Linker (`ld`):**  
+   File `Os_Cfg.c` tạo mảng con trỏ hàm tham chiếu đến 8 symbol `TaskMain*`. Trình liên kết (Linker) sẽ tìm kiếm các symbol này trong tập hợp các file đối tượng (`.o`) đã biên dịch từ `objs`.  
+   Nếu bất kỳ file `.c` nào thuộc module sở hữu không định nghĩa đúng thân hàm `TASK(X)`, Linker sẽ báo lỗi `undefined reference to TaskMainX`.
+
+---
+
+#### 4. Bảng Phân Bổ Toàn Diện 8 Task Trong Hệ Thống
+
+Dưới đây là bảng đối soát chi tiết toàn bộ 8 Task trong dự án, chứng minh rõ ràng: **Tên Task $\rightarrow$ File XML khai báo $\rightarrow$ File C định nghĩa $\rightarrow$ Tầng kiến trúc $\rightarrow$ Lý do kỹ nghệ bắt buộc**:
+
+| STT | Tên Task | Mức Ưu Tiên | File XML Khai Báo Gốc | File C Định Nghĩa Thân Hàm | Tầng Kiến Trúc AUTOSAR | Lý Do Bắt Buộc Viết Tại Vị Trí Đó |
+| :---: | :--- | :---: | :--- | :--- | :--- | :--- |
+| 1 | **`TaskApp`** | `5` | [`app.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/app.xml#L4) | [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c#L173) | **Application Layer (Tầng Ứng Dụng)** | Task chính của ứng dụng mẫu. Quản lý trạng thái xe, xử lý đèn táp-lô (Telltale), chu kỳ logic giao tiếp người dùng. |
+| 2 | **`TaskCanIf`** | `9` (Cao) | [`canif.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/canif.xml#L4) | [`as/com/as.infrastructure/communication/CanIf/CanIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L1302) | **Communication Stack (CanIf)** | Task xử lý hàng đợi truyền nhận RX/TX FIFO bất đồng bộ của driver CAN Interface. Phải nằm trong `CanIf.c` để đảm bảo module CanIf có thể tái sử dụng độc lập trên mọi dự án. |
+| 3 | **`TaskNmInd`** | `7` | [`config.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/config.xml#L4) | [`as/com/as.application/common/config/OsekNm_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/config/OsekNm_Cfg.c#L93) | **Network Management (OsekNm)** | Task xử lý các sự kiện mạng OSEK Direct Network Management (LimpHome, RingData). Phải nằm ở tệp cấu hình triển khai của tầng NM. |
+| 4 | **`TaskIdle`** | `0` (Thấp nhất) | [`infrastructure.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/infrastructure.xml#L59) | [`as/com/as.infrastructure/system/kernel/Os.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/Os.c#L100) | **OS Kernel Core** | Tác vụ chạy nền khi CPU rảnh rỗi (vòng lặp `while(1)` tiết kiệm năng lượng). Thuộc nhân hệ điều hành nên bắt buộc phải nằm trong mã nguồn Kernel `Os.c`. |
+| 5 | **`SchM_Startup`** | `7` | [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L14) | [`as/com/as.infrastructure/system/SchM/SchM.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L410) | **BSW Scheduler (SchM)** | Tác vụ khởi tạo chuỗi dịch vụ BSW khi ECU khởi động (Post-OS Phase). Là hạt nhân của Schedule Manager nên phải nằm tại `SchM.c`. |
+| 6 | **`SchM_BswService`**| `8` | [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L19) | [`as/com/as.infrastructure/system/SchM/SchM.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491) | **BSW Scheduler (SchM)** | Tác vụ định kỳ gọi các hàm `Can_MainFunction()`, `Com_MainFunction()`, `NvM_MainFunction()`... Phục vụ điều phối BSW nên nằm tại `SchM.c`. |
+| 7 | **`Task_Periodic_50ms`**| `2` | [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L21) | 👉 [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c) | **Application Layer (Tầng Ứng Dụng)** | **Task ứng dụng người dùng tạo mới!** Chạy định kỳ 50ms theo chu kỳ của `Alarm_Periodic_50ms`. |
+| 8 | **`Task_QueueTester`** | `5` | [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L22) | 👉 [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c) | **Application Layer (Tầng Ứng Dụng)** | **Task ứng dụng người dùng tạo mới!** Tự khởi động (`OSDEFAULTAPPMODE`) để kiểm thử kích hoạt đa lần. |
+
+---
+
+#### 5. Kết Luận Kiến Trúc: Tại Sao Chọn `app.c` Cho Các Task Mới Của Kỹ Sư?
+1. **Phân định ranh giới trách nhiệm (Separation of Concerns):**  
+   Hai tác vụ `Task_Periodic_50ms` và `Task_QueueTester` đại diện cho chức năng nghiệp vụ của ứng dụng điều khiển xe (SWC - Software Component), không phục vụ cho việc gửi nhận gói tin CAN (`CanIf`), không phục vụ quản trị mạng (`Nm`), cũng không phải tác vụ điều phối hệ thống (`SchM`).
+2. **Tuân thủ Quy tắc 3 trong [`rule.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/hands_on_tasks/task_fix/rule.md):**  
+   Mã nguồn bài tập và ứng dụng người dùng **tuyệt đối không được xâm phạm (pollute)** vào các thư mục lõi BSW/MCAL (`as/com/as.infrastructure/`). Nếu sửa trực tiếp vào `CanIf.c` hay `Os.c`:
+   - Khi cập nhật phiên bản mới của BSW/Kernel, toàn bộ mã của bạn sẽ bị ghi đè (overwritten).
+   - Khi chuyển đổi hệ điều hành (ví dụ từ `askar` sang `FreeRTOS` hoặc `Trampoline`), các file trong `kernel/` sẽ bị thay thế, dẫn đến mất mã nguồn ứng dụng.
+3. **`app.c` là không gian hợp lệ duy nhất của Target `ascore`:**  
+   Trong cấu hình bản phát hành `ascore` (`release/ascore/app/`), `app.c` là file C duy nhất được SCons thu thập đại diện cho tầng Ứng dụng. Do đó, việc định nghĩa `TASK(Task_Periodic_50ms)` và `TASK(Task_QueueTester)` tại [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c) là hoàn toàn chuẩn mực về mặt kiến trúc phần mềm ô tô.
+
+##### 💡 Phân Tích Chuyên Sâu: Tại Sao `SchM_BswService` Và `Task_Periodic_50ms` Cùng Thuộc `autosar.arxml` Nhưng Không Viết Chung Vào `SchM.c`?
+
+Nhiều kỹ sư khi soi xét cấu hình sẽ đặt câu hỏi:  
+> *"Cả `SchM_BswService` lẫn `Task_Periodic_50ms` đều được tôi khai báo nằm cạnh nhau trong thẻ `<TaskList>` của file `autosar.arxml`. Tại sao không tiện tay viết luôn `TASK(Task_Periodic_50ms)` vào file `as/com/as.infrastructure/system/SchM/SchM.c` cạnh `TASK(SchM_BswService)` cho cùng một chỗ?"*
+
+Dưới đây là 3 lý do kỹ nghệ cốt tử mà mọi kỹ sư tích hợp AUTOSAR bắt buộc phải khắc ghi:
+
+1. **Phân biệt rạch ròi giữa "Khai báo tài nguyên" (ARXML) và "Trách nhiệm thực thi" (C Implementation):**  
+   - File [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml) là **Bản hợp đồng tài nguyên tổng thể cấp ECU (System-level Resource Blueprint)**. Nhiệm vụ của nó là thông báo cho Toolchain biết ECU này cần bao nhiêu Task ID, kích thước bao nhiêu Stack để cấp phát bộ nhớ tĩnh.  
+   - Tuy nhiên, việc xuất hiện chung trong một file ARXML **hoàn toàn không có nghĩa là chúng thuộc về cùng một module C**. Khai báo tài nguyên hệ thống (Resource Declaration) và thực thi mã nguồn nghiệp vụ (C Implementation) là hai miền trách nhiệm hoàn toàn độc lập trong quy chuẩn AUTOSAR.
+
+2. **Ranh giới bất khả xâm phạm giữa Tầng Hạ Tầng BSW và Tầng Ứng Dụng (Architecture Boundary):**  
+   - [`as/com/as.infrastructure/system/SchM/SchM.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491) là thành phần cốt lõi của **BSW Scheduler (SchM)** thuộc Tầng Hạ Tầng (Infrastructure Layer). Nhiệm vụ sống còn duy nhất của `TASK(SchM_BswService)` là gọi tuần hoàn các hàm xử lý nội bộ của các stack mạng: `Can_MainFunction_Write()`, `Can_MainFunction_Read()`, `Com_MainFunction()`, `NvM_MainFunction()`...  
+   - Trong khi đó, `Task_Periodic_50ms` là tác vụ nghiệp vụ người dùng (Application/SWC) dùng để tính toán thuật toán điều khiển xe, đọc cảm biến hoặc nhấp nháy đèn.  
+   - Đưa logic ứng dụng vào `SchM.c` là hành vi **phá vỡ tính trừu tượng kiến trúc (Architecture Layering Pollution)**, điều tối kỵ trong chuẩn AUTOSAR và ISO 26262.
+
+3. **Thảm họa đóng gói & khả năng tái sử dụng thư viện (Portability & Decoupling):**  
+   - Thư mục `as/com/as.infrastructure/` được thiết kế như một **thư viện C dùng chung cho hàng chục dự án và hàng chục dòng vi điều khiển khác nhau** (`lm3s6965evb`, `stm32f107vc`, `mpc56xx`, `posix`...).  
+   - Nếu bạn nhét `TASK(Task_Periodic_50ms)` vào `SchM.c`:  
+     * Thư viện SchM lập tức bị trói chặt (tight coupling) với ứng dụng mẫu hiện tại.  
+     * Khi một dự án khác (ví dụ một ECU khác không có bài tập 50ms) tái sử dụng file `SchM.c`, Linker sẽ lập tức quăng lỗi biên dịch: `undefined reference to TASK_ID_Task_Periodic_50ms`!  
+     * Mỗi lần cập nhật framework hoặc chuyển chip, mã nguồn của bạn trong `SchM.c` sẽ bị đè bẹp hoặc gây conflict toàn bộ hệ thống Git.
+
+👉 **Quy tắc vàng:** *Task của module nào $\rightarrow$ Viết trong file C của module đó. Task của nghiệp vụ người dùng $\rightarrow$ Bắt buộc viết tại file ứng dụng `app.c`!*
+
+> 🧭 **Cẩm nang thiết kế tương lai:**  
+> Để nắm vững bộ quy luật thiết kế chủ động: *4 tiêu chí phân chia Task (chu kỳ, kích hoạt, an toàn ASIL, ranh giới tầng kiến trúc)* và *Cây quyết định 3 bước định vị file XML/C cho bất kỳ tính năng nào trong tương lai*, hãy tham khảo chi tiết tại [**Mục 5 trong `docs/hands_on_tasks/task_fix/rule.md`**](../hands_on_tasks/task_fix/rule.md#5-🧭-bộ-quy-luật-thiết-kế-nguyên-tắc-chia-task-chia-file-xml-và-định-vị-file-c-trong-tương-lai).
+
+---
+
 ## 4. Chu Trình Khởi Động & Vòng Đời Tích Hợp ECU (ECU Integration & Lifecycle)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **Glossary - EcuM (*ECU State Manager*)**: Quản lý trạng thái khởi động, tắt máy và đi ngủ của ECU.
-📖 **Glossary - BswM (*BSW Mode Manager*)**: Quản lý các chế độ hoạt động phức tạp khi ECU đang thức.
 
-💡 **Ẩn dụ thực tế**:
-- **EcuM**: Giống như bảo vệ tòa nhà. Buổi sáng bật cầu dao điện (Wakeup), buổi tối dập cầu dao khóa cửa (Shutdown/Sleep).
-- **BswM**: Giống như quản lý văn phòng. Khi có điện rồi, họ quyết định bật bao nhiêu bóng đèn, máy lạnh tùy theo lượng người (Mode Arbitration).
-
-### 🟡 LEVEL 2: INTERMEDIATE
 **Chu Trình Khởi Động & Vòng Đời**:
 ```mermaid
 stateDiagram-v2
@@ -401,7 +783,7 @@ sequenceDiagram
     Task_Init->>OS: TerminateTask() (t=50ms)
 ```
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 **Code C thực tế của chuỗi khởi động**:
 ```c
 /* file: main.c */
@@ -460,18 +842,11 @@ void EcuM_StartupTwo(void)
 
 ## 5. Giám Sát An Toàn Chương Trình (Watchdog Manager - WdgM Masterclass)
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-📖 **Glossary - WdgM (*Watchdog Manager*)**: Module giám sát phần mềm để đảm bảo không có hàm nào bị treo hoặc chạy sai thứ tự.
-💡 **Ẩn dụ thực tế**: WdgM giống như một người quản đốc cầm đồng hồ bấm giờ. 
-- *Alive*: Nếu bạn làm việc quá chậm hoặc quá nhanh $\rightarrow$ Bị đuổi (Reset).
-- *Deadline*: Nếu bạn phải giao hàng trong 5 phút mà phút thứ 6 mới tới $\rightarrow$ Bị đuổi.
-- *Logical*: Nếu quy trình là A -> B -> C mà bạn làm A rồi nhảy sang C $\rightarrow$ Bị đuổi.
 
-### 🟡 LEVEL 2: INTERMEDIATE
 Để đạt chứng chỉ an toàn chức năng **ISO 26262 ASIL-D**, `WdgM` thực hiện 3 cơ chế giám sát độc lập: Alive, Deadline, Logical.
 ✅ **Best Practice**: Map WdgM vào một OS Task riêng có độ ưu tiên cao nhất để đảm bảo WdgM luôn được chạy, kể cả khi các Task khác bị treo.
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 **Code implement WdgM checkpoint (Alive Supervision)**:
 Giả sử ta cần giám sát một Runnable `RE_EngineControl` chạy định kỳ 10ms.
 
@@ -499,15 +874,12 @@ void EngineController_CalculateInjection(void) /* Chu kỳ 10ms */
 
 ## 6. Bằng Chứng Mã Nguồn & Định Nghĩa Giao Tiếp Trong `parai/as`
 
-### 🟢 LEVEL 1: NEWBIE FRIENDLY
-Bạn có thể tự mình xem mã nguồn thực tế trong dự án. Các file này nằm trong thư mục cài đặt `com/as.infrastructure/...`
 
-### 🟡 LEVEL 2: INTERMEDIATE
 **Giao Diện Điều Khiển Trạng Thái: `EcuM.h`**
 File: `com/as.infrastructure/include/EcuM.h`
 Đây là nơi chứa các nguyên mẫu hàm (prototypes) để khởi động và tắt ECU.
 
-### 🔴 LEVEL 3: EXPERT (Deep Dive)
+### NÂNG CAO
 ```c
 /* Khởi tạo giai đoạn 1 trước OS */
 void EcuM_Init(void);

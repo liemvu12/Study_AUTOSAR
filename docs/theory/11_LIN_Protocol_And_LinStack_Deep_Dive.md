@@ -10,17 +10,6 @@
 
 ## 1. Tổng Quan Về Giao Thức LIN (Local Interconnect Network)
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
-│  🟢 LEVEL 1: NEWBIE FRIENDLY — LIN LÀ GÌ?                                                       │
-│  • Ẩn dụ: Nếu CAN là "Đường cao tốc nhiều làn xe chạy tự do", thì LIN là "Tuyến đường sắt đơn  │
-│    có Trưởng ga (Master) điều phối duy nhất một đoàn tàu theo lịch trình định sẵn".             │
-│  • Không có va chạm tín hiệu (Zero Collision), chi phí cực thấp (dùng 1 dây duy nhất 12V),       │
-│    tốc độ chậm (tối đa 20 kbps), chuyên dùng cho các cảm biến/cơ cấu chấp hành Body như:       │
-│    Gạt mưa, Cửa sổ trời, Ghế chỉnh điện, Cụm nút bấm vô lăng, Gương chiếu hậu.                 │
-└─────────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
 ### 1.1 So Sánh Bản Chất Kỹ Thuật: CAN vs LIN vs Ethernet
 
 | Tiêu Chí So Sánh | CAN 2.0 / CAN FD | LIN (Local Interconnect Network) | Automotive Ethernet (100BASE-T1) |
@@ -130,10 +119,7 @@ graph TD
 * **Nhiệm vụ:** Trực tiếp cấu hình phần cứng UART/SCI của Vi điều khiển thành chế độ LIN Master/Slave.
 * **API Cốt Lõi:**
   * `Lin_Init(&Lin_Config)`: Cấu hình Baudrate (ví dụ 19200 bps), kích hoạt ngắt UART TX/RX.
-  * `Lin_SendFrame(Channel, &PduInfo)`: Bắn ra Break Field $
-ightarrow$ Sync Byte `0x55` $
-ightarrow$ PID Byte $
-ightarrow$ Chờ truyền/nhận Data.
+  * `Lin_SendFrame(Channel, &PduInfo)`: Bắn ra Break Field $\rightarrow$ Sync Byte `0x55` $\rightarrow$ PID Byte $\rightarrow$ Chờ truyền/nhận Data.
   * `Lin_GetStatus(Channel, &SduPtr)`: Kiểm tra trạng thái kênh (`LIN_TX_OK`, `LIN_RX_OK`, `LIN_TX_BUSY`, `LIN_TX_ERROR`).
 
 #### 2. Interface Layer: `LinIf.c` ([`as/com/as.infrastructure/communication/Lin/LinIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Lin/LinIf.c))

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Read DTC Information (Service 0x19)
 Äá»c danh sÃ¡ch cÃ¡c mÃ£ lá»—i.
 """

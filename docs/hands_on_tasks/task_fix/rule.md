@@ -30,14 +30,17 @@
 
 ---
 
-### 🔴 QUY TẮC 3: PHÂN ĐỊNH RÕ RÀNG 4 VÙNG MÃ NGUỒN TRONG DỰ ÁN
+### 🔴 QUY TẮC 3: PHÂN ĐỊNH RÕ RÀNG 5 VÙNG MÃ NGUỒN TRONG TOÀN BỘ DỰ ÁN
 
-| Vùng Mã Nguồn | Ví Dụ File / Thư Mục | Quyền Chỉnh Sửa | Cách Sửa Đúng Quy Chuẩn |
-| :--- | :--- | :---: | :--- |
-| **1. Generated Code (Mã sinh tự động)** | `build/.../config/*_Cfg.c`, `Rte.c` | ❌ **CẤM SỬA TAY** | Sửa file ARXML/XML gốc $\rightarrow$ Chạy lại Code Gen. |
-| **2. Application SWC (Mã ứng dụng)** | `as/com/as.application/swc/`, `app.c`, `bms_soc.c` | ✅ **ĐƯỢC SỬA** | Viết thuật toán vào thân hàm Runnable do RTE cung cấp. |
-| **3. Callout / Hook Stubs (Mã tùy biến BSW)** | `EcuM_Callout_Stubs.c`, `Dem_Cbk.c`, `Os_Hooks.c` | ✅ **ĐƯỢC SỬA** | Cài đặt logic riêng vào các hàm hook mà BSW để mở. |
-| **4. Static BSW / MCAL Core (Mã lõi chuẩn)** | `as/com/as.infrastructure/communication/Com/` | ⚠️ **HẠN CHẾ** | Chỉ sửa khi vá lỗi driver phần cứng hoặc porting sang MCU mới. |
+Để đảm bảo tính toàn vẹn của phần mềm nhúng ô tô, mã nguồn toàn bộ repository được phân định thành **5 vùng ranh giới nghiêm ngặt**:
+
+| Vùng Mã Nguồn | Đường Dẫn Thư Mục Đại Diện | Nội Dung & Phân Hệ Cốt Lõi | Quyền Hạn | Phương Thức Làm Việc Chuẩn Mực |
+| :--- | :--- | :--- | :---: | :--- |
+| **1. Generated Code<br>(Mã sinh tự động)** | [`as/build/nt/<board>/<release>/config/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/) | Các file cấu hình C/H sinh ra từ ARXML: `Os_Cfg.*`, `CanIf_Cfg.*`, `Com_Cfg.*`, `Dem_Cfg.*`, `Rte.*`... | ❌ **CẤM SỬA TAY** | Sửa file cấu hình gốc (`autosar.arxml` hoặc `*.xml`) $\rightarrow$ Chạy lệnh build (`scons`) để ArGen sinh lại mã. |
+| **2. Release Profiles & App Entry<br>(Hồ sơ phát hành & Điểm vào)** | [`as/release/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/)<br>*(Đặc biệt: `as/release/ascore/app/`)* | Điểm khởi động hệ thống và logic ứng dụng của profile: `main.c` (chứa `main()`), `app.c` (chứa các Task ứng dụng như `TASK(TaskApp)`, `TASK(Task_Periodic_50ms)`, `StartupHook`, `ShutdownHook`), `diag_app.c`, `app.xml`. | ✅ **VÙNG CHÍNH CỦA KỸ SƯ** | Tự do lập trình thuật toán điều khiển, hook vòng đời OS, và các tác vụ nghiệp vụ mức ứng dụng. |
+| **3. Application SWC & Board Integration<br>(Tầng Ứng dụng & Bo mạch)** | [`as/com/as.application/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/) | • `swc/`: Các Software Components VFB (`Swc_Telltale.c`, `Swc_Gauge.c`).<br>• `common/`: Nguồn chân lý hệ thống (`autosar.arxml`, `infrastructure.xml`, `config/OsekNm_Cfg.c`).<br>• `board.<target>/`: Tích hợp bo mạch (`board.lm3s6965evb`, `board.posix`, startup, linker script). | ✅ **ĐƯỢC SỬA** | Cấu hình tham số hệ thống trong ARXML, viết logic Runnable entities của SWC, hoặc tùy biến khởi tạo phần cứng bo mạch. |
+| **4. Static BSW & MCAL Infrastructure<br>(Hạ tầng BSW & MCAL lõi)** | [`as/com/as.infrastructure/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/) | 9 phân hệ nền tảng ô tô độc lập phần cứng: `system/` (Kernel, SchM, EcuM, BswM), `communication/` (CanIf, CanTp, PduR, Com, Nm), `diagnostic/` (Dcm, Dem, Det), `memory/` (NvM, Fee, Fls), `arch/` (MCAL lm3s, stm32, posix), `include/` (Std_Types.h, asdebug.h). | ⚠️ **HẠN CHẾ CỰC ĐỘ** | **Tuyệt đối không nhét code ứng dụng vào đây.** Chỉ mở rộng qua cơ chế Hook / Callout / Callback; chỉ sửa khi porting vi điều khiển mới hoặc vá lỗi driver phần cứng. |
+| **5. Toolchain & Code Generator Engine<br>(Bộ công cụ & Bộ sinh mã)** | [`as/com/as.tool/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/) | • `config.infrastructure.system/`: Động cơ ArGen Python (`ArGen.py`, `GenOS.py`, `GenCan.py`, `building.py`, `xcc.py`).<br>• `config.infrastructure.gui/`: Tool cấu hình đồ họa Studio.<br>• `lua/`: Scripting engine hỗ trợ sinh mã tự động. | ⚠️ **HẠN CHẾ** | Chỉ can thiệp khi cần nghiên cứu cơ chế sinh mã nội bộ, sửa lỗi toolchain hoặc mở rộng cú pháp ARXML mới. |
 
 ---
 
@@ -173,42 +176,247 @@ Trong các dự án BSW mã nguồn mở hoặc thương mại (Vector MICROSAR,
 
 ---
 
-## 4. 📂 PHÂN ĐỊNH VAI TRÒ CÁC THƯ MỤC TRONG DỰ ÁN AUTOSAR
+## 4. 📂 PHÂN ĐỊNH VAI TRÒ TOÀN DIỆN CÁC THƯ MỤC TRONG DỰ ÁN AUTOSAR
 
-Để không bao giờ bị nhầm lẫn giữa **Mã nguồn do Tool sinh ra** và **Mã nguồn do Kỹ sư tự viết tay**, toàn bộ cấu trúc dự án tuân thủ nghiêm ngặt 3 phân vùng sau:
+Để không bao giờ bị nhầm lẫn giữa **Mã nguồn do Tool sinh ra**, **Mã lõi chuẩn BSW/MCAL** và **Mã nguồn ứng dụng do Kỹ sư tự viết tay**, toàn bộ cấu trúc kho mã nguồn `as/` được tổ chức thành một cây phân cấp kiến trúc chuẩn mực:
 
 ```
-┌────────────────────────────────────────────────────────────────────────────────────────┐
-│                        CẤU TRÚC PHÂN VÙNG DỰ ÁN AUTOSAR TRONG REPO                     │
-│                                                                                        │
-│  1. VÙNG MÃ LÕI BSW TIÊU CHUẨN (Generic BSW Stack - CẤM SỬA TRỰC TIẾP):                │
-│     📁 as/com/as.infrastructure/                                                       │
-│        ├── system/ (kernel/askar, EcuM, BswM, SchM)                                    │
-│        ├── communication/ (CanIf, CanTp, PduR, Com, Nm)                                │
-│        ├── diagnostic/ (Dcm, Dem, Det)                                                 │
-│        ├── memory/ (NvM, Fee, Ea, MemIf)                                               │
-│        └── arch/ (MCAL drivers cho lm3s, stm32f1, posix)                               │
-│                                                                                        │
-│  2. VÙNG MÃ SINH TỰ ĐỘNG TỪ ARXML (Auto-Generated Code - CẤM SỬA TAY):                 │
-│     📁 as/build/nt/<board>/<release>/config/  (Ví dụ: build/.../ascore/config/)        │
-│        ├── 📄 Os_Cfg.h, Os_Cfg.c       (Sinh từ cấu hình Task/Alarm/Hook trong ARXML)  │
-│        ├── 📄 Com_Cfg.h, Com_PbCfg.c   (Sinh từ cấu hình I-PDU/Signal trong ARXML)     │
-│        ├── 📄 CanIf_Cfg.h, CanIf_Cfg.c (Sinh từ cấu hình HTH/HRH/Mailbox trong ARXML) │
-│        └── 📄 Rte.c, Rte_Type.h        (Sinh từ cấu hình Ports/Runnables trong ARXML)  │
-│                                                                                        │
-│  3. VÙNG MÃ ỨNG DỤNG DO KỸ SƯ TỰ VIẾT TAY (User Hand-Written Code - TỰ DO LẬP TRÌNH):   │
-│     📁 as/release/<profile>/app/  (Ví dụ: as/release/ascore/app/)                      │
-│        ├── 📄 main.c     (Điểm vào C: chứa hàm main() gọi EcuM_Init())                 │
-│        ├── 📄 app.c      (Chứa code ứng dụng: StartupHook, ShutdownHook, TaskApp)      │
-│        └── 📄 diag_app.c (Chứa logic xử lý dịch vụ chẩn đoán UDS của ứng dụng)         │
-│     📁 as/com/as.application/swc/                                                      │
-│        └── 📄 Swc_Telltale.c, Swc_Gauge.c (Chứa thuật toán của các Runnable entities)  │
-└────────────────────────────────────────────────────────────────────────────────────────┘
+as/
+├── 📁 release/                       ──► [VÙNG 2] HỒ SƠ PHÁT HÀNH & ĐIỂM VÀO THỰC THI (PROFILES)
+│   ├── 📁 ascore/                    ──► Profile ECU tích hợp đầy đủ (OS + Com + Diag + Mem)
+│   │   └── 📁 app/                   ──► ĐIỂM VÀO CHÍNH CỦA KỸ SƯ (main.c, app.c, diag_app.c, app.xml)
+│   ├── 📁 asboot/                    ──► Profile UDS Bootloader nạp phần mềm qua mạng CAN
+│   ├── 📁 askar/                     ──► Profile chạy riêng hệ điều hành OSEK ASKAR độc lập
+│   ├── 📁 aslinux/ & 📁 asminix/     ──► Profile tích hợp chạy trên nền Linux / Minix OS
+│   └── 📁 asslave/ & 📁 ucos_ii/     ──► Profile node tớ (slave) và mục tiêu RTOS uC/OS-II
+│
+├── 📁 com/                           ──► HỆ THỐNG THÀNH PHẦN AUTOSAR CHUẨN (COMPONENTS)
+│   ├── 📁 as.application/            ──► [VÙNG 3] TẦNG ỨNG DỤNG, CẤU HÌNH HỆ THỐNG & TÍCH HỢP BO MẠCH
+│   │   ├── 📁 common/                ──► NGUỒN CHÂN LÝ: autosar.arxml, infrastructure.xml, config/OsekNm_Cfg.c
+│   │   ├── 📁 swc/                   ──► Tầng Software Components VFB (Swc_Telltale.c, Swc_Gauge.c)
+│   │   └── 📁 board.<target>/        ──► Tích hợp bo mạch: board.lm3s6965evb, board.posix, board.stm32f107vc...
+│   │
+│   ├── 📁 as.infrastructure/         ──► [VÙNG 4] HẠ TẦNG BSW & MCAL LÕI (GENERIC BSW STACK - CẤM SỬA TRỰC TIẾP)
+│   │   ├── 📁 arch/                  ──► MCAL Drivers cấp thấp (lm3s, stm32f1, mpc56xx, posix)
+│   │   ├── 📁 system/                ──► OS Kernel (askar, trampoline, freeosek, freertos), SchM, EcuM, BswM
+│   │   ├── 📁 communication/         ──► Chồng truyền thông ô tô (CanIf, CanTp, CanNm, PduR, Com, Lin, SoAd, DoIP)
+│   │   ├── 📁 diagnostic/            ──► Chồng chẩn đoán tiêu chuẩn (Dcm ISO 14229, Dem, Det)
+│   │   ├── 📁 memory/                ──► Chồng bộ nhớ bất biến (NvM, Fee, Ea, MemIf)
+│   │   ├── 📁 boot/                  ──► Thư viện xử lý chu trình nạp Bootloader
+│   │   ├── 📁 clib/ & 📁 libraries/  ──► Thư viện C runtime độc lập (Newlib, POSIX) & libfdt, armnn
+│   │   └── 📁 include/               ──► Header chuẩn dùng chung: Std_Types.h, Platform_Types.h, asdebug.h
+│   │
+│   └── 📁 as.tool/                   ──► [VÙNG 5] BỘ CÔNG CỤ CẤU HÌNH & BỘ SINH MÃ TỰ ĐỘNG (TOOLCHAIN ENGINE)
+│       ├── 📁 config.infrastructure.system/ ──► Bộ sinh mã ArGen Python (ArGen.py, GenOS.py, building.py, xcc.py)
+│       ├── 📁 config.infrastructure.gui/    ──► Công cụ đồ họa Studio cấu hình trực quan
+│       ├── 📁 cancasexl.access/             ──► Thư viện giao tiếp phần cứng Vector CANcaseXL
+│       ├── 📁 py.can.database.access/       ──► Bộ parser và xử lý cơ sở dữ liệu CAN DBC / ARXML
+│       └── 📁 lua/                          ──► Scripting engine hỗ trợ tạo mã và kiểm thử tự động
+│
+└── 📁 build/                         ──► [VÙNG 1] SẢN PHẨM BIÊN DỊCH & MÃ SINH TỰ ĐỘNG (AUTO-GENERATED)
+    └── 📁 nt/<board>/<release>/      ──► Ví dụ: build/nt/lm3s6965evb/ascore/
+        ├── 📁 config/                ──► CẤM SỬA TAY: Os_Cfg.*, CanIf_Cfg.*, Com_PbCfg.*, Dem_Cfg.*, Rte.*
+        └── *.o, *.elf, *.bin, *.s19 ──► File nhị phân nạp vào vi điều khiển thực tế hoặc QEMU Simulator
 ```
 
 ---
 
-## 5. 🔁 QUY TRÌNH 3 BƯỚC: TỪ KHAI BÁO ARXML ĐẾN THỰC THI CODE C (VÍ DỤ `StartupHook`)
+### 4.1. Chi Tiết Vai Trò Kỹ Nghệ & Nguyên Tắc Làm Việc Của Từng Nhánh
+
+#### 📍 Nhánh 1: `as/release/` — Các Profile Phát Hành & Điểm Khởi Động Ứng Dụng
+* **Bản chất kỹ thuật:** Thư mục này định nghĩa các "Profile xây dựng sản phẩm" (Build Targets) của dự án. Một hệ thống AUTOSAR có thể được biên dịch thành nhiều hình thái khác nhau tùy theo mục đích:
+  - `ascore/`: Profile ECU tiêu chuẩn đầy đủ. Bên trong thư mục [`as/release/ascore/app/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/):
+    + `main.c`: Điểm vào (Entry Point) của CPU, chứa hàm `main()` thực hiện chu trình khởi động phần cứng Pre-OS và gọi `EcuM_Init()`.
+    + `app.c`: Tệp ứng dụng chính của kỹ sư. Nơi cài đặt các Task ứng dụng (`TASK(TaskApp)`, `TASK(Task_Periodic_50ms)`), các hàm Hook hệ thống (`StartupHook()`, `ShutdownHook()`, `ErrorHook()`).
+    + `diag_app.c`: Cài đặt logic nghiệp vụ trả lời các dịch vụ chẩn đoán UDS của ứng dụng (`0x22 ReadDataByIdentifier`, `0x2E WriteDataByIdentifier`).
+    + `app.xml`: Tệp phân mảnh cấu hình XML đi kèm tầng ứng dụng, khai báo `TaskApp` và `AlarmApp`.
+  - `asboot/`: Profile dành riêng cho việc biên dịch firmware Bootloader (chỉ chứa Mcal Can, CanIf, CanTp, Dcm Boot, Fls để nạp phần mềm qua mạng).
+  - `askar/`: Profile dành riêng cho việc kiểm thử và chạy độc lập hệ điều hành ASKAR OS siêu nhẹ.
+* **Quyền can thiệp:** ✅ **VÙNG LẬP TRÌNH ỨNG DỤNG HỢP LỆ CỦA KỸ SƯ.**
+
+---
+
+#### 📍 Nhánh 2: `as/com/as.application/` — Tầng Ứng Dụng, Cấu Hình Hệ Thống & Tích Hợp Bo Mạch
+* **Bản chất kỹ thuật:** Chứa mã nguồn ứng dụng độc lập phần cứng và toàn bộ cấu hình mô hình hóa của dự án:
+  - `common/`: Lưu trữ **File ARXML Nguồn chân lý duy nhất** ([`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml)), file cấu hình OS nền tảng ([`infrastructure.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/infrastructure.xml)), và cấu hình OSEK NM ([`config/OsekNm_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/config/OsekNm_Cfg.c), [`config/config.xml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/config/config.xml)).
+  - `swc/`: Tầng thành phần phần mềm ứng dụng (Software Components) chạy trên nền Virtual Function Bus (VFB). Chứa các file như `Swc_Telltale.c` (điều khiển đèn táp-lô), `Swc_Gauge.c` (đồng hồ tốc độ). Các file này hoàn toàn giao tiếp qua RTE API (`Rte_Read()`, `Rte_Write()`), không hề biết phần cứng bên dưới là gì.
+  - `board.<target>/`: Tầng BSP (Board Support Package) và tích hợp cho từng loại bo mạch:
+    + [`board.lm3s6965evb/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.lm3s6965evb/): Hỗ trợ board QEMU ARM Cortex-M3 (startup assembly, linker script `lm3s6965evb.lds`, clock setup).
+    + [`board.stm32f107vc/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/): Hỗ trợ board chip STM32F107 Connectivity Line.
+    + [`board.posix/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.posix/): Hỗ trợ Simulator chạy trực tiếp trên máy tính Linux/Windows.
+* **Quyền can thiệp:** ✅ **ĐƯỢC CHỈNH SỬA** (Sửa cấu hình hệ thống trong ARXML hoặc lập trình logic SWC).
+
+---
+
+#### 📍 Nhánh 3: `as/com/as.infrastructure/` — Hạ Tầng BSW & MCAL Lõi (Generic BSW Stack)
+* **Bản chất kỹ thuật:** Đây là tài sản quý giá nhất của một ngăn xếp phần mềm ô tô tiêu chuẩn AUTOSAR. Chứa mã nguồn của hơn 30 module BSW chuẩn quốc tế, được thiết kế để có thể tái sử dụng (100% Reusable) trên mọi dự án ECU:
+  - `arch/`: Chứa các driver MCAL điều khiển thanh ghi phần cứng (`Mcu`, `Port`, `Dio`, `Can`, `Gpt`, `Spi`, `Fls`) phân chia theo từng dòng vi điều khiển (`lm3s`, `stm32f1`, `mpc56xx`, `posix`).
+  - `system/`: Hạ tầng hệ thống lõi:
+    + `kernel/`: Hỗ trợ đa dạng nhân hệ điều hành OSEK/AUTOSAR (`askar`, `trampoline`, `freeosek`, `freertos`, `toppers_osek`).
+    + `SchM/`: BSW Schedule Manager điều phối các `_MainFunction()` định kỳ.
+    + `EcuM/` & `BswM/`: Bộ quản lý chế độ và nguồn điện ECU State Manager.
+    + `fs/`: Hệ thống tệp tin nhúng (`fatfs`, `lwext4`).
+  - `communication/`: Toàn bộ ngăn xếp mạng truyền thông ô tô:
+    + CAN Stack: `CanIf`, `CanTp`, `CanNm`, `CanSM`.
+    + PDU Routing & COM: `PduR`, `Com`, `ComM`.
+    + LIN Stack: `LinIf`, `LinTp`, `LinSM`.
+    + Ethernet Stack: `SoAd`, `DoIP` (ISO 13400), `SD` (Service Discovery), `vsomeip`.
+    + Chẩn đoán & Đo kiểm qua mạng: `Xcp` (XCP on CAN), `J1939Tp` (xe thương mại hạng nặng).
+  - `diagnostic/`: Ngăn xếp chẩn đoán ô tô:
+    + `Dcm`: Xử lý giao thức dịch vụ chẩn đoán UDS (ISO 14229 / ISO 15765-2).
+    + `Dem`: Quản lý sự kiện chẩn đoán lỗi và bộ nhớ DTC (Diagnostic Trouble Codes).
+    + `Det`: Bẫy lỗi và truy vết lỗi Runtime trong quá trình phát triển (Default Error Tracer).
+  - `memory/`: Ngăn xếp bộ nhớ lưu trữ tham số ECU (Odometer, DTC history, Calibration): `NvM`, `Fee`, `Ea`, `MemIf`.
+  - `include/`: Chứa các header file chuẩn mực bắt buộc của AUTOSAR: `Std_Types.h` (định nghĩa `Std_ReturnType`, `E_OK`, `E_NOT_OK`), `Platform_Types.h` (chuẩn hóa `uint8`, `uint16`, `uint32`), `asdebug.h` (macro log `ASLOG`).
+* **Quyền can thiệp:** ⚠️ **HẠN CHẾ CỰC ĐỘ (CẤM SỬA TRỰC TIẾP).** Kỹ sư chỉ tương tác thông qua các hàm Hook, Callout stubs, hoặc Callback.
+
+---
+
+#### 📍 Nhánh 4: `as/com/as.tool/` — Bộ Công Cụ Cấu Hình & Sinh Mã (Toolchain & Code Generators)
+* **Bản chất kỹ thuật:** Thay vì dùng các bộ công cụ đắt đỏ hàng tỷ đồng (Vector DaVinci Configurator Pro, EB tresos Studio), dự án cung cấp sẵn toàn bộ "động cơ sinh mã" (Code Generation Engine) viết bằng Python:
+  - `config.infrastructure.system/`: Nơi chứa bộ sinh mã trung tâm:
+    + `ArGen.py`: Trình điều phối sinh mã tổng thể.
+    + `GenOS.py`: Phân tích thẻ `<OS>` trong XML/ARXML để sinh ra `Os_Cfg.h` và `Os_Cfg.c`.
+    + `GenCan.py`, `GenCanIf.py`, `GenCom.py`, `GenPduR.py`: Sinh mã cấu hình giao tiếp mạng CAN.
+    + `GenDcm.py`, `GenDem.py`: Sinh mã cấu hình dịch vụ chẩn đoán UDS và bảng mã lỗi DTC.
+    + `GenNvM.py`, `GenFee.py`: Sinh mã cấu hình bộ nhớ Flash EEPROM.
+    + `building.py`: Tập lệnh nền tảng của SCons, tự động quét gom đa tệp XML và thiết lập môi trường biên dịch chéo (Cross-compiler).
+  - `config.infrastructure.gui/`: Giao diện đồ họa Studio giúp kỹ sư kéo thả cấu hình ECU bằng hình ảnh.
+  - `cancasexl.access/` & `py.can.database.access/`: Các thư viện Python/DLL để máy tính PC kết nối trực tiếp với phần cứng CAN Bus (Vector CANcaseXL, PEAK-System PCAN, ZLG CAN).
+* **Quyền can thiệp:** ⚠️ **HẠN CHẾ.** Chỉ can thiệp khi kỹ sư muốn nghiên cứu cơ chế sinh mã tự động hoặc mở rộng cú pháp generator cho các module mới.
+
+---
+
+#### 📍 Nhánh 5: `as/build/` — Thư Mục Sản Phẩm Biên Dịch & Mã Sinh Tự Động (Auto-Generated)
+* **Bản chất kỹ thuật:** Thư mục trung gian do hệ thống build tự động tạo ra tại thời điểm biên dịch (`build/nt/<board>/<release>/`):
+  - `config/`: Nơi lưu trữ tất cả các file mã nguồn C và Header do ArGen tự động sinh ra (`Os_Cfg.c`, `CanIf_Cfg.c`, `Com_PbCfg.c`, `Dem_Cfg.c`, `Rte.c`).
+  - Toàn bộ file đối tượng đối soát nhị phân (`*.o`), file bản đồ bộ nhớ (`*.map`), và tệp nhị phân đầu ra cuối cùng (`ascore.elf`, `ascore.bin`, `ascore.s19`) sẵn sàng nạp vào vi điều khiển hoặc QEMU Simulator.
+* **Quyền can thiệp:** ❌ **TUYỆT ĐỐI CẤM SỬA BẤT KỲ FILE NÀO TRONG THƯ MỤC NÀY.**
+
+---
+
+### 4.2. Bảng Ma Trận Phân Quyền Can Thiệp & Trách Nhiệm Kỹ Sư
+
+| Thư Mục | Vùng Kiến Trúc | Vai Trò Chính Trong Dự Án | Trách Nhiệm & Quyền Can Thiệp Của Kỹ Sư |
+| :--- | :--- | :--- | :---: |
+| [`as/build/nt/.../config/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/) | **Vùng 1: Generated Code** | Chứa mã nguồn sinh tự động từ mô hình cấu hình ARXML. | ❌ **CẤM SỬA TAY**<br>(Sửa là bị ghi đè mất code ngay lập tức) |
+| [`as/release/ascore/app/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/) | **Vùng 2: Release App Entry** | Chứa `main.c`, `app.c`, `diag_app.c`: Khởi động hệ thống, Task ứng dụng, Hooks. | ✅ **ĐƯỢC SỬA TỰ DO**<br>(Nơi lập trình chính của các Hands-on Tasks) |
+| [`as/com/as.application/common/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/) | **Vùng 3: Application Base** | Chứa `autosar.arxml` (Nguồn chân lý) và cấu hình hệ thống chung. | ✅ **ĐƯỢC SỬA**<br>(Sửa để thêm Task, Signal, Alarm, DTC) |
+| [`as/com/as.application/swc/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/swc/) | **Vùng 3: SWC Layer** | Chứa các thành phần phần mềm ứng dụng Runnables độc lập phần cứng. | ✅ **ĐƯỢC SỬA**<br>(Viết thuật toán xử lý nghiệp vụ xe) |
+| [`as/com/as.application/board.*/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/) | **Vùng 3: Board Integration** | Chứa startup, linker script, vector table theo từng bo mạch cụ thể. | ✅ **ĐƯỢC SỬA**<br>(Khi porting sang board phần cứng mới) |
+| [`as/com/as.infrastructure/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/) | **Vùng 4: Static BSW / MCAL** | Mã nguồn lõi của 30+ module BSW và MCAL chuẩn AUTOSAR. | ⚠️ **HẠN CHẾ CỰC ĐỘ**<br>(Chỉ mở rộng qua Callout/Hook; cấm sửa lõi) |
+| [`as/com/as.tool/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/) | **Vùng 5: Toolchain Engine** | Động cơ sinh mã Python ArGen, Studio GUI và parser DBC/ARXML. | ⚠️ **HẠN CHẾ**<br>(Chỉ sửa khi muốn mở rộng bộ sinh mã ArGen) |
+
+---
+
+### 5. 🧭 BỘ QUY LUẬT THIẾT KẾ: NGUYÊN TẮC CHIA TASK, CHIA FILE XML VÀ ĐỊNH VỊ FILE C TRONG TƯƠNG LAI
+
+Khi bắt đầu phát triển một tính năng mới trong dự án phần mềm ô tô (ví dụ: thuật toán BMS SoC, điều khiển động cơ VCU, giao tiếp mạng mới, hoặc làm các bài tập Hands-on), kỹ sư luôn phải chủ động trả lời 3 câu hỏi thiết kế kiến trúc:
+1. *Tôi có cần tạo Task mới không, và chia Task theo quy luật nào?*
+2. *Thẻ khai báo `<Task>` phải nằm ở file XML/ARXML nào?*
+3. *Thân hàm `TASK(...)` phải được lập trình tại file `.c` nào?*
+
+Dưới đây là bộ quy luật thiết kế chuẩn mực của kỹ nghệ AUTOSAR:
+
+---
+
+### 5.1. Quy Luật 1: 4 Tiêu Chí Phân Chia Task Trong Hệ Thống (Task Partitioning Principles)
+
+> ⚠️ **Cảnh báo sai lầm kinh điển:** Cứ mỗi khi có một hàm xử lý mới, lập trình viên lại tạo một Task OS mới!  
+> Trong hệ thống nhúng ô tô thời gian thực, **mỗi Task tiêu tốn từ 512 Bytes đến 2 KBytes RAM cho ngăn xếp (Stack)** và làm CPU suy giảm hiệu năng nghiêm trọng do chi phí chuyển đổi ngữ cảnh (Context Switching Overhead).
+
+Thay vào đó, việc phân chia Task tuân thủ nghiêm ngặt **4 Tiêu chí phân loại**:
+
+#### 1️⃣ Tiêu chí 1: Phân nhóm theo Chu Kỳ Thời Gian (Rate-Monotonic Periodicity Clustering)
+* **Quy tắc vàng:** Các thuật toán hoặc dịch vụ có **CÙNG CHU KỲ THỰC THI** thì **BẮT BUỘC GOM CHUNG VÀO 1 TASK DUY NHẤT**.
+* Trong Task chu kỳ đó, các hàm được gọi tuần tự:
+  ```c
+  TASK(Task_Periodic_10ms) {
+      App_ReadAcceleratorPedal();   /* 1. Đọc bàn đạp ga */
+      App_CalculateMotorTorque();   /* 2. Tính mô-men xoắn */
+      Can_MainFunction_Write();     /* 3. Gửi frame CAN */
+      TerminateTask();
+  }
+  ```
+* **Ma trận phân bổ chu kỳ chuẩn trong ô tô:**
+  - **Task 1ms / 2ms (Priority rất cao ~12-15):** Tác vụ điều khiển động cơ điện (FOC Inverter), lấy mẫu dòng/áp biến tần siêu tốc.
+  - **Task 10ms (Priority cao ~8-10):** Đọc cảm biến ga/phanh, thuật toán kiểm soát lực kéo VCU, truyền thông CAN chu kỳ 10ms.
+  - **Task 20ms / 50ms (Priority trung bình ~4-7):** Xử lý chẩn đoán UDS (`Dcm_MainFunction`), ghi bộ nhớ flash (`NvM_MainFunction`), tính trạng thái pin BMS SoC.
+  - **Task 100ms / 1000ms (Priority thấp ~1-3):** Quản lý trạng thái nguồn xe, đo nhiệt độ môi trường, hiển thị táp-lô.
+* *Quy luật gán Priority (RMS - Rate Monotonic Scheduling):* **Chu kỳ càng ngắn $\rightarrow$ Mức ưu tiên (Priority) càng phải cao.**
+
+#### 2️⃣ Tiêu chí 2: Tách theo Cơ Chế Kích Hoạt (Time-Driven vs Event-Driven)
+* **Tác vụ định thời (Time-driven):** Dùng **Basic Task** (gắn với Alarm chu kỳ hoặc Schedule Table). Chạy xong tác vụ thì gọi `TerminateTask()` ngay. Tuyệt đối không dùng `WaitEvent()`.
+* **Tác vụ hướng sự kiện (Event-driven):**
+  - Nếu tác vụ cần chờ đợi nhiều sự kiện khác nhau mà không được kết thúc task: Dùng **Extended Task** (khai báo `<EventList>`, gọi `WaitEvent(EventMask)`).
+  - Nếu tác vụ phục vụ xử lý ngắt (Bottom-Half / Deferred Processing): Dùng **Basic Task**, kích hoạt trực tiếp từ ngắt phần cứng ISR Cat 2 hoặc Callback truyền thông (ví dụ: `TaskCanIf` được kích hoạt khi có gói tin CAN đến).
+
+#### 3️⃣ Tiêu chí 3: Tách theo Phân Vùng An Toàn Chức Năng (ISO 26262 ASIL Partitioning)
+* Không bao giờ gộp chức năng có mức an toàn cao (**ASIL-D / ASIL-C** như điều khiển phanh, lái trợ lực) chung một Task với chức năng mức an toàn thấp hoặc không an toàn (**ASIL-A / QM** như gạt mưa, màn hình giải trí).
+* Phải chia thành các Task riêng biệt, gán vào các phân vùng bảo vệ bộ nhớ (`OsApplication` Trusted vs Non-Trusted) có phần cứng MPU giám sát.
+
+#### 4️⃣ Tiêu chí 4: Tách theo Ranh Giới Tầng Kiến Trúc (BSW vs Application)
+* **BSW Stack:** Gom các hàm `_MainFunction()` của hạ tầng vào Task điều phối `SchM_BswService` (do Schedule Manager quản lý).
+* **Application Stack:** Các hàm tính toán nghiệp vụ xe được gom vào các Task của tầng Ứng dụng (do RTE quản lý).
+
+---
+
+### 5.2. Quy Luật 2: Cây Quyết Định Định Vị File XML & File C (Placement Decision Tree)
+
+> 💡 **Lưu ý cốt tử về Vai Trò Kỹ Sư (Role-Based Access):**  
+> • **Nếu bạn là Kỹ Sư Ứng Dụng (Application / SWC Engineer hoặc làm Hands-on Tasks):** Vùng `as/com/as.infrastructure/` là **VÙNG CẤM TUYỆT ĐỐI (Read-Only)**. Toàn bộ mã nguồn của bạn **100% bắt buộc phải nằm ở Trường Hợp 3 (`app.c` hoặc `swc/`)**.  
+> • **Nếu bạn là Kỹ Sư BSW / Driver (MCAL & CDD Developer):** Bạn chỉ được phép **TẠO MỚI một module mở rộng độc lập (Complex Device Driver - CDD)** trong `infrastructure/`, tuyệt đối **KHÔNG SỬA VÀO CÁC MODULE BSW LÕI CÓ SẴN** (`CanIf.c`, `Com.c`, `Os.c`, `Dcm.c`).
+
+Khi chuẩn bị tạo một Task mới, hãy đi qua **3 câu hỏi trong Cây Quyết Định** sau:
+
+```
+[BẠN CẦN TẠO MỘT TASK MỚI]
+           │
+           ▼
+[CÂU HỎI 1: Bạn đang đóng vai trò nào & Task này phục vụ cho tầng nào?]
+  │
+  ├──► A. Bạn là Kỹ Sư BSW: Cần viết một Driver / Module ngoại vi mới toanh (Complex Device Driver - CDD)?
+  │      └──► [TRƯỜNG HỢP 1: TẠO MỚI MODULE BSW / CDD ĐỘC LẬP]
+  │           • Khai báo XML: as/com/as.infrastructure/<domain>/<module>/<module>.xml
+  │           • Viết thân hàm C: as/com/as.infrastructure/<domain>/<module>/<module>.c
+  │           • Đăng ký SConscript: Module SConscript xuất cả *.c và *.xml (Tính đóng gói Plug-and-Play)
+  │           ⚠️ LƯU Ý: Đây là TẠO MỚI một module, KHÔNG PHẢI sửa vào mã lõi có sẵn!
+  │
+  ├──► B. Bạn là Kỹ Sư Tích Hợp BSW: Cần thay đổi chu kỳ điều phối nền của nhiều module BSW?
+  │      └──► [TRƯỜNG HỢP 2: ĐIỀU PHỐI HỆ THỐNG BSW (BSW SCHEDULER)]
+  │           • Khai báo XML: as/com/as.application/common/autosar.arxml (hoặc infrastructure.xml)
+  │           • Nơi cài đặt C: as/com/as.infrastructure/system/SchM/SchM.c
+  │           ⚠️ LƯU Ý KỸ NGHỆ: Trong AUTOSAR công nghiệp (Vector DaVinci), SchM do Tool tự động sinh mã
+  │             (không sửa tay). Riêng trong dự án mã nguồn mở 'as', SchM là khung bán tĩnh (semi-static)
+  │             nên kỹ sư BSW can thiệp tại SchM.c; kỹ sư ứng dụng tuyệt đối KHÔNG ĐỤNG VÀO.
+  │
+  └──► C. Bạn là Kỹ Sư Ứng Dụng: Cần viết logic nghiệp vụ xe / Bài tập thực hành Hands-on?
+         └──► [TRƯỜNG HỢP 3: TẦNG ỨNG DỤNG (APPLICATION LAYER - 95% CÔNG VIỆC CỦA BẠN)]
+              │
+              ├──► 3.1. Ứng dụng dạng Demo / Hands-On Task / Profile Target (Phổ biến nhất):
+              │    • Khai báo XML: as/com/as.application/common/autosar.arxml (Nguồn chân lý)
+              │    • Viết thân hàm C: as/release/ascore/app/app.c (Điểm vào của target ascore)
+              │
+              └──► 3.2. Ứng dụng phân rã chuẩn VFB Software Component (SWC):
+                   • Khai báo XML: File ARXML mô tả SWC riêng (as/com/as.application/swc/Swc_*.arxml)
+                   • Viết thân hàm C: Thân hàm Runnable trong as/com/as.application/swc/Swc_*.c
+                   (RTE Generator sẽ tự động map Runnable vào Task tương ứng)
+```
+
+---
+
+### 5.3. Bảng Ma Trận Hướng Dẫn Hành Động Cụ Thể (Actionable Reference Matrix)
+
+| Bạn Đang Làm Tính Năng Gì? | Vai Trò Kỹ Sư | Thẻ `<Task>` Đặt Ở Đâu? | Thân Hàm `TASK(...)` Viết Ở Đâu? | File `SConscript` Thu Thập |
+| :--- | :---: | :--- | :--- | :--- |
+| **Làm Hands-on Tasks (Task 2.3, Task 2.4, Task 2.5...)** | **Kỹ sư Ứng dụng** | [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml) | [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c) | `release/ascore/app/SConscript` |
+| **Lập trình logic xe (Tính pin BMS SoC, Torque VCU)** | **Kỹ sư SWC** | [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml) | [`as/release/ascore/app/app.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c) *(hoặc `swc/Swc_*.c`)* | `release/ascore/app/SConscript` |
+| **Phát triển một module BSW mới (ví dụ `LcdIf`, `SpiTp`)** | **Kỹ sư BSW/CDD** | Tạo mới `as/com/as.infrastructure/.../<module>.xml` | Tạo mới `as/com/as.infrastructure/.../<module>.c` | `SConscript` nội bộ của domain đó |
+| **Điều phối các `_MainFunction()` của BSW theo chu kỳ mới** | **Kỹ sư BSW Core** | [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml) | [`as/com/as.infrastructure/system/SchM/SchM.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c) | `as.infrastructure/system/SConscript` |
+
+---
+
+## 6. 🔁 QUY TRÌNH 3 BƯỚC: TỪ KHAI BÁO ARXML ĐẾN THỰC THI CODE C (VÍ DỤ `StartupHook`)
 
 Kỹ sư phát triển AUTOSAR cần nắm rõ mối quan hệ cộng tác giữa **ARXML $\rightarrow$ Toolchain sinh mã $\rightarrow$ Cài đặt thân hàm C**:
 
@@ -238,7 +446,7 @@ Kỹ sư phát triển AUTOSAR cần nắm rõ mối quan hệ cộng tác giữ
 
 ---
 
-## 6. 📋 BẢNG TRA CỨU NHANH NƠI ĐẶT MÃ NGUỒN THEO TỪNG TÌNH HUỐNG
+## 7. 📋 BẢNG TRA CỨU NHANH NƠI ĐẶT MÃ NGUỒN THEO TỪNG TÌNH HUỐNG
 
 | Bạn Muốn Làm Gì? | Nơi Bạn Phải Chỉnh Sửa | Quy Trình Chuẩn Cần Thực Hiện |
 | :--- | :--- | :--- |
@@ -251,7 +459,7 @@ Kỹ sư phát triển AUTOSAR cần nắm rõ mối quan hệ cộng tác giữ
 
 ---
 
-## 7. 📁 HƯỚNG DẪN QUẢN LÝ FILE DIFF TẠI `task_fix/`
+## 8. 📁 HƯỚNG DẪN QUẢN LÝ FILE DIFF TẠI `task_fix/`
 
 Thư mục `docs/hands_on_tasks/task_fix/` được dùng làm nơi lưu trữ các bản vá (patch/diff), ghi chú sửa đổi và bằng chứng hoàn thành cho từng task trong lộ trình 27 tasks:
 
@@ -275,12 +483,45 @@ git diff as/ > docs/hands_on_tasks/task_fix/task_02_os_mcal.diff
 
 ---
 
-## 8. 🎯 CHECKLIST KIỂM TRA TRƯỚC KHI COMMIT CODE
+## 9. 🎯 CHECKLIST KIỂM TRA TRƯỚC KHI COMMIT CODE
 
 Mỗi khi hoàn thành một task, hãy tự kiểm tra 4 câu hỏi sau:
 
-- [ ] 1. Tôi có vô tình chỉnh sửa trực tiếp vào file nào trong thư mục `build/.../config/` không? (Nếu có $
-ightarrow$ Phải revert và sửa lại qua file XML/ARXML).
+- [ ] 1. Tôi có vô tình chỉnh sửa trực tiếp vào file nào trong thư mục `build/.../config/` không? (Nếu có $\rightarrow$ Phải revert và sửa lại qua file XML/ARXML).
 - [ ] 2. Thuật toán mới của tôi đã nằm đúng trong file ứng dụng SWC (`.c`) hoặc Callout stub chưa?
 - [ ] 3. Nếu chạy lệnh clean build (`scons -c && scons`), dự án có tự động sinh mã và biên dịch thành công mà không cần sửa tay bất kỳ dòng nào không?
 - [ ] 4. Tôi đã trích xuất `git diff` lưu vào `docs/hands_on_tasks/task_fix/` để theo dõi tiến độ chưa?
+
+---
+
+## 10. 📦 QUY TẮC SAO LƯU DỰ ÁN HÀNG NGÀY (DAILY BACKUP RULES)
+
+Nhằm đảm bảo an toàn tuyệt đối cho toàn bộ tài liệu nghiên cứu, bài giải thực hành và giải pháp kiến trúc của dự án, quy trình sao lưu hàng ngày được chuẩn hóa theo các nguyên tắc sau:
+
+### 10.1. Phạm Vi Sao Lưu (Backup Scope): CHỈ SAO LƯU THƯ MỤC `docs/`
+* **Đối tượng được đóng gói:** Duy nhất thư mục [`docs/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/) (bao gồm toàn bộ 27 Hands-on Tasks, Solutions, Theory Deep Dives, Masterclasses, Task Fix Packages, và Báo cáo kỹ thuật).
+* **Lý do loại trừ thư mục `as/`:**
+  1. Thư mục `as/` chứa toàn bộ khung xương mã nguồn AUTOSAR tĩnh dung lượng lớn (~30 MB nhị phân), đã được quản lý và bảo vệ nguyên vẹn bởi lịch sử Git commit.
+  2. Việc nén và encode cả `as/` hàng ngày tạo ra các tệp Base64 rất nặng (~40 MB), gây tốn băng thông và làm chậm quá trình push Git không cần thiết.
+  3. Chỉ sao lưu thư mục `docs/` giúp tệp nén đạt kích thước siêu nhẹ (~840 KB zip / ~1.1 MB text Base64), đẩy lên GitLab trong chưa đầy 2 giây.
+
+### 10.2. Quy Trình Kỹ Thuật 4 Bước Chuẩn Mực:
+1. **Nén (Compress):** Nén duy nhất thư mục `docs/` thành file zip tạm:
+   ```powershell
+   tar -a -c -f BackUp/Study_AUTOSAR_Backup.zip docs
+   ```
+2. **Mã hóa (Encode Base64):** Chuyển đổi sang text Base64 qua tiện ích tiêu chuẩn Windows `certutil`:
+   ```powershell
+   certutil -f -encode BackUp/Study_AUTOSAR_Backup.zip BackUp/Study_AUTOSAR_Backup.zip.txt
+   ```
+3. **Dọn dẹp (Cleanup):** Tự động xóa file `.zip` trung gian ngay sau khi encode, **chỉ lưu giữ duy nhất file `.txt`** trong thư mục `BackUp/`.
+4. **Đồng bộ (Git Sync):** Stage, commit và push tệp `Study_AUTOSAR_Backup.zip.txt` lên GitLab remote `origin/main`.
+
+### 10.3. Cơ Chế Lập Lịch Tự Động (18:30 Hàng Ngày):
+* Tác vụ được kích hoạt tự động vào đúng **18:30:00 (6h30 chiều)** mỗi ngày thông qua **Windows Task Scheduler** (`Study_AUTOSAR_Daily_Backup`) thực thi script [`BackUp/backup_daily.ps1`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/backup_daily.ps1).
+* Kỹ sư có thể giải mã khôi phục thư mục tài liệu bất cứ lúc nào qua công cụ [`BackUp/ConvertBackUpFile.bat`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/ConvertBackUpFile.bat) hoặc lệnh:
+  ```powershell
+  certutil -f -decode BackUp/Study_AUTOSAR_Backup.zip.txt BackUp/Study_AUTOSAR_Backup.zip
+  ```
+
+
