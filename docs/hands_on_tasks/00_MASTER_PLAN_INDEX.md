@@ -35,14 +35,14 @@ docs/hands_on_tasks/
 | # | File Task | Chuyên Đề | Số Tasks | Giờ Ước Tính | Tuần |
 |:---:|---|---|:---:|:---:|:---:|
 | 01 | [Architecture & VFB](./01_Architecture_VFB_Tasks.md) | Layered Architecture, RTE, Memory, OS Hooks | 5 tasks | ~12 giờ | Tuần 1 |
-| 02 | [OS & MCAL](./02_OS_MCAL_Tasks.md) | OSEK OS, Task, ISR, MCAL Drivers | 5+1 tasks | ~15 giờ | Tuần 1–2 |
+| 02 | [OS & MCAL](./02_OS_MCAL_Tasks.md) | OSEK OS, Task, ISR, MCAL Drivers, IoHwAb | 8 tasks | ~24 giờ | Tuần 1–2 |
 | 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, 6-Layer ComStack E2E, CanTp, COM, Oscilloscope, ARXML, CanSM | 10 tasks | ~25 giờ | Tuần 2 |
-| 04 | [Diagnostic & Memory](./04_Diagnostic_Memory_Tasks.md) | UDS, DCM, DEM, NvM, Fee | 5+1 tasks | ~18 giờ | Tuần 3 |
+| 04 | [Diagnostic & Memory](./04_Diagnostic_Memory_Tasks.md) | UDS, DCM, DEM, NvM, Fee, Linker Script | 6 tasks | ~18 giờ | Tuần 3 |
 | 05 | [Toolchain & ARXML](./05_Toolchain_ARXML_Tasks.md) | ARXML, EcuM, BswM, Code Gen | 4+1 tasks | ~12 giờ | Tuần 3–4 |
 | 06 | [Real-World BMS/VCU/Body](./06_RealWorld_BMS_VCU_Tasks.md) | Mini BMS, VCU Torque, BCM Sleep | 3+1 tasks | ~30 giờ | Tuần 4 |
 | 07 | [LIN Stack](./07_LIN_Stack_Tasks.md) | LIN Protocol, LinIf Schedule, Wiper Control | 4 tasks | ~8 giờ | Tuần 4 |
-| 08 | [Automotive Ethernet](./08_Ethernet_SOMEIP_DoIP_Tasks.md) | 100BASE-T1, SOME/IP, DoIP, SoAd | 4 tasks | ~8 giờ | Tuần 4 |
-| | **TỔNG** | | **38 tasks** | **~123 giờ** | **4–5 Tuần** |
+| 08 | [Automotive Ethernet](./08_Ethernet_SOMEIP_DoIP_Tasks.md) | 100BASE-T1, SOME/IP, DoIP, SoAd, vECU Vector XL | 5 tasks | ~12 giờ | Tuần 4 |
+| | **TỔNG** | | **41 tasks** | **~141 giờ** | **4–5 Tuần** |
 
 ---
 

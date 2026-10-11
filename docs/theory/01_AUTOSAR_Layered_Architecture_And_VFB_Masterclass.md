@@ -30,16 +30,16 @@
    - [6.3 Bản Chất Kỹ Thuật (Bên Trong Một SWC Thực Chất Có Những Gì?)](#63-bản-chất-kỹ-thuật-bên-trong-một-swc-thực-chất-có-những-gì)
    - [6.4 Dẫn Chứng Thực Tế Từ Mã Nguồn Dự Án `as`](#64-dẫn-chứng-thực-tế-từ-mã-nguồn-dự-án-as)
    - [6.5 Phân Biệt Sâu Sắc: Biến Toàn Cục (Global Variables) vs Biến Nội Bộ IRV (Inter-Runnable Variables)](#65-phân-biệt-sâu-sắc-biến-toàn-cục-global-variables-vs-biến-nội-bộ-irv-inter-runnable-variables)
-7. [Bằng Chứng Mã Nguồn & Định Nghĩa Chuẩn Hóa Trong `parai/as`](#7)
-8. [Bảng So Sánh Toàn Diện AUTOSAR Classic vs AUTOSAR Adaptive Platform](#8)
-9. [Đúc Kết Kiến Trúc & Tiêu Chuẩn Đánh Giá](#9)
-10. [Bảng Ánh Xạ Kiến Thức (Knowledge Mapping)](#10)
-11. [Real-World Scenarios (Các kịch bản thực tế)](#11)
-12. [Common Pitfalls (Những Lỗi Thường Gặp)](#12)
-13. [Thực Hành (Hands-On Exercises)](#13)
-14. [Câu Hỏi Phỏng Vấn (Interview Questions)](#14)
-15. [Phụ Lục Kỹ Thuật Chuyên Sâu (Deep Dive Specifications)](#15)
-16. [BỨC TRANH TỔNG HỢP HOÀN CHỈNH: TRUY VẾT DÒNG CHẢY 1 TÍNH NĂNG XUYÊN SUỐT TOÀN BỘ 4 TẦNG AUTOSAR (End-to-End Master Capstone Walkthrough)](#16)
+7. [Bảng So Sánh Toàn Diện AUTOSAR Classic vs AUTOSAR Adaptive Platform](#7)
+8. [Câu Hỏi Phỏng Vấn (Interview Questions)](#8)
+9. [BỨC TRANH TỔNG HỢP HOÀN CHỈNH: TRUY VẾT DÒNG CHẢY 1 TÍNH NĂNG XUYÊN SUỐT TOÀN BỘ 4 TẦNG AUTOSAR (End-to-End Master Capstone Walkthrough)](#9)
+10. [Thực Tiễn Công Nghiệp: Quy Trình Phát Triển Phần Mềm Ô Tô Tại Hãng Xe (Case Study: VinFast)](#10)
+    - [10.1 Bối Cảnh Thực Tế & Chiến Lược Của OEM Xe Điện (VinFast SDV Strategy)](#101-bối-cảnh-thực-tế--chiến-lược-của-oem-xe-điện-vinfast-sdv-strategy)
+    - [10.2 Bóc Tách Thực Tế Theo Từng Tầng: Mua Gì? Cấu Hình Gì? Tự Viết Gì?](#102-bóc-tách-thực-tế-theo-từng-tầng-mua-gì-cấu-hình-gì-tự-viết-gì)
+    - [10.3 Chu Trình Tích Hợp & Kiểm Thử Theo Mô Hình Chữ V (V-Model Integration Workflow)](#103-chu-trình-tích-hợp--kiểm-thử-theo-mô-hình-chữ-v-v-model-integration-workflow)
+    - [10.4 Bảng Ma Trận Phân Định Trách Nhiệm Toàn Diện (The VinFast AUTOSAR Responsibility Matrix)](#104-bảng-ma-trận-phân-định-trách-nhiệm-toàn-diện-the-vinfast-autosar-responsibility-matrix)
+    - [10.5 Giải Mã Nghịch Lý Kỹ Thuật: 70% Công Sức Phát Triển BSW Thực Chất Là Làm Gì?](#105-giải-mã-nghịch-lý-kỹ-thuật-70-công-sức-phát-triển-bsw-thực-chất-là-làm-gì)
+    - [10.6 Phân Tích Thực Chiến Job Description (JD) BSW Tại VinFast: Bạn Sẽ Làm Gì Hàng Ngày & Chiến Lược Ứng Tuyển](#106-phân-tích-thực-chiến-job-description-jd-bsw-tại-vinfast-bạn-sẽ-làm-gì-hàng-ngày--chiến-lược-ứng-tuyển)
 
 ---
 
@@ -596,6 +596,268 @@ Khảo sát trực tiếp file [`as/com/as.infrastructure/communication/CanIf/Ca
   rVal = Can_Write(txEntry->CanIfCanTxPduHthRef->CanIfHthIdSymRef, &canPdu);
   ```
 
+###### 🔹 Dẫn chứng 3 — Bộ Trừu Tượng Hóa I/O Bo Mạch Trong `IoHwAb.h` & `IoHwAb_Types.h` (Deep-Dive Tầng Sâu):
+
+Trong toàn bộ kiến trúc AUTOSAR BSW, **`IoHwAb` (I/O Hardware Abstraction)** là module **đặc biệt nhất và bắt buộc phải viết tay 100% (Hand-coded in-house)**. Các công cụ sinh mã tự động (như Vector DaVinci hay EB tresos) không thể tự sinh code cho `IoHwAb` vì không một công cụ nào có thể tự đoán được sơ đồ mạch điện tử PCB (Schematic) mà kỹ sư phần cứng vẽ ra!
+
+```mermaid
+graph TD
+    subgraph "TẦNG 4: APPLICATION LAYER (SWCs)"
+        SWC_Pedal["SWC_PedalSensor<br>(Xử lý mV, %, và Logic an toàn ASIL-D)"]
+        SWC_BMS["SWC_ContactorControl<br>(Ra lệnh nghiệp vụ: ĐÓNG / NGẮT Contactor)"]
+    end
+
+    subgraph "TẦNG 3: RUNTIME ENVIRONMENT (RTE)"
+        RTE["RTE (Virtual Function Bus - VFB)<br>Rte_Read_PedalVoltage() / Rte_Call_SetContactor()"]
+    end
+
+    subgraph "TẦNG 2.3: SERVICE LAYER (DỊCH VỤ HỆ THỐNG)"
+        DCM["DCM (Diagnostic Communication Manager)<br>• Xử lý UDS Service 0x2F (IO Control By Identifier)"]
+        DEM_DET["DEM & DET (Error Management)<br>• DEM: Ghi nhận DTC lỗi phần cứng bo mạch<br>• DET: Báo lỗi tham số phát triển"]
+        SCHM_OS["SchM & AUTOSAR OS<br>• Lập lịch chu kỳ thời gian thực (Cyclic Tasks)"]
+    end
+
+    subgraph "TẦNG 2.2: ECU ABSTRACTION LAYER (100% HAND-CODED IN-HOUSE)"
+        subgraph IOHWAB["MODULE IoHwAb (as/com/as.infrastructure/include/IoHwAb.h)"]
+            F1["1. Giải mã Cầu phân áp PCB: V_in = V_adc * (R1+R2)/R2"]
+            F2["2. Bộ lọc số IIR Low-Pass: y[n] = 0.25*x[n] + 0.75*y[n-1]"]
+            F3["3. Chẩn đoán điện áp đứt dây / chạm mass: IoHwAb_QualityType"]
+            F4["4. Điều khiển Interlock & Bảo vệ cuộn hút Relay"]
+        end
+    end
+
+    subgraph "TẦNG 2.1: MICROCONTROLLER ABSTRACTION LAYER (MCAL)"
+        MCAL_ADC["MCAL Adc Driver<br>(Chỉ biết Raw Ticks 0 - 4095)"]
+        MCAL_DIO["MCAL Dio Driver<br>(Chỉ biết Logic Pin STD_HIGH / STD_LOW)"]
+        MCAL_PWM["MCAL Pwm Driver<br>(Băm xung Timer Counter)"]
+    end
+
+    subgraph "TẦNG 1: PHẦN CỨNG BO MẠCH ECU & LINH KIỆN NGOẠI VI (PCB)"
+        HW_PCB["Cảm biến Chân ga kép (0-5V) | Cầu phân áp 10k-10k | Mạch lái MOSFET Contactor 400V"]
+    end
+
+    %% Tuyến I/O Nghiệp Vụ Chính (Main I/O Path qua RTE)
+    SWC_Pedal <-->|Port Interface| RTE
+    SWC_BMS <-->|Client-Server / S-R| RTE
+    RTE <-->|Tuyến I/O chính: Sensor/Actuator Ports| IOHWAB
+
+    %% Tuyến Phối Hợp Với Service Layer (Cross-Layer Service Interactions)
+    DCM -->|1. UDS 0x2F IO Control: Cưỡng bức override / ReturnControl| IOHWAB
+    IOHWAB -->|2. Báo lỗi phần cứng đứt dây / chạm mass: Dem_SetEventStatus| DEM_DET
+    IOHWAB -->|2. Báo lỗi tham số: Det_ReportError| DEM_DET
+    SCHM_OS -->|3. Lập lịch chu kỳ: IoHwAb_MainFunction| IOHWAB
+
+    %% Tuyến Giao Tiếp MCAL & Bo Mạch
+    IOHWAB <--> MCAL_ADC
+    IOHWAB <--> MCAL_DIO
+    IOHWAB <--> MCAL_PWM
+    MCAL_ADC <--> HW_PCB
+    MCAL_DIO <--> HW_PCB
+    MCAL_PWM <--> HW_PCB
+```
+
+> [!NOTE]
+> #### ❓ Giải Đáp Kiến Trúc: Từ RTE Nhảy Xuống IoHwAb Không Qua Tầng Service Có Hợp Lý Không?
+>
+> **Khẳng định:** **HOÀN TOÀN HỢP LÝ VÀ ĐÚNG CHUẨN 100% THEO ĐẶC TẢ KIẾN TRÚC AUTOSAR CLASSIC!**
+>
+> 1. **Bản chất kiến trúc AUTOSAR (AUTOSAR EXP Layered Software Architecture):**
+>    * Trong chuẩn AUTOSAR, **KHÔNG CÓ module nào tên là "I/O Service"** ở Service Layer đứng xen vào giữa RTE và `IoHwAb` cho các tác vụ đọc/ghi tín hiệu cảm biến hoặc điều khiển cơ cấu chấp hành thông thường.
+>    * Khác với truyền thông mạng (cần `Com` và `PduR` để bóc tách byte, pack tín hiệu vào PDU) hay lưu trữ (cần `NvM` để quản lý RAM mirror, tính CRC), dữ liệu I/O gắn liền trực tiếp với sơ đồ mạch điện PCB của hộp ECU.
+>    * Vì vậy, AUTOSAR quy định `IoHwAb` được mô hình hóa thành một **Sensor/Actuator Software Component** hoặc **ECU Abstraction Component**, mở trực tiếp các cổng giao tiếp chuẩn (Standardized AUTOSAR Ports: Client-Server hoặc Sender-Receiver) nối thẳng vào **RTE**.
+>
+> 2. **So sánh 3 tuyến dữ liệu chuẩn mực (The 3 Canonical Data Paths):**
+>    * **Tuyến Truyền Thông (COM Path):** $\text{SWC} \longleftrightarrow \text{RTE} \longleftrightarrow \mathbf{Com / PduR \text{ (Service)}} \longleftrightarrow \text{CanIf} \longleftrightarrow \text{Can (MCAL)}$
+>    * **Tuyến Lưu Trữ (Memory Path):** $\text{SWC} \longleftrightarrow \text{RTE} \longleftrightarrow \mathbf{NvM \text{ (Service)}} \longleftrightarrow \text{MemIf} \longleftrightarrow \text{Fee / Fls (MCAL)}$
+>    * **Tuyến Ngoại Vi (I/O Path):** $\text{SWC} \longleftrightarrow \text{RTE} \longleftrightarrow \mathbf{IoHwAb \text{ (ECU Abstraction)}} \longleftrightarrow \text{Adc / Dio / Pwm (MCAL)}$  
+>      *(Tuyến I/O bypass hoàn toàn Service Layer trong chu trình vận hành thời gian thực để triệt tiêu độ trễ trễ micro-giây).*
+>
+> 3. **Vậy Tầng Service (Service Layer) đóng vai trò gì liên quan đến `IoHwAb`?**  
+>    Mặc dù không đứng giữa luồng dữ liệu chính, Tầng Service gắn kết chặt chẽ với `IoHwAb` qua **3 nhánh phối hợp ngang/chéo sống còn**:
+>    * **Nhánh 1 — Chẩn đoán cưỡng bức UDS Service 0x2F (`Dcm` $\longrightarrow$ `IoHwAb`):**  
+>      Khi kỹ sư cắm máy chẩn đoán Tester (OBD/UDS tool) vào xe và gửi bản tin ISO 14229 Service `0x2F` (*InputOutputControlByIdentifier*), module `Dcm` ở Service Layer sẽ gọi xuống `IoHwAb` để ép buộc phần cứng thực thi (như bật còi xe, kích mở rơ-le, khóa quạt tản nhiệt quay 100% để kiểm tra bo mạch).  
+>      Dẫn chứng trực tiếp từ [`IoHwAb_Types.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb_Types.h#L43-L48):
+>      ```c
+>      /* ISO14229, IoControl (Dcm gọi xuống IoHwAb khi chạy dịch vụ UDS 0x2F) */
+>      #define IOHWAB_RETURNCONTROLTOECU 0  /* Trả quyền điều khiển lại cho thuật toán SWC */
+>      #define IOHWAB_RESETTODEFAULT     1  /* Reset I/O về trạng thái mặc định ban đầu */
+>      #define IOHWAB_FREEZECURRENTSTATE 2  /* Đóng băng giá trị I/O ở trạng thái hiện thời */
+>      #define IOHWAB_SHORTTERMADJUST    3  /* Ép I/O sang giá trị cưỡng bức tạm thời */
+>      ```
+>    * **Nhánh 2 — Ghi nhận lỗi phần cứng & Báo cáo sự cố (`IoHwAb` $\longrightarrow$ `Dem`, `Det`):**  
+>      Khi `IoHwAb` lấy mẫu và phát hiện mạch điện bị đứt dây hoặc chập mass (`IOHWAB_ERR`), nó gọi trực tiếp `Dem_SetEventStatus()` của Service Layer để ghi nhận mã lỗi DTC và đóng băng dữ liệu Freeze Frame.  
+>      Đồng thời, khi phát hiện lỗi tham số lập trình (sai Channel ID, sai dải Duty), `IoHwAb` báo cáo sang `Det` qua macro `IOHWAB_DET_REPORT_ERROR()` (trích [`IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h#L72-L75)).
+>    * **Nhánh 3 — Lập lịch thời gian thực định kỳ (`SchM` / `AUTOSAR OS` $\longrightarrow$ `IoHwAb_MainFunction`):**  
+>      Hệ điều hành `OS` và bộ điều phối BSW `SchM` thuộc Service Layer định kỳ kích hoạt hàm `IoHwAb_MainFunction()` (trích [`IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h#L105)) để thực hiện quét ADC liên tục, chạy bộ lọc số IIR và kiểm tra tính toàn vẹn phần cứng.
+
+**Bảng So Sánh 3 Tầng: MCAL vs IoHwAb vs SWC:**
+| Tiêu Chí Kỹ Thuật | MCAL (Drivers Cấp Thấp) | `IoHwAb` (Trừu Tượng Hóa Bo Mạch) | SWC (Thuật Toán Ứng Dụng) |
+| :--- | :--- | :--- | :--- |
+| **Giá trị dữ liệu xử lý** | Raw Ticks ($0 - 4095$), Pin High/Low | **Đại lượng vật lý thực tế:** $0 - 5000\text{ mV}$, $0 - 1000\text{ per mille}$, cờ chất lượng `Quality` | **Giá trị nghiệp vụ:** Vị trí chân ga $0 - 100\%$, Trạng thái xe PRND |
+| **Mức độ hiểu biết phần cứng** | Chỉ hiểu thanh ghi vi điều khiển (Registers, DMA, Clock) | **Hiểu toàn bộ sơ đồ nguyên lý mạch PCB** (Điện trở cầu phân áp, thời gian nạp tụ, mạch kích relay) | **Hoàn toàn "mù" về phần cứng** (Không biết chip gì, bo mạch dùng chân nào) |
+| **Khả năng tái sử dụng (Portability)**| Phụ thuộc 100% vào dòng chip (NXP / Infineon / ST) | **Phụ thuộc vào bo mạch PCB cụ thể** (Đổi bo mạch phải sửa code `IoHwAb`) | **Tái sử dụng 100% trên mọi dòng xe** (Độc lập tuyệt đối với phần cứng) |
+
+---
+
+##### 1. Giải Phẫu Cấu Trúc API & Struct Trực Tiếp Từ Mã Nguồn `as`:
+
+Khảo sát trực tiếp tệp [`as/com/as.infrastructure/include/IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h) và [`IoHwAb_Types.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb_Types.h):
+
+* **Các API chuẩn mực theo AUTOSAR SWS IoHwAb:**
+  ```c
+  /* Trích từ as/com/as.infrastructure/include/IoHwAb.h */
+  #define IOHWAB_INIT_ID                      0x10  /* Khởi tạo module */
+  #define IOHWAB_ANALOG_GET_ID                0x20  /* Đọc tín hiệu tương tự (ADC) */
+  #define IOHWAB_DIGITAL_GET_ID               0x30  /* Đọc tín hiệu số (GPIO In) */
+  #define IOHWAB_DIGITAL_SET_ID               0x31  /* Xuất tín hiệu số (GPIO Out) */
+  #define IOHWAB_PWMDUTY_SET_ID               0x40  /* Điều khiển chu kỳ xung PWM */
+  #define IOHWAB_PWMFREQUENCYANDDUTY_SET_ID   0x41  /* Đổi tần số và chu kỳ PWM */
+  #define IOHWAB_CAPTURE_GET_ID               0x50  /* Đo độ rộng xung/tần số (ICU) */
+  ```
+* **Các kiểu dữ liệu chuẩn mực ([`IoHwAb_Types.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb_Types.h)):**
+  ```c
+  typedef uint8  IoHwAb_LevelType;         /* Mức logic: IOHWAB_LOW (0) / IOHWAB_HIGH (1) */
+  typedef sint32 IoHwAb_AnalogValueType;   /* Giá trị Analog sau giải mã (mV, mA, 0.1°C) */
+  typedef uint32 IoHwAb_DutyType;          /* Chu kỳ Duty: 0 đến 1000u (IOHWAB_DUTY_MAX = 1000 per mille) */
+
+  /* Đánh giá chất lượng tín hiệu theo chuẩn chẩn đoán điện áp */
+  typedef enum {
+      IOHWAB_INIVAL,  /* Giá trị khởi tạo chưa sẵn sàng */
+      IOHWAB_ERR,     /* Phát hiện lỗi điện tử (Chạm mass hoặc chạm nguồn) */
+      IOHWAB_BAD,     /* Tín hiệu chập chờn vượt biên dung sai */
+      IOHWAB_GOOD,    /* Tín hiệu hợp lệ, an toàn */
+  } IoHwAb_QualityType;
+  ```
+
+---
+
+##### 2. Ba Ví Dụ Thực Chiến Kinh Điển Kèm Mã Nguồn C Chi Tiết:
+
+###### 📌 VÍ DỤ 1: Cảm Biến Bàn Đạp Ga Kép (VCU Dual Accelerator Pedal Sensor)
+* **Bối cảnh thực tế trên xe điện (VinFast VCU):**  
+  Cảm biến chân ga là linh kiện an toàn cấp độ cao nhất (**ASIL-D**). Cảm biến đưa về 2 đường điện áp độc lập ($0 - 5\text{V}$). Bo mạch ECU dùng chip MCU chạy điện áp $3.3\text{V}$, do đó trên PCB bố trí 2 mạch cầu phân áp ($R_1 = 10\,\text{k}\Omega, R_2 = 10\,\text{k}\Omega$) để hạ áp từ $5\text{V} \to 2.5\text{V}$ cấp vào chân vi điều khiển.
+* **Mã nguồn C thực tế tầng `IoHwAb`:**
+  ```c
+  /* Tệp: as/com/as.infrastructure/system/IoHwAb/IoHwAb.c */
+  #include "IoHwAb.h"
+  #include "IoHwAb_Types.h"
+  #include "Adc.h"
+
+  static sint32 Filtered_Pedal_mV = 0;
+
+  Std_ReturnType IoHwAb_Analog_Get(IoHwAb_SignalType Signal, IoHwAb_AnalogValueType *Value, IoHwAb_StatusType *Status) {
+      if (Value == NULL || Status == NULL) return E_NOT_OK;
+
+      if (Signal == IOHWAB_SIGNAL_PEDAL_MAIN) {
+          /* 1. Gọi MCAL Adc đọc giá trị số thô (ADC 12-bit: 0 - 4095 Ticks) */
+          Adc_ValueGroupType raw_ticks = Adc_ReadGroup_Channel(0);
+
+          /* 2. Chuyển đổi sang điện áp tại chân MCU: V_adc = ticks * 3300mV / 4095 */
+          sint32 v_mcu_mV = (sint32)((uint32)raw_ticks * 3300UL / 4095UL);
+
+          /* 3. Áp dụng công thức cầu phân áp bo mạch: V_sensor = V_mcu * (R1 + R2) / R2 = V_mcu * 2 */
+          sint32 v_sensor_mV = v_mcu_mV * 2;
+
+          /* 4. Bộ lọc số thông thấp IIR (IIR Low-Pass Filter) triệt tiêu gai xung nhiễu điện từ EMC:
+                y[n] = 0.20 * x[n] + 0.80 * y[n-1] */
+          Filtered_Pedal_mV = (v_sensor_mV * 20 + Filtered_Pedal_mV * 80) / 100;
+          *Value = Filtered_Pedal_mV;
+
+          /* 5. Chẩn đoán điện tử tức thời (Electrical Diagnostic):
+                Cảm biến chân ga chuẩn chỉ hoạt động trong dải 0.5V (500mV) đến 4.5V (4500mV).
+                Nếu raw_ticks < 50 (~40mV) -> Đứt dây / Chạm mass (Short-to-GND).
+                Nếu raw_ticks > 4000 (~3220mV) -> Chạm nguồn 5V (Short-to-VCC). */
+          if (raw_ticks < 50 || raw_ticks > 4000) {
+              Status->quality = IOHWAB_ERR;  /* Báo lỗi phần cứng khẩn cấp */
+          } else {
+              Status->quality = IOHWAB_GOOD; /* Tín hiệu sạch, hợp lệ */
+          }
+          return E_OK;
+      }
+      return E_NOT_OK;
+  }
+  ```
+* **Tầng ứng dụng SWC tiêu thụ dữ liệu qua RTE:**
+  ```c
+  /* Tệp: as/com/as.application/swc/vcu/SWC_PedalSensor.c */
+  void SWC_PedalSensor_Runnable_10ms(void) {
+      IoHwAb_AnalogValueType pedal_mV;
+      IoHwAb_StatusType status;
+
+      /* SWC chỉ gọi hàm trừu tượng qua RTE, không biết gì về thanh ghi ADC hay điện trở 10k */
+      if (IoHwAb_Analog_Get(IOHWAB_SIGNAL_PEDAL_MAIN, &pedal_mV, &status) == E_OK) {
+          if (status.quality == IOHWAB_GOOD) {
+              /* Quy đổi điện áp 500mV - 4500mV thành độ mở 0% - 100% */
+              uint8 pedal_percent = (uint8)((pedal_mV - 500) * 100 / 4000);
+              Rte_Write_PedalPosition_Percent(pedal_percent);
+          } else {
+              /* Lỗi phần cứng -> Cắt mô-men xoắn động cơ về 0 ngay lập tức để chống xe tự phóng đi! */
+              Rte_Write_PedalPosition_Percent(0);
+              Dem_SetEventStatus(DTC_PEDAL_SENSOR_CIRCUIT_FAIL, DEM_EVENT_STATUS_FAILED);
+          }
+      }
+  }
+  ```
+
+---
+
+###### 📌 VÍ DỤ 2: Kích Đóng Cắt Contactor Pin Cao Áp 400V (BMS High-Voltage Contactor)
+* **Bối cảnh thực tế trên xe điện (VinFast BMS):**  
+  Bộ pin $400\text{V}$ được nối với động cơ thông qua 3 Rơ-le công suất lớn (Contactor Chính Dương, Contactor Chính Âm, và Contactor Sạc Đệm Precharge). Ứng dụng SWC tuyệt đối **cấm không được gọi thẳng `Dio_WriteChannel()`** vì nếu đóng ngắt sai trình tự micro-giây sẽ làm nổ hồ quang điện phá hủy toàn bộ hệ thống!
+* **Mã nguồn C thực tế tầng `IoHwAb`:**
+  ```c
+  /* Tệp: as/com/as.infrastructure/system/IoHwAb/IoHwAb_Relay.c */
+  #include "IoHwAb.h"
+  #include "Dio.h"
+
+  /* Biến kiểm soát trạng thái liên động an toàn (Interlock Safety State) */
+  static boolean HighVoltage_Interlock_Closed = TRUE;
+
+  Std_ReturnType IoHwAb_Digital_Set(IoHwAb_SignalType Signal, IoHwAb_LevelType Level) {
+      if (Signal == IOHWAB_SIGNAL_MAIN_CONTACTOR) {
+          /* Kiểm tra điều kiện bảo vệ: Nếu nắp hộp pin bị mở (Interlock hở) -> CẤM ĐÓNG RELAY */
+          if (Level == IOHWAB_HIGH && !HighVoltage_Interlock_Closed) {
+              return E_NOT_OK; /* Từ chối kích hoạt vì lý do an toàn sống còn */
+          }
+
+          /* Kích chân GPIO qua MCAL Dio để điều khiển Transistor/MOSFET lái cuộn hút Relay */
+          Dio_LevelType dio_level = (Level == IOHWAB_HIGH) ? STD_HIGH : STD_LOW;
+          Dio_WriteChannel(DIO_PIN_CONTACTOR_POSITIVE, dio_level);
+          return E_OK;
+      }
+      return E_NOT_OK;
+  }
+  ```
+
+---
+
+###### 📌 VÍ DỤ 3: Điều Khiển Xung PWM Quạt Làm Mát Biến Tần Inverter (Cooling Fan Control)
+* **Bối cảnh thực tế:**  
+  Module điều khiển nhiệt độ (Thermal Management SWC) tính toán nhiệt độ mô-tơ và phát lệnh: *"Hãy cho quạt chạy ở $65\%$ công suất"*. 
+* **Mã nguồn C thực tế tầng `IoHwAb`:**
+  ```c
+  /* Tệp: as/com/as.infrastructure/system/IoHwAb/IoHwAb_Pwm.c */
+  #include "IoHwAb.h"
+  #include "Pwm.h"
+
+  Std_ReturnType IoHwAb_PwmDuty_Set(IoHwAb_SignalType Signal, IoHwAb_DutyType Duty) {
+      /* Kiểm tra thang đo phần nghìn chuẩn AUTOSAR: 0 đến 1000 (IOHWAB_DUTY_MAX) */
+      if (Duty > IOHWAB_DUTY_MAX) {
+          return E_NOT_OK;
+      }
+
+      if (Signal == IOHWAB_SIGNAL_COOLING_FAN) {
+          /* Chuyển đổi Duty từ thang đo 0 - 1000 per mille sang giá trị thanh ghi MCAL PWM (0 - 0x8000) */
+          uint16 mcal_pwm_ticks = (uint16)((uint32)Duty * 0x8000UL / 1000UL);
+
+          /* Gọi driver MCAL PWM phần cứng băm xung Timer */
+          Pwm_SetDutyCycle(PWM_CHANNEL_COOLING_FAN, mcal_pwm_ticks);
+          return E_OK;
+      }
+      return E_NOT_OK;
+  }
+  ```
+
 ---
 
 #### 4.3 Phân Tầng 2.3: Service Layer (Hệ Thống Dịch Vụ Cấp Cao)
@@ -680,31 +942,70 @@ Khảo sát trực tiếp module COM trong file [`as/com/as.infrastructure/commu
 
 #### 4.4 Kênh Bypass Đặc Biệt: Complex Device Drivers (CDD)
 
-##### 1. Đơn Vị Phát Triển Trong Chuỗi Cung Ứng Ô Tô (Who Develops?):
-* **Đội ngũ kỹ sư nhúng chuyên trách của Tier-1 hoặc OEM (In-House Embedded Software Team):** Tự tay thiết kế và lập trình riêng cho sản phẩm của mình. Không mua từ hãng chip hay nhà cung cấp phần mềm BSW bên thứ ba.
+```
+┌────────────────────────────────────────────────────────────────────────────────────────┐
+│              SƠ ĐỒ SO SÁNH LUỒNG TIÊU CHUẨN VS KÊNH BYPASS ĐẶC BIỆT (CDD)              │
+├────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                        │
+│   [ TẦNG 4: APPLICATION SWC ]                       [ TẦNG 4: APPLICATION SWC ]        │
+│                │                                                 │                     │
+│                ▼                                                 ▼                     │
+│   [ TẦNG 3: RUNTIME ENVIRONMENT (RTE) ]             [ TẦNG 3: RUNTIME ENVIRONMENT ]    │
+│                │                                                 │                     │
+│                ▼                                                 ▼ (Rte_Call / Rte_Read│
+│   [ TẦNG 2.3: BSW SERVICE LAYER ]                  ┌───────────────────────────────┐   │
+│                │                                   │ 🚀 COMPLEX DEVICE DRIVER (CDD)│   │
+│                ▼                                   │ • Bỏ qua BSW Service          │   │
+│   [ TẦNG 2.2: ECU ABSTRACTION (IoHwAb) ]           │ • Bỏ qua IoHwAb               │   │
+│                │                                   │ • Bỏ qua MCAL Driver          │   │
+│                ▼                                   │ • Phản hồi siêu tốc < 10 µs   │   │
+│   [ TẦNG 2.1: MCAL DRIVERS ]                       └───────────────┬───────────────┘   │
+│                │                                                   │                   │
+│   ═════════════╪═══════════════════════════════════════════════════╪════════════════   │
+│                ▼                                                   ▼ (Thanh ghi thô)   │
+│   [ TẦNG 1: NGOẠI VI MCU / BO MẠCH PCB ]            [ TẦNG 1: NGOẠI VI MCU / PCB ]     │
+│       (Luồng Tiêu Chuẩn: Độ trễ ~ 1 - 5 ms)             (Luồng Bypass: Độ trễ < 10 µs) │
+└────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
-##### 2. Ý Đồ Kiến Trúc & Lý Do Ra Đời (Architectural Intent / Why CDD exists?):
+##### 4.4.1 Đơn Vị Phát Triển Trong Chuỗi Cung Ứng Ô Tô (Who Develops?):
+* **Đội ngũ kỹ sư nhúng chuyên trách của Tier-1 hoặc OEM (In-House Embedded Software Team):** Tự tay thiết kế và lập trình riêng cho sản phẩm của mình. 
+* Các bên thứ ba (hãng chip bán dẫn hoặc nhà cung cấp BSW như Vector, Elektrobit) **không bao giờ bán sẵn CDD**, vì CDD gắn liền với phần cứng độc quyền và bí quyết công nghệ riêng của từng dòng xe.
+
+##### 4.4.2 Ý Đồ Kiến Trúc & Lý Do Ra Đời (Architectural Intent / Why CDD exists?):
 * **❓ Câu hỏi cốt lõi: Tại sao một kiến trúc phân tầng chuẩn mực và nghiêm ngặt như AUTOSAR lại chủ động thiết kế một "Kênh Bypass / Cửa Hậu" (CDD) phá vỡ các quy tắc phân tầng?**
-* **Lý do 1 — Giới hạn thời gian thực siêu khắt khe (Ultra-Low Latency < 10 µs):**
+* **Lý do 1 — Giới hạn thời gian thực siêu khắt khe (Ultra-Low Latency $< 10\,\mu\text{s}$):**
   * Trong các ứng dụng điều khiển động lực học hiệu năng cao:
-    * **Động cơ đốt trong (ICE):** Thời điểm kích hoạt tia lửa bugi hoặc kim phun nhiên liệu trực tiếp bắt buộc phải đồng bộ chính xác theo góc quay trục khuỷu vi sai (*Crankshaft Angle*) với sai số $< 5\,\mu\text{s}$.
-    * **Biến tần xe điện (EV Traction Inverter):** Thuật toán điều khiển véc-tơ không gian FOC (*Field Oriented Control*) băm xung PWM điều khiển cầu MOSFET/IGBT ở tần số $20\,\text{kHz}$ (chu kỳ chỉ vỏn vẹn $50\,\mu\text{s}$).
-  * Nếu bắt tín hiệu phải đi qua chuỗi phân tầng tiêu chuẩn: `Application` $\rightarrow$ `RTE` $\rightarrow$ `IoHwAb` $\rightarrow$ `Pwm/Gpt MCAL`, độ trễ tích lũy từ các lời gọi hàm lồng nhau (*Call Overhead*), ép kiểu dữ liệu và chuyển ngữ cảnh CPU sẽ làm trễ nhịp kích xung. Hậu quả là động cơ bị kích nổ sai thời điểm hoặc biến tần công suất bị nổ cầu H!
+    * **Biến tần xe điện (EV Traction Inverter):** Thuật toán điều khiển véc-tơ không gian FOC (*Field Oriented Control*) băm xung PWM điều khiển cầu transistor MOSFET/IGBT ở tần số $20\,\text{kHz}$ (chu kỳ chỉ vỏn vẹn $50\,\mu\text{s}$). Thời gian trễ từ lúc đọc dòng điện đến lúc xuất xung bù phải nhỏ hơn $5\,\mu\text{s}$.
+    * **Động cơ đốt trong (ICE):** Thời điểm kích hoạt tia lửa bugi hoặc kim phun nhiên liệu trực tiếp bắt buộc phải đồng bộ chính xác theo góc quay trục khuỷu vi sai (*Crankshaft Position*) với sai số thời gian $< 5\,\mu\text{s}$.
+  * *Nếu bắt tín hiệu đi qua chuỗi phân tầng tiêu chuẩn:* `Application` $\rightarrow$ `RTE` $\rightarrow$ `IoHwAb` $\rightarrow$ `Pwm/Gpt MCAL`, độ trễ tích lũy từ các lời gọi hàm lồng nhau (*Call Overhead*), ép kiểu dữ liệu và chuyển ngữ cảnh CPU sẽ làm trễ nhịp kích xung. Hậu quả là biến tần bị nổ cầu công suất hoặc động cơ bị kích nổ sai thời điểm!
 * **Lý do 2 — Ngoại vi phần cứng phi chuẩn (Non-Standardized Hardware):**
-  * Nhiều cụm phần cứng đặc thù chưa hề có module tiêu chuẩn nào trong đặc tả AUTOSAR SWS (ví dụ: chip xử lý âm thanh DSP qua bus I2S/TDM, chip FPGA đồng xử lý thuật toán AI cho camera ADAS, chip đo điện trở cách điện cao áp xe điện). CDD cho phép tích hợp các phần cứng này ngay lập tức mà không cần chờ hiệp hội AUTOSAR họp bàn và chuẩn hóa.
+  * Nhiều cụm linh kiện chuyên biệt chưa hề có module tiêu chuẩn nào trong đặc tả AUTOSAR SWS (ví dụ: chip xử lý âm thanh DSP qua bus I2S, chip FPGA đồng xử lý thuật toán AI cho camera ADAS, chip đo điện áp cell pin cao áp chuyên dụng trong pack pin xe điện). CDD cho phép tích hợp các phần cứng này ngay lập tức mà không cần chờ hiệp hội AUTOSAR họp bàn và chuẩn hóa.
 
-##### 3. Bản Chất Kỹ Thuật (Kênh Bypass CDD Hoạt Động Như Thế Nào?):
-* CDD được cấp quyền đặc quyền vượt tầng:
-  * **Phía trên:** Cung cấp API trực tiếp lên tầng Application SWC thông qua cổng chuẩn của RTE (`Rte_Call_...`).
-  * **Phía dưới:** Được phép chọc trực tiếp vào thanh ghi phần cứng của MCU On-chip hoặc linh kiện Off-chip trên bo mạch PCB mà **hoàn toàn bỏ qua MCAL và ECU Abstraction**.
+##### 4.4.3 Bản Chất Kỹ Thuật (Hai Đầu Giao Diện Của Kênh Bypass CDD):
+CDD được cấp đặc quyền vượt tầng thông qua cơ chế hai đầu giao diện rõ ràng:
+1. **Giao diện phía trên (Upper Interface — Hướng lên Tầng 3 RTE):**
+   * Trong file ARXML, CDD được định nghĩa như một Software Component đặc biệt bằng thẻ `<COMPLEX-DEVICE-DRIVER-SW-COMPONENT-TYPE>`.
+   * CDD cung cấp các Cổng giao tiếp chuẩn hóa (Ports) như Client-Server hoặc Sender-Receiver lên RTE.
+   * Nhờ đó, **Application SWC ở Tầng 4 gọi vào CDD thông qua API chuẩn của RTE** (`Rte_Call_...()` hoặc `Rte_Read_...()`), hoàn toàn tuân thủ kiến trúc và không hề biết CDD đang đi đường tắt phía dưới.
+2. **Giao diện phía dưới (Lower Interface — Hướng xuống Tầng 1 Phần cứng):**
+   * CDD **được phép bỏ qua hoàn toàn MCAL và ECU Abstraction**.
+   * CDD can thiệp trực tiếp vào thanh ghi phần cứng của CPU (Memory-Mapped I/O Registers), cấu hình DMA trực tiếp, hoặc gắn trực tiếp trình phục vụ ngắt (ISR) phần cứng để xử lý tức thời trong vài micro-giây.
+3. **Giao diện bổ trợ (Side Interface — Hướng sang các dịch vụ BSW):**
+   * Dù đi tắt đón đầu, CDD vẫn có thể sử dụng các dịch vụ chuẩn của BSW khi cần: ví dụ gọi `Dem_ReportErrorStatus()` để báo lỗi phần cứng hoặc gọi API của `Os` để bảo vệ vùng nhớ găng.
 
-##### 4. Cảnh Báo Kiến Trúc & Quy Tắc Sử Dụng Bắt Buộc (Architectural Warning & Rule):
-* ⚠️ **Cảnh báo sống còn:** CDD là con dao hai lưỡi. Nếu lạm dụng CDD cho các tác vụ thông thường (như đọc nút bấm, bật đèn LED, nhận khung CAN thông thường), bạn sẽ phá vỡ toàn bộ cấu trúc phân tầng, làm mất khả năng tái sử dụng phần mềm và biến dự án trở lại thành mớ mã nguồn hỗn loạn thời kỳ Pre-AUTOSAR.
-* 🛡️ **Quy tắc công nghiệp:** Trong các dự án ô tô chuẩn mực (Bosch, Continental, VinFast), kỹ sư **bắt buộc phải nộp văn bản giải trình kỹ thuật (Technical Justification)** chứng minh tính bất khả thi về mặt độ trễ (Timing Constraints) hoặc tính phi chuẩn của phần cứng thì Hội đồng Kiến trúc Phần mềm mới phê duyệt việc tạo module CDD!
+##### 4.4.4 Thực Tế Dự Án `as` & Cảnh Báo Kiến Trúc Trong Công Nghiệp:
+* 📌 **Lưu ý đối chiếu mã nguồn dự án `as`:**
+  * Trong toàn bộ kho mã nguồn nghiên cứu [`Study_AUTOSAR-main/as`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as), tác giả **không triển khai module CDD**.
+  * **Lý do:** Dự án `as` tập trung vào mô phỏng và nghiên cứu các cơ chế lõi của AUTOSAR trên các vi điều khiển tiêu chuẩn (STM32F107, LM3S6965, POSIX PC). Tất cả các bài toán trong dự án đều giải quyết trọn vẹn thông qua các ngoại vi chuẩn mực có sẵn của MCAL (`Dio.c`, `Can.c`, `Adc.c`, `Pwm.c`, `Spi.c`), không gắn với các linh kiện phi chuẩn hay cơ cấu chấp hành thời gian thực đặc thù.
+* ⚠️ **Cảnh báo sống còn trong công nghiệp:** 
+  * CDD là con dao hai lưỡi. Nếu lạm dụng CDD cho các tác vụ thông thường (như đọc nút bấm, bật đèn LED, nhận khung CAN thông thường), bạn sẽ phá vỡ toàn bộ cấu trúc phân tầng, làm mất khả năng tái sử dụng phần mềm và biến dự án trở lại thành mớ mã nguồn hỗn loạn ("Spaghetti Code") thời kỳ Pre-AUTOSAR.
+  * 🛡️ **Quy tắc kiểm duyệt:** Trong các hãng xe lớn (VinFast, Bosch, Continental), kỹ sư **bắt buộc phải nộp văn bản giải trình kỹ thuật (Technical Justification)** chứng minh tính bất khả thi về mặt độ trễ ($< 10\,\mu\text{s}$) hoặc tính phi chuẩn của linh kiện thì Hội đồng Kiến trúc Hệ thống mới phê duyệt việc tạo module CDD!
+
+---
 
 ### NÂNG CAO
-💀 **Critical Bug / Pitfall:** Không bao giờ cho phép SWC ở Tầng 4 gọi trực tiếp xuống MCAL (Tầng 2.1). Việc này phá vỡ *Layering Architecture*.
-⚠️ **Warning:** Kênh Bypass CDD chỉ được dùng cho ngoại vi phi chuẩn hoặc yêu cầu phản hồi theo thời gian thực khắt khe. Lạm dụng CDD sẽ làm hỏng toàn bộ cấu trúc hệ thống.
+💀 **Critical Bug / Pitfall:** Không bao giờ cho phép SWC ở Tầng 4 gọi trực tiếp xuống MCAL (Tầng 2.1). Việc này phá vỡ *Layering Architecture*. Nếu cần phản hồi siêu tốc hoặc ngoại vi đặc biệt, giải pháp duy nhất được AUTOSAR cho phép là bọc qua **CDD** và mở Port lên RTE.
 
 🛠️ **Hands-On Exercise 1: Gọi API IoHwAb thay vì MCAL**
 ```c
@@ -1116,35 +1417,7 @@ void Fan_Control_Runnable(void)
 ---
 
 <a id="7"></a>
-## 7. Bằng Chứng Mã Nguồn & Định Nghĩa Chuẩn Hóa Trong `parai/as`
-
-Kho mã nguồn tham chiếu: [Study_AUTOSAR-main/as/](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as)
-
-#### 🔧 API Reference: Chuẩn Định Nghĩa Kiểu Dữ Liệu (`Std_Types.h`)
-```c
-// 💡 Basic Example: Chuẩn hóa trả về
-typedef uint8_t Std_ReturnType;
-#define E_OK        ((Std_ReturnType)0x00U)
-#define E_NOT_OK    ((Std_ReturnType)0x01U)
-#define STD_HIGH    0x01U
-#define STD_LOW     0x00U
-```
-
-#### 🔧 API Reference: Trừu Tượng Hóa Compiler (`Compiler.h`)
-```c
-// 💡 Advanced Example: Định nghĩa con trỏ an toàn bộ nhớ cho Compiler
-#define AUTOMATIC
-#define TYPEDEF
-#define P2VAR(ptrtype, memclass, ptrclass) ptrtype *
-#define P2CONST(ptrtype, memclass, ptrclass) const ptrtype *
-#define FUNC(rettype, memclass) rettype
-```
-🎯 **Use Case:** Code C của bạn có thể compile bằng GCC trên PC, hoặc bằng IAR cho chip ARM, mà không bị lỗi cấp phát RAM/Flash nhờ macro này.
-
----
-
-<a id="8"></a>
-## 8. Bảng So Sánh Toàn Diện AUTOSAR Classic vs AUTOSAR Adaptive Platform
+## 7. Bảng So Sánh Toàn Diện AUTOSAR Classic vs AUTOSAR Adaptive Platform
 
 | Tiêu Chí Kỹ Thuật | AUTOSAR Classic Platform | AUTOSAR Adaptive Platform |
 |---|---|---|
@@ -1158,108 +1431,8 @@ typedef uint8_t Std_ReturnType;
 
 ---
 
-<a id="9"></a>
-## 9. Đúc Kết Kiến Trúc & Tiêu Chuẩn Đánh Giá
-
-1. **Nguyên lý 3 tầng trừu tượng:**
-   * **MCAL** giúp ứng dụng không cần biết chip của hãng nào.
-   * **ECU Abstraction** giúp ứng dụng không cần biết sơ đồ bo mạch ra sao.
-   * **RTE (VFB)** giúp ứng dụng không cần biết truyền thông qua RAM hay CAN.
-2. **Quy tắc phân tầng bất biến:**
-   * Tầng trên được gọi xuống tầng dưới liền kề.
-   * ❌ **Tuyệt đối không gọi vòng ngược (Upward call) từ dưới lên trên.** (Phải dùng Callback).
-
----
-
-<a id="10"></a>
-## 10. Bảng Ánh Xạ Kiến Thức (Knowledge Mapping)
-
-Dành cho những người chuyển từ Linux/FreeRTOS sang AUTOSAR:
-
-| Khái niệm trên Linux / FreeRTOS | Tương đương trong AUTOSAR Classic | Giải thích / Khác biệt |
-|---|---|---|
-| `Thread` / `Task` | **OS Task** & **Runnables** | Trong AUTOSAR, Dev không viết vòng lặp `while(1)` trong Runnable. OS Task gọi Runnable qua RTE. |
-| `Mutex` / `Semaphore` | **RTE Exclusive Area** | Cấu hình trong ARXML. RTE tự sinh mã khóa ngắt (`SuspendAllInterrupts()`) hoặc dùng OS Resource. |
-| `Message Queue` | **RTE Sender-Receiver** | RTE quản lý queue, tự động unbox data. |
-| `/dev/i2c`, `/sys/class/gpio` | **IoHwAb / MCAL** | Không có File System. Gọi trực tiếp API C (`Dio_WriteChannel`). |
-| `malloc()` / `free()` | **Không có! (Forbidden)** | AUTOSAR cấm cấp phát động để đảm bảo an toàn tuyệt đối. Mọi buffer phân bổ tĩnh. |
-
----
-
-<a id="11"></a>
-## 11. Real-World Scenarios (Các kịch bản thực tế)
-
-### 10.1 Kịch bản: Battery Management System (BMS)
-BMS quản lý hàng trăm cell pin.
-* **Tương tác:** SWC_CellMonitor (Đọc ADC điện áp từng cell) -> VFB -> SWC_SocCalculation (Tính phần trăm pin còn lại) -> VFB -> SWC_Display (Gửi dữ liệu lên màn hình).
-* 💡 **Phân tích VFB:** Nếu thuật toán SOC quá nặng và phải đưa lên một ECU mạnh hơn (Vehicle Computer), SWC_SocCalculation được dời đi. Các SWC khác không cần thay đổi dù chỉ 1 dòng code, RTE sẽ tự động chuyển từ RAM memory read sang CAN bus read.
-
-### 10.2 Kịch bản: Vehicle Control Unit (VCU)
-VCU là não bộ của xe điện (EV). Nhận tín hiệu chân ga, và điều khiển Inverter cấp điện cho Motor.
-* **Tương tác:** SWC_Pedal (Đọc chân ga) -> VFB -> SWC_TorqueControl (Tính toán momen xoắn) -> CDD_Inverter (Băm xung PWM cho Motor).
-* **Ứng dụng RTE:** Sử dụng CDD để đảm bảo tần số băm PWM đạt 10kHz siêu tốc.
-
-### 10.3 Kịch bản: Body Control Module (BCM)
-BCM điều khiển hệ thống chiếu sáng, gạt mưa, khóa cửa.
-* **Tương tác:** SWC_RainSensor (Cảm biến mưa) -> VFB -> SWC_WiperControl (Điều khiển gạt mưa).
-* **Ứng dụng RTE:** Sử dụng Client-Server Interface. BCM gọi một dịch vụ NvM để lưu trữ trạng thái người dùng.
-
----
-
-<a id="12"></a>
-## 12. Common Pitfalls (Những Lỗi Thường Gặp)
-
-⚠️ **Pitfall 1: Bỏ qua lỗi trả về của API BSW/RTE**
-- ❌ *Bad Practice:* `Rte_Write_Speed(100);` (Bỏ qua return value)
-- ✅ *Best Practice:* `Std_ReturnType ret = Rte_Write_Speed(100); if (ret != E_OK) { ErrorHandler(); }`
-
-⚠️ **Pitfall 2: Gọi vòng ngược (Upward Call) từ MCAL lên SWC**
-- ❌ *Bad Practice:* Trong driver CAN (`Can.c`), viết code gọi trực tiếp hàm của Tầng Ứng Dụng.
-- ✅ *Best Practice:* Sử dụng hệ thống Callback. MCAL gọi `CanIf_RxIndication()`, CanIf gọi lên `PduR`, lên `Com`, cuối cùng RTE kích hoạt `DataReceivedEvent` cho SWC.
-
-⚠️ **Pitfall 3: Sử dụng biến toàn cục (`extern`) giữa các SWC**
-- ❌ *Bad Practice:* `extern uint16_t global_speed;` trong nhiều file `.c` của SWC khác nhau.
-- ✅ *Best Practice:* Mọi dữ liệu đi qua Cổng (Port) của RTE. Biến toàn cục phá vỡ hoàn toàn nguyên lý VFB.
-
----
-
-<a id="13"></a>
-## 13. Thực Hành (Hands-On Exercises)
-
-🛠️ **Hands-On Exercise 3: Kiến Trúc Ứng Dụng BMS**
-- **Kịch bản (Real-world scenario):** Bạn đang lập trình SWC quản lý Pin (BMS). Đọc nhiệt độ pin, nếu > 60°C thì yêu cầu ngắt Relay nguồn.
-- **Yêu cầu:** Thiết kế luồng gọi API và xử lý lỗi.
-- **Expected Output:**
-```c
-#include "Rte_BmsApp.h"
-
-void Bms_TempMonitor_Runnable(void) {
-    uint8_t temp_c;
-    Std_ReturnType status;
-
-    // 1. Đọc qua Sender-Receiver Port
-    status = Rte_Read_RPort_CellTemp_Temperature(&temp_c);
-    
-    if (status == RTE_E_OK) {
-        if (temp_c > 60) {
-            // 2. Yêu cầu ngắt Relay qua Client-Server Port
-            Std_ReturnType call_stat = Rte_Call_RPort_RelayControl_OpenRelay();
-            if (call_stat != E_OK) {
-                // Xử lý lỗi khẩn cấp
-                Set_Fault_DTC();
-            }
-        }
-    } else {
-        // Dữ liệu cảm biến không hợp lệ
-        GoToSafeState();
-    }
-}
-```
-
----
-
-<a id="14"></a>
-## 14. Câu Hỏi Phỏng Vấn (Interview Questions & Detailed Answers)
+<a id="8"></a>
+## 8. Câu Hỏi Phỏng Vấn (Interview Questions & Detailed Answers)
 
 ### 🟢 LEVEL 1: NEWBIE (Fresher / Junior)
 
@@ -1405,79 +1578,25 @@ void Bms_TempMonitor_Runnable(void) {
 
 ---
 
-<a id="15"></a>
-## 15. Phụ Lục Kỹ Thuật Chuyên Sâu (Deep Dive Specifications)
-Phần này cung cấp các phân tích mã nguồn và tài liệu tham khảo chi tiết mở rộng để bổ sung kiến thức.
-
-### 15.1 Kiến Trúc Bộ Nhớ Trong AUTOSAR (Memory Mapping)
-AUTOSAR yêu cầu kiểm soát chặt chẽ vị trí của từng biến, hằng số, và hàm trong bộ nhớ (RAM/Flash/EEPROM). Module `MemMap.h` được sinh ra tự động để đáp ứng yêu cầu này thông qua các chỉ thị `#pragma`.
-```c
-#define BSW_START_SEC_VAR_CLEARED_8BIT
-#include "Bsw_MemMap.h"
-uint8_t global_status = 0; // Biến này sẽ được cấp phát vào vùng RAM zero-initialized
-#define BSW_STOP_SEC_VAR_CLEARED_8BIT
-#include "Bsw_MemMap.h"
-```
-✅ **Best Practice:** Mọi biến toàn cục, mọi hàm đều phải được bao bọc bởi các macro `START_SEC` và `STOP_SEC`.
-
-### 15.2 Cơ Chế Quản Lý Ngắt (Interrupt Handling)
-Tất cả các ngắt phần cứng phải được quản lý thông qua OS (Operating System).
-* **Category 1 ISR (Interrupt Service Routine):** Không được phép sử dụng bất kỳ OS API nào. Cực kỳ nhanh.
-* **Category 2 ISR:** Được phép sử dụng OS API, bị quản lý và lập lịch bởi OS.
-```c
-// Khai báo ISR Category 2 theo chuẩn OSEK
-ISR(CanIsr_Rx) {
-    // Xử lý ngắt nhận CAN
-    Can_RxIndication();
-    
-    // Kích hoạt Task xử lý tiếp theo nếu cần
-    ActivateTask(Task_ComRx);
-}
-```
-
-### 15.3 Phân Tích Kỹ Thuật ComStack (Communication Stack)
-ComStack là một trong những hệ thống phức tạp nhất. Các luồng xử lý:
-1. **Can_RxIndication()**: Nhận được một Frame vật lý từ Can Controller.
-2. **CanIf_RxIndication()**: Nhận diện Frame ID thuộc PDU nào.
-3. **PduR_CanIfRxIndication()**: Định tuyến PDU. Nếu đây là gói mạng Gateway, PduR chuyển tiếp sang mạng CAN khác. Nếu là gói cho ECU nội bộ, chuyển lên Com.
-4. **Com_RxIndication()**: Giải mã PDU thành các Signal cụ thể. Kích hoạt RTE Event.
-
-### 15.4 Diagnostics Stack (Chẩn Đoán Lỗi)
-Diagnostics là phần không thể thiếu để chẩn đoán bảo dưỡng xe.
-* **DEM (Diagnostic Event Manager):** Quản lý mã lỗi (DTC - Diagnostic Trouble Code).
-```c
-// Báo cáo lỗi khi cảm biến nhiệt độ bị đứt dây
-Dem_SetEventStatus(DemConf_DemEventParameter_SensorTemp_ShortToBat, DEM_EVENT_STATUS_FAILED);
-```
-* **DCM (Diagnostic Communication Manager):** Xử lý giao thức UDS (ISO 14229) từ máy tính chẩn đoán (Tester).
-```c
-// Hàm gọi tự động khi Tester yêu cầu đọc Data Identifier (DID)
-Std_ReturnType Dcm_ReadData_VIN(uint8_t* Data) {
-    // Copy mã số khung xe (VIN) vào buffer
-    memcpy(Data, VinNumber, 17);
-    return E_OK;
-}
-```
-
----
-
-<a id="16"></a>
-## 16. BỨC TRANH TỔNG HỢP HOÀN CHỈNH: TRUY VẾT DÒNG CHẢY 1 TÍNH NĂNG XUYÊN SUỐT TOÀN BỘ 4 TẦNG AUTOSAR (End-to-End Master Capstone Walkthrough)
+<a id="9"></a>
+## 9. BỨC TRANH TỔNG HỢP HOÀN CHỈNH: TRUY VẾT DÒNG CHẢY 1 TÍNH NĂNG XUYÊN SUỐT TOÀN BỘ 4 TẦNG AUTOSAR (End-to-End Master Capstone Walkthrough)
 
 > 🎯 **Mục tiêu của chương kết:** Đập tan sự phân mảnh kiến thức! Thay vì nhìn 4 tầng như các khối lý thuyết rời rạc, chương này ghép nối toàn bộ các khái niệm đã học (**Hardware**, **MCAL**, **ECU Abstraction**, **Service Layer**, **RTE**, **SWC**) thành **MỘT DÒNG CHẢY LIÊN TỤC VÀ KHÉP KÍN** xuyên suốt 2 hộp ECU thực tế trong xe điện thông minh (EV).
 
 ---
 
-### 16.1 Tuyên Ngôn Bài Toán Thực Tế: Hệ Thống Truyền Động Xe Điện (EV Powertrain Control)
+### Tuyên Ngôn Bài Toán Thực Tế: Hệ Thống Truyền Động Xe Điện (EV Powertrain Control)
 
 Xét một kịch bản điều khiển xe điện kinh điển và quan trọng bậc nhất trên ô tô:
-* **Hộp ECU 1: VCU (Vehicle Control Unit — Hộp Điều Khiển Trung Tâm Xe):** Đóng vai trò "Bộ não chỉ huy". Khi tài xế nhấn chân ga xuống $75\%$, VCU đọc tín hiệu điện áp từ cảm biến bàn đạp, kiểm tra an toàn chống kẹt ga, tính toán mô-men xoắn cần thiết ($T_{\text{target}} = 300\text{ Nm}$), đóng gói vào giao thức mạng và bắn ra bus truyền thông.
-* **Đường truyền mạng vật lý:** Mạng **CAN 2.0B Powertrain** tốc độ cao 500 kbps (Cặp dây xoắn vi sai $CAN\_H / CAN\_L$).
+* **Hộp ECU 1: VCU (Vehicle Control Unit — Hộp Điều Khiển Trung Tâm Xe):** Đóng vai trò "Bộ não chỉ huy". Khi tài xế nhấn chân ga xuống $75\%$, VCU đọc tín hiệu điện áp từ cảm biến bàn đạp, kiểm tra an toàn chống kẹt ga, tính toán mô-men xoắn cần thiết ($T_{\text{target}} = 300\text{ Nm}$), đóng gói vào giao thức mạng và phát tín hiệu ra bus truyền thông.
+* **Đường truyền mạng vật lý:** Mạng **CAN 2.0B / CAN-FD Powertrain** tốc độ cao 500 kbps (Cặp dây xoắn vi sai $CAN\_H / CAN\_L$).
 * **Hộp ECU 2: Inverter / MCU (Motor Control Unit — Hộp Biến Tần Điều Khiển Mô-Tơ Điện):** Đóng vai trò "Cơ bắp chấp hành". Hộp này nhận khung tin CAN từ VCU, giải mã kiểm tra an toàn E2E, bóc tách tín hiệu $300\text{ Nm}$, và kích hoạt thuật toán điều khiển vector không gian (FOC) băm xung PWM điều khiển 6 khóa công suất IGBT/MOSFET quay động cơ điện kéo bánh xe.
 
 ---
 
-### 16.2 Bản Đồ Dòng Chảy Tổng Thể Khép Kín Giữa 2 Hộp ECU (Master Flow Diagram)
+### Sơ Đồ Dòng Chảy Toàn Tuyến 1 Tính Năng Xuyên Suốt 4 Tầng AUTOSAR (End-to-End Master Flowchart)
+
+Dưới đây là sơ đồ dòng chảy khép kín thể hiện từng bước biến đổi dữ liệu của 1 tính năng điều khiển duy nhất (từ lực nhấn bàn đạp ga của tài xế đến chuyển động quay của mô-tơ điện) xuyên suốt toàn bộ 4 tầng kiến trúc AUTOSAR trên cả 2 hộp ECU:
 
 ```text
 ========================================================================================================================
@@ -1547,331 +1666,337 @@ Xét một kịch bản điều khiển xe điện kinh điển và quan trọng
 
 ---
 
-### 16.3 Hành Trình Chi Tiết Tại ECU 1 (VCU): Chiều Thu Thập Dữ Liệu Từ Dưới Lên (Chặng 1 ──► 5)
+> 🏆 **Đúc Kết Vàng Về Cách AUTOSAR Cô Lập Rủi Ro & Bảo Vệ Tài Sản Trí Tuệ (Core IP):**  
+> Toàn bộ kiến trúc 4 tầng của AUTOSAR Classic sinh ra không phải để làm mọi thứ phức tạp hơn, mà để **cô lập các rủi ro kỹ thuật và phân tách rạch ròi trách nhiệm phát triển**:
+> 1. **Thay đổi nhà sản xuất cảm biến bàn đạp ga:** $\implies$ Chỉ sửa thông số hiệu chuẩn trong **Tầng 2.2 (`IoHwAb`)**.
+> 2. **Thay đổi dòng chip vi điều khiển từ NXP S32K sang Infineon TriCore:** $\implies$ Chỉ thay thế gói driver **Tầng 2.1 (MCAL)** từ hãng chip.
+> 3. **Chuyển đổi giao thức truyền thông từ CAN sang Automotive Ethernet:** $\implies$ Chỉ cấu hình lại ngăn xếp mạng trong **Tầng 2.3 (ComStack)**.
+> 4. **Dời vị trí tính toán mô-men xoắn từ VCU sang Inverter:** $\implies$ Chỉ cấu hình lại file ARXML để công cụ tự động sinh lại mã nguồn **Tầng 3 (RTE)**.
+> 5. **Toàn bộ thuật toán điều khiển cốt lõi ở Tầng 4 (Application SWC) được giữ nguyên 100% không cần chỉnh sửa một dòng code nào!** Đây chính là sức mạnh tối thượng và giá trị thương mại hàng triệu đô-la của tiêu chuẩn AUTOSAR!
 
-Mọi hành động bắt đầu từ bàn chân của người lái. Dữ liệu được nhào nặn qua từng tầng từ vật lý lên phần mềm:
+---
 
-```mermaid
-flowchart BT
-    subgraph STAGE_1 ["Chặng 1: TẦNG 1 - VẬT LÝ & BO MẠCH PCB"]
-        direction TB
-        PEDAL["Bàn đạp ga nhấn 75%"] --> SENSOR["Cảm biến Hall kép PPS1 & PPS2"]
-        SENSOR --> RC_FILTER["Mạch lọc RC chống xung nhiễu EMC trên PCB"]
-        RC_FILTER --> PINS["Điện áp tới chân MCU: V_PPS1 = 3.25V, V_PPS2 = 1.625V"]
-    end
+<a id="10"></a>
+## 10. Thực Tiễn Công Nghiệp: Quy Trình Phát Triển Phần Mềm Ô Tô Tại Hãng Xe (Case Study: VinFast)
 
-    subgraph STAGE_2 ["Chặng 2: TẦNG 2.1 - MCAL ADC & PORT"]
-        direction TB
-        ADC_HW["Bộ ADC 12-bit tích hợp trong vi điều khiển"] --> ADC_REG["Thanh ghi kết quả ADC0->CDR[3] = 2662 counts"]
-        ADC_REG --> MCAL_API["API MCAL: Adc_ReadGroup(AdcGroup_Pedal, raw_buffer)"]
-    end
+> 🎯 **Mục tiêu của chương:** Đưa kiến thức lý thuyết AUTOSAR vào môi trường sản xuất thực tế (Production Environment)! Chương này giải mã chính xác mô hình phát triển phần mềm ô tô của một hãng xe điện hiện đại (OEM) như **VinFast**: Hãng xe mua những gì từ bên thứ ba, tự cấu hình những gì, và bắt buộc phải tự viết tay (in-house hand-coded) những module nào theo từng tầng kiến trúc AUTOSAR.
 
-    subgraph STAGE_3 ["Chặng 3: TẦNG 2.2 - ECU ABSTRACTION (IoHwAb)"]
-        direction TB
-        PLAUS["Kiểm tra chéo an toàn: |PPS1 - 2*PPS2| < 5%"] --> SCALE["Quy đổi hàm tuyến tính: (2662 - 410) / 3000 * 100%"]
-        SCALE --> IOHWAB_OUT["Cung cấp giá trị vật lý chuẩn hóa: PedalPosition = 75.0%"]
-    end
+---
 
-    subgraph STAGE_4 ["Chặng 4: TẦNG 3 - RUNTIME ENVIRONMENT (RTE)"]
-        direction TB
-        RTE_EVENT["OS Alarm 10ms kích hoạt TimingEvent"] --> RTE_READ["Hàm sinh tự động: Rte_Read_RpPedal_Position(&pedal)"]
-    end
+### 10.1 Bối Cảnh Thực Tế & Chiến Lược Của OEM Xe Điện (VinFast SDV Strategy)
 
-    subgraph STAGE_5 ["Chặng 5: TẦNG 4 - APPLICATION SWC"]
-        direction TB
-        SWC_TORQUE["SWC_TorqueCoordinator: Thuật toán xe điện"] --> TORQUE_CALC["TargetTorque = 75% * 400 Nm = 300 Nm"]
-        TORQUE_CALC --> RTE_WRITE["Gọi lệnh: Rte_Write_PpTargetTorque_Torque(300)"]
-    end
+Trong ngành công nghiệp ô tô truyền thống, các hãng xe thường chọn giải pháp **"Mua trọn gói Hộp Đen (Black-box ECU)"** từ các nhà cung ứng Tier-1 danh tiếng (như Bosch, Continental, Denso). Với mô hình này:
+* OEM chỉ đưa ra yêu cầu tính năng (Requirement Specification).
+* Tier-1 tự thiết kế bo mạch, tự cấu hình BSW, tự viết thuật toán và nạp firmware đóng kín vào hộp ECU giao cho hãng xe.
+* **Hạn chế chí mạng:** OEM hoàn toàn không sở hữu mã nguồn, không làm chủ dữ liệu, mỗi lần muốn cập nhật phần mềm hoặc sửa lỗi phải chờ Tier-1 hàng tháng trời với chi phí đắt đỏ, không thể triển khai cập nhật phần mềm từ xa (OTA - Over-The-Air) linh hoạt.
 
-    PINS --> ADC_HW
-    MCAL_API --> PLAUS
-    IOHWAB_OUT --> RTE_EVENT
-    RTE_READ --> SWC_TORQUE
+Nhằm làm chủ hoàn toàn công nghệ xe điện thông minh (Software-Defined Vehicle - SDV), **VinFast đã lựa chọn chiến lược Tự Chủ Phần Mềm (In-House Software Ownership)**:
+1. **VinFast đóng vai trò OEM kiêm Tier-1 System Integrator:** Tự thiết kế kiến trúc điện - điện tử (EEA), tự nắm giữ toàn bộ tài sản trí tuệ (Core IP) của các hộp ECU cốt lõi (VCU, BMS, BCM).
+2. **Hợp tác phân tầng có chọn lọc:** Với các hệ thống an toàn chuyên biệt phức tạp (như Radar/Camera ADAS, Hộp túi khí Airbag, Hệ thống phanh chống bó cứng ABS/ESP), VinFast hợp tác với các Tier-1 hàng đầu thế giới (Bosch, ZF, Mobileye). Nhưng với "Bộ não" xe điện (VCU) và "Trái tim" năng lượng (BMS), kỹ sư VinFast trực tiếp làm chủ từ thiết kế mạch phần cứng, tích hợp BSW đến lập trình thuật toán điều khiển.
+
+---
+
+### 10.2 Bóc Tách Thực Tế Theo Từng Tầng: Mua Gì? Cấu Hình Gì? Tự Viết Gì?
+
+Bức tranh kỹ thuật dưới đây mổ xẻ chi tiết công việc thực tế của kỹ sư phần mềm nhúng ô tô (Embedded Software / BSW Engineer) tại VinFast qua từng tầng AUTOSAR:
+
+```text
+========================================================================================================================
+           MA TRẬN PHÂN CHIA TRÁCH NHIỆM PHÁT TRIỂN PHẦN MỀM TẠI VINFAST (LAYER-BY-LAYER REALITY)
+========================================================================================================================
+[TẦNG 4: APPLICATION SWC]  │ 100% TỰ PHÁT TRIỂN NỘI BỘ (IN-HOUSE CORE IP): Thuật toán VCU, BMS, Thermal trên Simulink/C
+───────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────
+[TẦNG 3: RTE]              │ 100% SINH MÃ TỰ ĐỘNG (AUTO-GENERATED): Bấm nút gen từ Vector DaVinci / EB tresos
+───────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────
+[TẦNG 2.3: SERVICE LAYER]  │ MUA STACK CHUẨN (Vector / Elektrobit) + KỸ SƯ VINFAST CẤU HÌNH & TÍCH HỢP (Com, Diag, Mem)
+───────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────
+[TẦNG 2.2: ECU ABSTRACTION]│ • CanIf, LinIf: Sinh mã tự động theo cấu hình tool
+                           │ • IoHwAb: 100% TỰ VIẾT TAY (HAND-CODED): Đọc ADC thô, tính cầu chia áp bo mạch, kích Relay
+───────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────
+[KÊNH BYPASS: CDD]         │ 100% TỰ VIẾT TAY (HAND-CODED): Inverter FOC (<10µs), BMS Battery AFE SPI, Bộ sạc OBC/DCDC
+───────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────
+[TẦNG 2.1: MCAL]           │ MUA / NHẬN TỪ HÃNG BÁN DẪN (NXP, Infineon) + KỸ SƯ VINFAST CẤU HÌNH (Không sửa code C)
+───────────────────────────┼────────────────────────────────────────────────────────────────────────────────────────────
+[TẦNG 1: HARDWARE & MCU]   │ • Vi điều khiển: Mua từ NXP, Infineon, Renesas, ST
+                           │ • Bo mạch PCB: Kỹ sư VinFast tự thiết kế Schematic/Layout, gia công tại nhà máy EMS
+========================================================================================================================
 ```
 
-#### Chi tiết kỹ thuật từng chặng từ dưới lên:
-
-* **Chặng 1 — Tầng 1 (Physical Hardware):**
-  * Để đáp ứng chuẩn an toàn chức năng ô tô **ISO 26262 ASIL-D**, bàn đạp ga luôn sử dụng cảm biến kép (Dual Hall Sensors: PPS1 và PPS2) với đặc tính điện áp chéo nhau hoặc tỉ lệ $2:1$.
-  * Với góc đạp $75\%$, cảm biến xuất ra:
-    $$V_{\text{PPS1}} = 0.5\text{V} + (4.5\text{V} - 0.5\text{V}) \times 75\% = 3.5\text{V} \quad (\text{Thực tế sau sụt áp: } 3.25\text{V})$$
-    $$V_{\text{PPS2}} = \frac{V_{\text{PPS1}}}{2} = 1.625\text{V}$$
-  * Tín hiệu đi qua điện trở $1\text{ k}\Omega$ và tụ $100\text{ nF}$ trên bo mạch ECU để dập gai điện áp và lọc nhiễu sóng cao tần tử động cơ.
-
-* **Chặng 2 — Tầng 2.1 (MCAL Adc Driver):**
-  * Vi điều khiển sử dụng bộ ADC có độ phân giải $12\text{-bit}$ ($2^{12} = 4096$ nấc giá trị, từ $0$ đến $4095$ tương ứng dải điện áp $0\text{V} \to 5.0\text{V}$).
-  * Thanh ghi lưu trữ kết quả chuyển đổi:
-    $$D_{\text{raw}} = \text{round}\left(\frac{3.25\text{V}}{5.0\text{V}} \times 4095\right) = 2662 \text{ (counts)}$$
-  * Hàm thực thi chuẩn AUTOSAR trong driver MCAL:
-    ```c
-    Adc_ValueGroupType adc_buffer[2];
-    Adc_StartGroupConversion(AdcConf_AdcGroup_PedalGroup);
-    Adc_ReadGroup(AdcConf_AdcGroup_PedalGroup, adc_buffer);
-    // adc_buffer[0] = 2662 (PPS1), adc_buffer[1] = 1331 (PPS2)
-    ```
-
-* **Chặng 3 — Tầng 2.2 (ECU Abstraction — Module `IoHwAb`):**
-  * `IoHwAb` giải phóng tầng trên khỏi sự phụ thuộc vào nấc đếm ADC hay điện áp mạch:
-    1. **Kiểm tra chéo an toàn (Plausibility Check):** Kiểm tra xem $|adc\_buffer[0] - 2 \times adc\_buffer[1]| < \text{Threshold}$. Nếu lệch quá $5\%$, lập tức báo mã lỗi DTC sang module chẩn đoán `Dem` và kích hoạt chế độ ngắt ga khẩn cấp!
-    2. **Chuyển đổi vật lý (Physical Scaling):**
-       $$\text{Pedal\_Percent} = \frac{D_{\text{raw}} - \text{Raw}_{\text{calib\_min}}}{\text{Raw}_{\text{calib\_max}} - \text{Raw}_{\text{calib\_min}}} \times 100\% = \frac{2662 - 410}{3410 - 410} \times 100\% = 75.0\%$$
-    3. Cung cấp API mức bo mạch: `Std_ReturnType IoHwAb_GetPedalPosition(uint8_t* PositionPercentage);`
-
-* **Chặng 4 — Tầng 3 (Runtime Environment — RTE):**
-  * Sensor-Actuator SWC đọc dữ liệu từ `IoHwAb` và chuyển giao cho RTE.
-  * RTE kích hoạt cơ chế bảo vệ an toàn luồng (**Exclusive Area** hoặc **Copy-in / Copy-out**) để ngăn chặn việc Task 100ms đọc dở dang khi ngắt Task 10ms chen vào.
-  * RTE cung cấp hàm cho Application SWC:
-    ```c
-    uint8_t pedal_position;
-    Std_ReturnType status = Rte_Read_RpPedal_Position(&pedal_position);
-    // pedal_position = 75
-    ```
-
-* **Chặng 5 — Tầng 4 (Application Layer — SWC):**
-  * `SWC_TorqueCoordinator` thực thi thuật toán điều khiển truyền động độc lập phần cứng:
-    ```c
-    void TorqueCoordinator_Runnable_10ms(void) {
-        uint8_t pedal;
-        uint8_t drive_mode;
-        uint16_t target_torque;
-        
-        Rte_Read_RpPedal_Position(&pedal);
-        Rte_Read_RpDriveMode_Mode(&drive_mode); // Giao tiếp nội bộ RAM (Intra-ECU)
-        
-        // Mô-men xoắn cực đại của mô-tơ là 400 Nm. Chế độ Sport hệ số K = 1.0
-        target_torque = (uint16_t)(((uint32_t)pedal * 400) / 100); // 300 Nm
-        
-        // Xuất lệnh điều khiển mô-men xoắn
-        Rte_Write_PpTargetTorque_Torque(target_torque);
-    }
-    ```
+#### 1. Tầng 1: Hardware Vi Điều Khiển & Thiết Kế Bo Mạch PCB
+* **Mua gì:** Mua các dòng chip vi điều khiển chuyên dụng cho ngành ô tô đạt chuẩn an toàn chức năng ISO 26262 ASIL-D:
+  * **NXP Semiconductors:** Dòng **S32K3** (dùng cho VCU, Body Control, Zonal Controller) và **S32G** (dùng cho Central Gateway, xử lý dữ liệu viễn thông Telematics).
+  * **Infineon Technologies:** Dòng vi điều khiển 32-bit đa nhân **AURIX™ TriCore™ TC3xx / TC4xx** (chuyên dụng cho Powertrain, biến tần Inverter điều khiển mô-tơ, hộp quản lý pin cao áp BMS).
+  * **STMicroelectronics / Renesas:** Dòng Stellar hoặc RH850 cho các cụm điều khiển phụ trợ.
+* **VinFast tự làm gì:** Đội ngũ kỹ sư phần cứng (Hardware Engineering) của VinFast tự vẽ sơ đồ nguyên lý (Schematic), thiết kế mạch in nhiều lớp (PCB Layout), tính toán công suất nguồn, lựa chọn chip quản lý nguồn thông minh (SBC - System Basis Chip), bố trí các mắt lọc chống sét lan truyền và xung nhiễu điện từ (EMC/EMI), thiết kế vỏ nhôm tản nhiệt đạt chuẩn kháng nước IP67/IP69K. Sau đó, VinFast đặt hàng các nhà máy sản xuất linh kiện điện tử (EMS/ODM) gia công lắp ráp bo mạch thành phẩm.
 
 ---
 
-### 16.4 Hành Trình Chi Tiết Tại ECU 1 (VCU): Chiều Đóng Gói Và Bắn Ra Mạng (Chặng 6 ──► 10)
+#### 2. Tầng 2.1: MCAL (Microcontroller Abstraction Layer)
+* **Mua / Nhận từ đâu:** **Nhận bàn giao trọn gói từ chính Hãng Bán Dẫn (Semiconductor Vendor)**. Khi VinFast ký hợp đồng mua chip số lượng lớn từ NXP hoặc Infineon, nhà cung cấp chip có trách nhiệm cung cấp kèm bộ driver MCAL đã được kiểm định (Certified) đạt chuẩn **ISO 26262 ASIL-D** và tuân thủ tuyệt đối tài liệu **AUTOSAR SWS (Software Specification)**.
+* **Việc kỹ sư VinFast làm:**
+  * Cài đặt gói MCAL (MCAL Configuration Package) vào công cụ cấu hình phần mềm (như EB tresos Studio hoặc Vector DaVinci Configurator).
+  * Cấu hình các thông số phần cứng cụ thể của xe VinFast thông qua giao diện đồ họa: Tần số nguồn xung nhịp Clock PLL, hệ số bộ chia Prescaler, tốc độ mạng CAN (500 kbps) / CAN-FD (2 Mbps - 5 Mbps), gán chức năng chân ngoại vi (Pin Multiplexing / Pinmux), kích hoạt bộ nhớ đệm DMA, nhóm kênh ADC (ADC Group).
+  * ⚠️ **Nguyên tắc bất biến:** Kỹ sư VinFast **gần như không bao giờ chỉnh sửa trực tiếp vào file mã nguồn C của MCAL** (như `Can.c`, `Adc.c`). Mọi can thiệp bằng tay vào code MCAL sẽ làm mất hiệu lực chứng chỉ an toàn ASIL-D của hãng chip và tiềm ẩn nguy cơ lỗi thanh ghi phần cứng nghiêm trọng.
 
-Sau khi `SWC_TorqueCoordinator` tính ra $300\text{ Nm}$, dòng dữ liệu bắt đầu hành trình đi xuống xuyên qua ngăn xếp mạng BSW để biến thành sóng điện áp bắn ra xe:
+---
 
-```mermaid
-flowchart TD
-    subgraph STAGE_6 ["Chặng 6: TẦNG 3 - RTE (LOCATION TRANSPARENCY)"]
-        direction TB
-        RTE_WRITE["SWC gọi Rte_Write_PpTargetTorque_Torque(300)"] --> VFB_LOOKUP["RTE tra bảng ARXML: Đích đến nằm ở ECU Inverter!"]
-        VFB_LOOKUP --> RTE_TO_COM["RTE tự động chuyển tiếp: Com_SendSignal(Signal_TargetTorque, &300)"]
-    end
+#### 3. Tầng 2.2: ECU Abstraction Layer (Đặc Biệt Là `IoHwAb`)
+Tầng này phản ánh sự phân hóa kỹ thuật rõ nét nhất giữa mã nguồn sinh tự động và mã nguồn viết tay:
+* **Các module giao tiếp chuẩn (`CanIf`, `LinIf`, `SpiIf`):** Mua bản quyền từ Vector/Elektrobit. Công cụ sẽ tự động sinh mã từ cấu hình mạng.
+* **Module trừu tượng hóa phần cứng I/O (`IoHwAb` - I/O Hardware Abstraction):** **BẮT BUỘC KỸ SƯ BSW VINFAST PHẢI TỰ VIẾT CODE C BẰNG TAY (100% In-House Hand-Coded)!**
+  * *Vì sao không thể mua hay gen tự động `IoHwAb`?* Bởi vì mỗi bo mạch ECU do VinFast thiết kế đều có sơ đồ chân độc nhất: Chân ADC nào nối với cầu chia áp $10\text{k}\Omega / 2.2\text{k}\Omega$ để đọc cảm biến chân ga? Chân ADC nào đo nhiệt độ cảm biến NTC của khối pin? Chân GPIO nào kích mạch lái Transistor để đóng mở contactor nguồn pin $400\text{V}$?
+  * *Nhiệm vụ cụ thể của kỹ sư BSW:*
+    1. Nhận bản vẽ sơ đồ nguyên lý mạch (Schematic) từ đội ngũ Hardware.
+    2. Viết mã nguồn C cho module `IoHwAb.c`: Gọi API MCAL đọc số đếm ADC thô $\to$ Áp dụng công thức hàm truyền tuyến tính/phi tuyến để tính ra điện áp hoặc nhiệt độ thực tế $\to$ Thực hiện thuật toán lọc trung bình trượt (Moving Average Filter) khử nhiễu điện $\to$ Kiểm tra chéo ngưỡng an toàn (Safety Plausibility Check).
+    3. Cung cấp chuỗi API chuẩn hóa mức bo mạch (như `IoHwAb_GetPedalPosition()`, `IoHwAb_SetMainRelayState()`) cho tầng RTE gọi.
 
-    subgraph STAGE_7 ["Chặng 7: TẦNG 2.3 - BSW SERVICE (COM & PduR)"]
-        direction TB
-        COM_PACK["COM đóng gói Signal 300 Nm (factor 0.1 -> Raw=3000 = 0x0BB8) vào Byte 2-3"] --> E2E_GEN["Chèn E2E Alive Counter (Byte 0) & E2E CRC-8 (Byte 1)"]
-        E2E_GEN --> PDUR_ROUTE["PduR tra bảng định tuyến Zero-Copy: PduR_ComTransmit -> CanIf_Transmit"]
-    end
+---
 
-    subgraph STAGE_8 ["Chặng 8: TẦNG 2.2 - BSW ECU ABSTRACTION (CanIf)"]
-        direction TB
-        CANIF_MAP["CanIf ánh xạ PDU sang Hardware Transmit Handle HTH=0"] --> CANIF_HDR["Gán định danh vật lý: CAN ID = 0x180, DLC = 8"]
-        CANIF_HDR --> CANIF_SEND["Gọi hàm driver phần cứng: Can_Write(HTH_0, &PduInfo)"]
-    end
+#### 4. Tầng 2.3: Service Layer (Hệ Thống Dịch Vụ Cấp Cao)
+* **Mua từ đâu:** Mua bản quyền trọn bộ phần mềm BSW Stack (BSW Package) từ các hãng cung cấp giải pháp AUTOSAR số một thế giới:
+  * **Vector Informatik:** Gói giải pháp chuẩn công nghiệp hàng đầu (DaVinci Configurator Pro, DaVinci Developer, MICROSAR BSW).
+  * **Elektrobit (EB):** Gói giải pháp EB tresos Studio, EB tresos AutoCore BSW.
+* **Việc kỹ sư BSW VinFast làm: Cấu hình và Tích hợp chuyên sâu (Configuration & Integration):**
+  * **Ngăn xếp mạng (ComStack):** Nhập file thiết kế mạng toàn xe VinFast (File `.dbc` hoặc `.arxml` mạng CAN/LIN/Ethernet) vào công cụ $\to$ Cấu hình chu kỳ phát gói tin, cấu hình bộ đệm PDU, ánh xạ Signal Packing, kích hoạt cơ chế an toàn **E2E Protection (Profile 1/2: CRC-8 + Alive Counter)** cho các bản tin điều khiển mô-men xoắn và phanh.
+  * **Ngăn xếp chẩn đoán (DiagStack):** Cấu hình cơ sở dữ liệu mã lỗi chẩn đoán (DTC Database) trong module `Dem` theo tiêu chuẩn riêng của VinFast; cấu hình bảng dịch vụ giao thức chẩn đoán **UDS ISO 14229** trong module `Dcm` (như đọc lỗi $0x19$, đọc thông số cảm biến $0x22$ DID, kích hoạt chấp hành $0x2F$, xác thực bảo mật thuật toán Seed & Key $0x27$) để phục vụ thiết bị quét lỗi của kỹ thuật viên tại các xưởng dịch vụ VinFast.
+  * **Ngăn xếp bộ nhớ (MemStack):** Cấu hình module quản lý bộ nhớ bất biến `NvM` (Non-Volatile RAM Manager) để lưu trữ các tham số sống còn của xe vào Flash/EEPROM: Số km đã chạy (Odometer), lịch sử số lần sạc xả pin, các mã lỗi DTC vĩnh viễn, mã cấu hình phiên bản xe (Variant Coding - ví dụ bản Plus vs bản Eco).
+  * **Quản lý trạng thái hệ thống (`EcuM` & `BswM`):** Kỹ sư BSW VinFast trực tiếp viết các hàm **Callout, Hook và Action List**:
+    * Thiết lập chuỗi khởi động (Startup Sequence) phân phối nguồn.
+    * Thiết lập chuỗi đi ngủ (Go to Sleep): Khi xe tắt khóa điện, BswM điều phối tắt truyền thông CAN, ra lệnh `NvM_WriteAll()` lưu toàn bộ dữ liệu xuống Flash, đưa vi điều khiển về chế độ `Deep Sleep` (tiêu thụ dòng tĩnh $< 1\text{mA}$) để tránh cạn bình ắc quy $12\text{V}$.
+    * Thiết lập cơ chế đánh thức (Wakeup Sources): Khi người dùng cắm sạc pin cao áp, mở khóa cửa từ chìa Smartkey, hoặc gửi lệnh bật điều hòa từ xa qua **Ứng dụng VinFast trên điện thoại thông minh (Telematics 4G)**, ECU lập tức bắt ngắt đánh thức và khởi động toàn bộ hệ thống trong vài chục mili-giây.
 
-    subgraph STAGE_9 ["Chặng 9: TẦNG 2.1 - BSW MCAL CAN DRIVER"]
-        direction TB
-        CAN_MB["Can Driver nạp 8 bytes vào thanh ghi Mailbox phần cứng CAN_DSR0_7"] --> CAN_TRIG["Gạt bit yêu cầu phát: CAN_CMR |= CAN_TX_REQ"]
-    end
+---
 
-    subgraph STAGE_10 ["Chặng 10: TẦNG 1 - PHẦN CỨNG VI ĐIỀU KHIỂN & TRANSCEIVER"]
-        direction TB
-        CAN_CTRL["CAN Controller tự động tính CRC-15, chèn Bit Stuffing, bắn chân TX"] --> TRCV["CAN Transceiver (TJA1043) tạo áp vi sai: CAN_H=3.5V, CAN_L=1.5V"]
-        TRCV --> WIRE["Xung điện áp vi sai lan truyền trên cặp dây xoắn toàn xe (500 kbps)"]
-    end
+#### 5. Kênh Bypass: Complex Device Driver (CDD)
+* **Nguồn gốc:** **100% TỰ PHÁT TRIỂN NỘI BỘ BẰNG C (In-House Hand-Coded)**.
+* **Vì sao VinFast phải viết CDD?** Trong xe điện, có những tác vụ đòi hỏi tần số điều khiển siêu cao (hàng chục kHz) hoặc giao tiếp với các chip chuyên dụng mà kiến trúc BSW chuẩn hóa với độ trễ vài mili-giây không thể đáp ứng được:
+  1. **CDD Biến tần Inverter (Motor Control FOC):** Kỹ sư thuật toán điều khiển động cơ của VinFast viết driver CDD chọc thẳng vào thanh ghi phần cứng Timer PWM và bộ so sánh dòng điện của chip MCU (như eTPU/GTM trên Infineon AURIX) để băm xung PWM tần số $10\text{ kHz} - 20\text{ kHz}$ với độ trễ phản hồi dưới $10\,\mu\text{s}$, điều khiển các khóa công suất IGBT/SiC quay mô-tơ mượt mà.
+  2. **CDD Quản lý Cell Pin (BMS Battery AFE):** Khối pin cao áp xe điện VinFast chứa hàng trăm cell pin lithium-ion ghép nối tiếp. Kỹ sư BSW VinFast viết driver CDD giao tiếp SPI chuỗi tốc độ cao (Daisy-chain SPI) với các chip đo chuyên dụng **AFE (Analog Front End)** (như chip TI BQ79616 hoặc ADI ADBMS6815) để quét liên tục điện áp từng cell pin với độ chính xác mili-vôn.
+  3. **CDD Bộ nạp sạc & Hạ áp (OBC / DCDC):** Điều khiển chuyển đổi nguồn điện cao áp $400\text{V}/800\text{V}$ sạc bình và cấp điện cho mạng $12\text{V}$.
 
-    RTE_TO_COM --> COM_PACK
-    PDUR_ROUTE --> CANIF_MAP
-    CANIF_SEND --> CAN_MB
-    CAN_TRIG --> CAN_CTRL
+---
+
+#### 6. Tầng 3: Runtime Environment (RTE)
+* **Nguồn gốc:** **100% SINH MÃ TỰ ĐỘNG (Auto-Generated by Toolchain)**.
+* **Quy trình làm việc của kỹ sư VinFast:**
+  1. Kỹ sư tích hợp (Integration Engineer) nhập toàn bộ file mô tả hệ thống (`System_Description.arxml`), file mô tả từng linh kiện phần mềm (`SWC_Description.arxml`) và cấu hình BSW vào công cụ (Vector DaVinci Developer / EB tresos).
+  2. Trên giao diện đồ họa, kỹ sư thiết lập các đường nối cổng (**Assembly Connectors** giữa các SWC nội bộ, và **Delegation Connectors** nối ra BSW/CDD).
+  3. Ánh xạ các hàm thực thi (**Runnables**) vào các **OS Task** tương ứng theo chu kỳ ($10\text{ms}, 20\text{ms}, 100\text{ms}$).
+  4. Nhấn nút **"Generate"**: Công cụ tự động phân tích và sinh ra hàng chục file mã nguồn C (`Rte.c`, `Rte.h`, `Rte_Type.h`, `Rte_<SWC>.h`).
+  * ⚠️ **Tuyệt đối cấm sửa tay file RTE:** Toàn bộ code RTE là sản phẩm của thuật toán sinh mã tự động. Nếu sửa tay, mỗi lần cập nhật file ARXML và bấm Generate lại, toàn bộ code sửa tay sẽ bị ghi đè hoàn toàn.
+
+---
+
+#### 7. Tầng 4: Application Layer (SWC - Software Components)
+* **Nguồn gốc:** **100% TỰ PHÁT TRIỂN NỘI BỘ (In-House Core Intellectual Property)**.
+* **Đây chính là "linh hồn", là tài sản trí tuệ quan trọng nhất tạo nên bản sắc và lợi thế cạnh tranh của xe VinFast:**
+  * **VCU SWC (Bộ não điều khiển xe điện):**
+    * *Torque Coordinator:* Thuật toán nhận lệnh bàn đạp ga, điều kiện vận hành, tính toán phân bổ mô-men xoắn tức thời.
+    * *Drive Mode Selection:* Chuyển đổi linh hoạt giữa các chế độ lái Eco (tiết kiệm), Normal (êm ái), Sport (thể thao tăng tốc tức thì).
+    * *Regenerative Braking (One-Pedal Drive):* Thuật toán thu hồi động năng khi nhả chân ga biến mô-tơ thành máy phát nạp ngược lại pin.
+    * *Torque Vectoring & AWD Control:* Phân bổ chính xác lực kéo giữa cầu trước và cầu sau trên các dòng xe 2 cầu (VF8, VF9) nhằm chống trượt và giữ ổn định thân xe khi vào cua tốc độ cao.
+  * **BMS SWC (Hệ thống quản lý pin thông minh):**
+    * *SOC Estimation (State of Charge):* Thuật toán lọc Kalman mở rộng (EKF) kết hợp đo đếm Coulomb để ước lượng chính xác phần trăm pin còn lại đến từng $0.1\%$.
+    * *SOH Estimation (State of Health):* Ước lượng độ chai và lão hóa của khối pin theo thời gian và số chu kỳ sạc xả.
+    * *SOP (State of Power):* Tính toán công suất sạc và xả tối đa cho phép tại từng thời điểm để bảo vệ cell pin không bị quá nhiệt hoặc phồng rộp.
+    * *Cell Balancing Strategy:* Điều khiển xả cân bằng điện áp giữa các cell pin để tối ưu hóa quãng đường di chuyển của xe.
+  * **Thermal Management SWC:** Thuật toán điều phối van nước làm mát, bơm tuần hoàn và lốc lạnh để giữ nhiệt độ pin trong dải vàng lý tưởng ($25^\circ\text{C} - 35^\circ\text{C}$).
+* **Phương pháp phát triển:** Đội ngũ kỹ sư thuật toán của VinFast chủ yếu sử dụng phương pháp **Model-Based Design (MBD)** trên **MATLAB / Simulink / Stateflow**:
+  * Xây dựng mô hình toán học và logic điều khiển trên Simulink.
+  * Thực hiện kiểm thử mô hình tĩnh và động (**MIL - Model-in-the-Loop**).
+  * Sử dụng công cụ **Embedded Coder** để tự động sinh mã C đạt chuẩn **MISRA-C** và tuân thủ định dạng cổng Port/Runnable của AUTOSAR SWC.
+  * Đóng gói mã nguồn C cùng file mô tả `SWC.arxml` bàn giao cho đội ngũ BSW Integration.
+
+---
+
+### 10.3 Chu Trình Tích Hợp & Kiểm Thử Theo Mô Hình Chữ V (V-Model Integration Workflow)
+
+Quy trình phát triển và kiểm thử phần mềm cho một dòng xe mới tại VinFast tuân thủ nghiêm ngặt mô hình chữ V theo tiêu chuẩn **ASPICE** (*Automotive Software Process Improvement and Capability Determination*):
+
+```text
+  [1. Yêu Cầu Tính Năng Xe] ────────────────────────────────────────► [8. Kiểm Thử Xe Thật & Chạy Đường Thử]
+           │                                                                          ▲
+           ▼                                                                          │
+  [2. Kiến Trúc Toàn Xe & ARXML] ───────────────────────────► [7. Thử Nghiệm Bàn Đo HIL (Hardware-in-the-Loop)]
+           │                                                                          ▲
+           ▼                                                                          │
+  [3. Phân Rã Thiết Kế SWC & BSW] ─────────────────► [6. Hiệu Chuẩn Tham Số Xe (Calibration qua CANape/INCA)]
+           │                                                                          ▲
+           ▼                                                                          │
+  [4. LẬP TRÌNH & CẤU HÌNH SONG SONG] ────────► [5. TÍCH HỢP RTE, COMPILE & FLASH NẠP VÀO ECU PHẦN CỨNG]
+       ├── SWC Team: Simulink MBD -> Code C
+       └── BSW Team: MCAL Config + IoHwAb/CDD Hand-code + BSW Stacks Config
 ```
 
-#### Chi tiết kỹ thuật từng chặng từ trên xuống:
-
-* **Chặng 6 — Tầng 3 (RTE — Điểm Phân Rẽ Location Transparency):**
-  * Đây chính là điểm thể hiện rõ rệt nhất sự khác biệt giữa **Intra-ECU** và **Inter-ECU**:
-    * Khi đọc chế độ lái `drive_mode`, RTE thấy nó nằm trên cùng VCU $\to$ RTE gán biến trong RAM.
-    * Nhưng khi gọi `Rte_Write_PpTargetTorque_Torque(300)`, RTE phát hiện SWC nhận nằm trên **hộp Inverter**.
-  * Bản thân RTE **không có driver mạng**. RTE thực hiện nhiệm vụ bằng cách gọi thẳng API của tầng Service ComStack:
-    ```c
-    /* Bên trong mã nguồn Rte.c được sinh tự động */
-    Std_ReturnType Rte_Write_PpTargetTorque_Torque(UInt16 data) {
-        return Com_SendSignal(ComConf_ComSignal_TargetTorque, &data);
-    }
-    ```
-
-* **Chặng 7 — Tầng 2.3 (BSW Service Layer — Module `COM` & `PduR`):**
-  * **Module `COM` thực hiện Signal Packing & E2E Protection:**
-    1. Giá trị mô-men xoắn là $300\text{ Nm}$. File ARXML định nghĩa: $\text{Factor} = 0.1, \text{Offset} = 0$.
-       $$\text{Raw Value} = \frac{300 - 0}{0.1} = 3000 = 0x0BB8$$
-    2. Cấu hình Endianness: Chuẩn Intel (Little-Endian), bắt đầu từ bit 16:
-       * `Byte 2` (LSB) = `0xB8`
-       * `Byte 3` (MSB) = `0x0B`
-    3. Cơ chế an toàn **E2E Profile 1 (ISO 26262)**: Chèn thêm Alive Counter (tăng từ $0 \to 15$ mỗi chu kỳ $10\text{ms}$) vào Byte 0, và tính toán mã **CRC-8** bảo vệ toàn bộ payload chèn vào Byte 1.
-    4. Cấu hình mảng bộ đệm I-PDU hoàn chỉnh (8 bytes):
-       ```text
-       Byte 0: [ 0x05 ]  (Alive Counter = 5)
-       Byte 1: [ 0x4A ]  (E2E CRC-8 Checksum)
-       Byte 2: [ 0xB8 ]  (TargetTorque LSB)
-       Byte 3: [ 0x0B ]  (TargetTorque MSB -> 0x0BB8 = 3000 raw)
-       Byte 4: [ 0x00 ]  (Reserved)
-       Byte 5: [ 0x00 ]  (Reserved)
-       Byte 6: [ 0x00 ]  (Reserved)
-       Byte 7: [ 0x00 ]  (Reserved)
-       ```
-    5. COM bàn giao sang `PduR`: `PduR_ComTransmit(VCU_TorqueCmd_PduId, &PduInfo);`
-  * **Module `PduR` (PDU Router):**
-    * Tra cứu bảng định tuyến tĩnh `PduR_RoutingTable`.
-    * Không tốn chu kỳ CPU sao chép bộ đệm (Zero-Copy), PduR chuyển tiếp con trỏ `PduInfo` sang interface tầng dưới:
-      ```c
-      CanIf_Transmit(CanIfTxPduId_VCU_TorqueCmd, PduInfoPtr);
-      ```
-
-* **Chặng 8 — Tầng 2.2 (BSW ECU Abstraction — Module `CanIf`):**
-  * `CanIf` quản lý phần cứng trừu tượng của mạng CAN:
-    1. Ánh xạ `CanIfTxPduId` sang **Hardware Transmit Handle** (`HTH = 0`) tương ứng với Mailbox truyền số 0 của chip vi điều khiển.
-    2. Gán định danh khung tin: **CAN ID = `0x180`** (Độ ưu tiên cao cho lệnh mô-men xoắn), độ dài **DLC = 8**.
-    3. Kiểm tra máy trạng thái `CanIf_GetPduMode()`: Bus đang ở trạng thái `ONLINE` (không bị ngắt kết nối hay Bus-Off).
-    4. Gọi xuống driver MCAL: `Can_Write(HTH_0, &PduInfo);`
-
-* **Chặng 9 — Tầng 2.1 (BSW MCAL — Driver `Can`):**
-  * Driver MCAL `Can.c` truy cập trực tiếp vào các thanh ghi vật lý của con chip:
-    ```c
-    /* Ghi cấu hình Mailbox 0 trong thanh ghi vi điều khiển */
-    CAN0->MB[0].CS = CAN_CS_CODE(CAN_TX_INACTIVE); // Tạm khóa Mailbox
-    CAN0->MB[0].ID = (0x180 << 18);                // Ghi Standard CAN ID 11-bit
-    CAN0->MB[0].WORD0 = (0x0B << 24) | (0xB8 << 16) | (0x4A << 8) | 0x05; // 4 bytes đầu
-    CAN0->MB[0].WORD1 = 0x00000000;                // 4 bytes sau
-    CAN0->MB[0].CS = CAN_CS_CODE(CAN_TX_DATA) | CAN_CS_DLC(8); // Bật cờ TX kích hoạt phát
-    ```
-
-* **Chặng 10 — Tầng 1 (Physical Hardware & CAN Transceiver):**
-  * Khối logic **CAN Controller** bên trong chip MCU tự động:
-    * Tính toán đa thức kiểm tra lỗi **CRC-15** ($x^{15} + x^{14} + x^{10} + x^8 + x^7 + x^4 + x^3 + 1$).
-    * Bổ sung bit Start of Frame (SOF), chèn bit nhồi (Stuff Bit) nếu có 5 bit giống nhau liên tiếp.
-    * Bắn dòng bit nhị phân tuần tự ra chân vật lý `CAN_TX`.
-  * Chip **CAN Transceiver gắn ngoài** (ví dụ NXP TJA1043) chuyển đổi dòng bit logic $3.3\text{V}$ thành mức điện áp vi sai trên cặp dây xoắn:
-    * **Bit Recessive '1' (Trạng thái lặn):** $V_{\text{CAN\_H}} = 2.5\text{V}$, $V_{\text{CAN\_L}} = 2.5\text{V} \implies V_{\text{diff}} = 0.0\text{V}$.
-    * **Bit Dominant '0' (Trạng thái trội):** $V_{\text{CAN\_H}} = 3.5\text{V}$, $V_{\text{CAN\_L}} = 1.5\text{V} \implies V_{\text{diff}} = 2.0\text{V}$.
-  * Tín hiệu điện áp lan truyền với vận tốc xấp xỉ $200,000\text{ km/s}$ qua đường dây bus toàn xe tới hộp Inverter.
+1. **Giai đoạn Thiết Kế & Định Nghĩa (Design Phase):**
+   * Đội ngũ System & Network Architect thiết kế toàn bộ kiến trúc mạng xe, phát hành cơ sở dữ liệu mạng (`.dbc`, `.arxml`) và tài liệu đặc tả chức năng.
+2. **Giai đoạn Phát Triển Song Song (Parallel Implementation):**
+   * **Nhóm Ứng Dụng (SWC Team):** Phát triển thuật toán trên Simulink $\to$ Kiểm thử MIL/SIL $\to$ Gen code SWC.
+   * **Nhóm Phần Mềm Cơ Bản (BSW Team):** Cấu hình MCAL, BSW Stack trên EB tresos / DaVinci $\to$ Lập trình tay `IoHwAb` và các driver `CDD`.
+3. **Giai đoạn Tích Hợp Hệ Thống (Integration & Build):**
+   * Nhóm Integration nhập toàn bộ code SWC, BSW, CDD vào dự án $\to$ Kích hoạt toolchain sinh mã tầng `RTE` $\to$ Sử dụng các trình biên dịch C đạt chuẩn an toàn chức năng (**Tasking TriCore Compiler, HighTec GCC, Green Hills MULTI**) để biên dịch toàn bộ mã nguồn thành file nhị phân (`.hex` / `.srec`).
+4. **Giai đoạn Kiểm Thử Đa Tầng (Verification & Validation):**
+   * **HIL Testing (Hardware-in-the-Loop):** Nạp firmware vào hộp ECU thật, cắm giắc vào tủ mô phỏng HIL chuyên dụng của các hãng hàng đầu (như **dSPACE SCALEXIO** hoặc **Vector VT System**). Tủ HIL sẽ giả lập điện áp bàn đạp ga, dòng điện sạc, tín hiệu mạng CAN để kiểm thử tự động hàng nghìn kịch bản lỗi (đoản mạch, mất tín hiệu mạng, kẹt chân ga) mà không gây nguy hiểm cho người thật.
+   * **Hiệu chuẩn thông số xe (Calibration):** Kết nối ECU với máy tính qua giao thức **XCP/CCP** trên phần mềm chuyên dụng **Vector CANape** hoặc **ETAS INCA**, cho phép kỹ sư tinh chỉnh trực tiếp các bảng thông số (Look-up Tables) của xe (độ nhạy chân ga, ngưỡng ngắt sạc) khi động cơ đang chạy thực tế trên bàn thử động lực học (Dyno).
+   * **Nạp Flash sản xuất & Thử nghiệm đường trường (Vehicle Dyno & Road Test):** Sử dụng Bootloader đạt chuẩn chẩn đoán UDS để nạp phần mềm hoàn chỉnh vào xe thử nghiệm, chạy hàng trăm nghìn kilomet trong mọi điều kiện thời tiết khắc nghiệt (nắng nóng sa mạc, băng tuyết âm độ) trước khi xuất xưởng hàng loạt tới tay khách hàng.
 
 ---
 
-### 16.5 Hành Trình Chi Tiết Tại ECU 2 (Inverter): Tiếp Nhận Và Khép Kín Vòng Lặp Điều Khiển Mô-Tơ Điện (Chặng 11 ──► 14)
+### 10.4 Bảng Ma Trận Phân Định Trách Nhiệm Toàn Diện (The VinFast AUTOSAR Responsibility Matrix)
 
-Tại đầu nhận, toàn bộ quy trình được đảo ngược lại: Từ sóng điện áp vi sai trên dây đồng, dữ liệu được giải nén qua từng tầng BSW để đưa vào thuật toán điều khiển động cơ:
+Bảng ma trận dưới đây đúc kết cô đọng toàn bộ trách nhiệm kỹ thuật phân bổ theo từng tầng kiến trúc AUTOSAR trong một dự án phát triển phần mềm ô tô tại VinFast:
 
-```mermaid
-flowchart TD
-    subgraph STAGE_11 ["Chặng 11: TẦNG 1 & 2.1 (PHY & MCAL RX INTERRUPT)"]
-        direction TB
-        RX_PHY["Transceiver Inverter chuyển áp vi sai thành tín hiệu chân RX"] --> RX_ISR["CAN Controller nhận đủ 8 bytes -> Bật ngắt ngắt phần cứng Can_Isr_Rx()"]
-        RX_ISR --> MCAL_RX["Driver Can đọc thanh ghi Mailbox -> CanIf_RxIndication(HRH_0, 0x180, 8, data)"]
-    end
+| Tầng Kiến Trúc | Thành Phần / Module Cụ Thể | Bản Chất (Mua vs Tự Viết) | Đơn Vị Cung Cấp / Công Cụ Sử Dụng | Nhiệm Vụ Chính Của Kỹ Sư VinFast |
+| :--- | :--- | :---: | :--- | :--- |
+| **Tầng 1: Hardware** | Vi điều khiển (MCU) | **Mua** | NXP (S32K3/S32G), Infineon (AURIX TC3xx), ST | Lựa chọn dòng chip phù hợp tài nguyên RAM/Flash và chuẩn ASIL-D. |
+| | Bo mạch ECU (PCB) | **Tự thiết kế** | Altium Designer, Cadence Allegro, Nhà máy EMS | Vẽ Schematic, thiết kế PCB Layout, mạch lọc EMC, đặt gia công bo mạch. |
+| **Tầng 2.1: MCAL** | Drivers (`Can`, `Adc`, `Dio`, `Pwm`, `Port`, `Mcu`) | **Mua / Nhận từ hãng chip** | NXP MCAL Package, Infineon MCAL Package | Cài đặt vào toolchain, cấu hình Clock, PLL, Pinmux, Prescaler. Không sửa code C. |
+| **Tầng 2.2: ECU Abstraction**| Giao tiếp mạng (`CanIf`, `LinIf`) | **Mua & Cấu hình** | Vector MICROSAR, EB tresos | Cấu hình ánh xạ Hardware Mailbox sang PDU, Software Filtering. |
+| | **`IoHwAb` (I/O HW Abstraction)** | **100% Tự viết tay** | Viết bằng C thuần túy (In-house hand-coded) | **Đọc ADC thô, áp dụng công thức cầu phân áp PCB, lọc nhiễu, kích Relay, mở API cho RTE.** |
+| **Tầng 2.3: Service Layer** | Ngăn xếp mạng (`Com`, `PduR`, `CanSM`) | **Mua & Cấu hình** | Vector DaVinci BSW, EB tresos | Import DBC/ARXML, cấu hình Signal packing, chu kỳ phát tin, E2E Protection CRC. |
+| | Ngăn xếp chẩn đoán (`Dem`, `Dcm`) | **Mua & Cấu hình** | Vector DaVinci BSW, EB tresos | Cấu hình danh mục mã lỗi DTC, dữ liệu Freeze Frame, dịch vụ UDS ISO 14229. |
+| | Ngăn xếp bộ nhớ (`NvM`, `Fee`/`Ea`)| **Mua & Cấu hình** | Vector DaVinci BSW, EB tresos | Cấu hình NVRAM Blocks lưu Odometer, thông số sạc, cấu hình xe Variant Coding. |
+| | Hệ điều hành & Chế độ (`OS`, `EcuM`, `BswM`) | **Mua & Viết Callout** | Vector DaVinci BSW, EB tresos | Cấu hình Task OSEK; viết Action List, Callout điều phối chuỗi Boot, Sleep, Wakeup. |
+| **Kênh Bypass: CDD** | Biến tần Inverter FOC, BMS Cell AFE SPI | **100% Tự viết tay** | Viết bằng C tối ưu thanh ghi (In-house hand-coded) | **Lập trình driver điều khiển trực tiếp thanh ghi Timer PWM (<10µs), quét SPI chip AFE.** |
+| **Tầng 3: RTE** | Môi trường thực thi (`Rte.c`, `Rte.h`) | **100% Sinh tự động** | Vector DaVinci Developer, EB tresos Studio | Thiết kế Port Connections, ánh xạ Runnable vào Task $\to$ Bấm Generate. Cấm sửa tay. |
+| **Tầng 4: Application**| **Thuật toán VCU, BMS, Thermal, Chassis** | **100% Tự phát triển (Core IP)**| MATLAB, Simulink, Stateflow, Embedded Coder | **Thiết kế thuật toán chân ga, SOC/SOH pin, phanh tái sinh, AWD $\to$ Gen code SWC C.** |
+| **Kiểm Thử & Hiệu Chuẩn**| HIL Testing, Calibration, Bootloader Flashing | **Tự thực hiện** | dSPACE SCALEXIO, Vector VT System, CANape, INCA | Giả lập phần cứng trên tủ HIL; hiệu chuẩn tham số động học xe; nạp flash kiểm thử. |
 
-    subgraph STAGE_12 ["Chặng 12: TẦNG 2.2 & 2.3 (CANIF & PDUR ROUTING)"]
-        direction TB
-        CANIF_FILT["CanIf kiểm tra Software Filter: Khớp CAN ID 0x180"] --> PDUR_FWD["PduR định tuyến gói tin lên COM: Com_RxIndication()"]
-    end
+---
 
-    subgraph STAGE_13 ["Chặng 13: TẦNG 2.3 & 3 (COM UNPACKING & RTE EVENT)"]
-        direction TB
-        E2E_CHK["COM kiểm tra Alive Counter & CRC-8 -> Khớp an toàn!"] --> COM_UNPACK["COM Unpack Byte 2-3: 0x0BB8 = 3000 * 0.1 = 300 Nm"]
-        COM_UNPACK --> RTE_NOTIF["COM gọi Rte_COMCbk_TargetTorque() -> Kích hoạt DataReceivedEvent"]
-    end
+### 10.5 Giải Mã Nghịch Lý Kỹ Thuật: 70% Công Sức Phát Triển BSW Thực Chất Là Làm Gì?
 
-    subgraph STAGE_14 ["Chặng 14: TẦNG 4 (APPLICATION SWC INVERTER CONTROL)"]
-        direction TB
-        SWC_INVERTER["SWC_MotorInverterControl: Rte_Read_RpTargetTorque_Torque(&cmd)"] --> FOC_EXEC["Thuật toán điều khiển FOC: Băm xung PWM 3 pha"]
-        FOC_EXEC --> MOTOR_RUN["ĐỘNG CƠ ĐIỆN QUAY BÁNH XE VỚI ĐÚNG MÔ-MEN XOẮN 300 NM!"]
-    end
+Trong ngành công nghiệp ô tô toàn cầu, một thống kê kinh điển từ các tập đoàn lớn (Vector, Bosch, Elektrobit) chỉ ra rằng: **70% - 80% công sức phát triển phần mềm nhúng ô tô dồn vào phần mềm cơ bản (BSW) và tích hợp hệ thống**, chỉ có 20% - 30% dồn vào thuật toán ứng dụng (SWC).
 
-    MCAL_RX --> CANIF_FILT
-    PDUR_FWD --> E2E_CHK
-    RTE_NOTIF --> SWC_INVERTER
+Nhiều kỹ sư mới vào nghề thường thắc mắc: *"Nếu các module BSW đã được hãng toolchain viết sẵn và gen tự động, vậy tại sao lại tốn đến 70% công sức? Kỹ sư BSW thực chất phải viết những code C nào và cấu hình file ARXML ra sao?"*
+
+Dưới đây là lời giải mã kỹ thuật chi tiết:
+
+```text
+========================================================================================================================
+           PHÂN BỔ 70% CÔNG SỨC PHÁT TRIỂN BSW TẠI MỘT HÃNG XE NHƯ VINFAST
+========================================================================================================================
+[1. CODE C VIẾT TAY (HAND-CODED)]     │ IoHwAb bo mạch, Driver CDD Inverter (<10µs), BSW Callouts, UDS 0x27/0x22, Bootloader
+──────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────
+[2. LẬP TRÌNH CẤU HÌNH ARXML]         │ Multi-layer dependencies, Reconciliation DBC/ARXML mạng xe, OS Task Sizing tĩnh
+──────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────
+[3. DEBUGGING & LOW-LEVEL INTEGRATION]│ Săn lỗi HardFault bằng Lauterbach TRACE32, Linker Script MemMap.h, bus CANoe
+──────────────────────────────────────┼─────────────────────────────────────────────────────────────────────────────────
+[4. KIỂM ĐỊNH AN TOÀN ISO 26262 ASIL] │ 100% MC/DC Code Coverage, Static Analysis MISRA-C:2012, kiểm toán ASPICE
+========================================================================================================================
 ```
 
-#### Chi tiết kỹ thuật tại ECU 2:
+#### 1. Kỹ Sư BSW Thực Chất Phải Viết Những Dòng Code C Nào?
+Mặc dù khung xương BSW do công cụ sinh ra, kỹ sư BSW bắt buộc phải **viết tay (hand-coded) hàng chục nghìn dòng code C** tại các điểm nối mà không tool nào có thể tự động hóa:
+* **Tầng `IoHwAb` (100% C thuần túy):** Đọc sơ đồ nguyên lý mạch (Schematic) bo PCB VinFast $\to$ Viết code C đọc ADC thô từ MCAL $\to$ Chạy công thức cầu chia áp điện trở $\to$ Áp dụng thuật toán **lọc số thông thấp (Digital Low-Pass Filter)** hoặc **lọc trung bình trượt (Moving Average)** để triệt tiêu xung nhiễu điện từ $\to$ Viết hàm kiểm tra an toàn chéo (Plausibility Check) cho cảm biến kép $\to$ Viết hàm điều khiển GPIO/PWM kích Transistor/MOSFET đóng Contactor cao áp 400V, bơm làm mát, van nhiệt.
+* **Tầng Driver Chuyên Dụng `CDD` (100% C tối ưu thanh ghi):**
+  * *FOC Motor Inverter Driver:* Lập trình trực tiếp thanh ghi Timer phần cứng (như khối GTM trên Infineon AURIX), băm xung PWM tần số $10 - 20\text{ kHz}$ với độ trễ phản hồi dưới $10\,\mu\text{s}$ để điều khiển khóa công suất SiC/IGBT quay mô-tơ.
+  * *BMS Battery AFE SPI Driver:* Viết driver SPI chuỗi tốc độ cao (Daisy-chain) giao tiếp với các chip đo chuyên dụng (TI BQ79616 / ADI ADBMS6815) để quét liên tục điện áp từng cell pin của khối pin cao áp.
+  * *Driver chip nguồn thông minh (SBC):* Định kỳ phát xung "nuôi" Watchdog ngoại vi qua SPI; nếu trễ 1 chu kỳ thì chip SBC sẽ lập tức ngắt nguồn reset ECU.
+* **BSW Callouts & Hooks (`EcuM`, `BswM`, `OS`):** Tool sinh ra các khung hàm rỗng, kỹ sư phải điền code C:
+  * `EcuM_AL_DriverInitZero/One`: Khởi tạo nguồn, mạch Clock, chip SBC trước khi OS chạy.
+  * `EcuM_CheckWakeup`: Xử lý ngắt bắt tín hiệu chìa khóa Smartkey, cắm sạc pin, hoặc lệnh đánh thức từ xa qua mạng 4G Telematics của App VinFast.
+  * `BswM_ActionList`: Viết hàm C xử lý các bước dọn dẹp trước khi đưa ECU vào chế độ Deep Sleep ($<1\text{mA}$ chống cạn bình 12V).
+  * `Os_ErrorHook`, `Os_StackOverflowHook`: Bắt lỗi tràn ngăn xếp Task hoặc Deadlock luồng.
+* **Diagnostic Callbacks (`Dcm` / `Dem`):**
+  * Viết thuật toán mật mã hóa (AES-128 / SHA-256) tính toán mã `Key` từ `Seed` ngẫu nhiên cho dịch vụ UDS 0x27 (Security Access).
+  * Viết hàm C bóc tách số khung xe (VIN), số serial pin, Odometer cho dịch vụ UDS 0x22 (Read DID) và 0x2E (Write DID).
+  * Viết hàm C cưỡng bức kích hoạt chấp hành cho dịch vụ UDS 0x2F (IO Control).
+* **Firmware Flash Bootloader (Phục vụ nạp phần mềm OTA):**
+  * Viết driver Flash cấp thấp: Xóa sector Flash, ghi block dữ liệu vào Flash nội/ngoại.
+  * Viết thuật toán xác thực Secure Boot: Dùng chữ ký số RSA-2048 / ECC P-256 và mã băm SHA-256 để đảm bảo firmware nạp vào xe là hàng chính hãng từ VinFast.
+  * Quản lý phân vùng bộ nhớ A/B Swap (Dual-bank Flash) để rollback an toàn nếu quá trình update OTA bị ngắt điện giữa chừng.
 
-* **Chặng 11 — Tầng 1 & Tầng 2.1 (Hardware Transceiver & MCAL Can Rx):**
-  * CAN Transceiver của Inverter giải mã mức áp vi sai $2.0\text{V}$ thành mức logic `0` trên chân `CAN_RX` của chip MCU.
-  * Bộ điều khiển CAN Controller kiểm tra mã CRC-15 của khung tin. Nếu khớp, nó tự động gửi bit **ACK** trong khe ACK Slot.
-  * Khung tin được nạp vào Mailbox nhận. Ngắt phần cứng (Category 2 ISR) kích hoạt:
-    ```c
-    ISR(Can0_Rx_IRQHandler) {
-        Can_RxIndication(HRH_0); // Thông báo driver MCAL đã nhận gói tin
-    }
-    ```
-  * Driver MCAL đọc dữ liệu từ thanh ghi Mailbox và bàn giao cho tầng trên:
-    `CanIf_RxIndication(HRH_0, 0x180, 8, rx_data_ptr);`
+#### 2. Cấu Hình ARXML Thực Chất Là Làm Gì? Tại Sao Cực Kỳ Tốn Công?
+Cấu hình ARXML trong thực tế chính là **Lập trình kiến trúc hệ thống cấp cao (Configuration-as-Code)**:
+* **Hệ thống dữ liệu mạng khổng lồ:** Một chiếc xe như VF8 có hàng nghìn tín hiệu (**Signals**) qua 4 - 6 mạng CAN-FD, LIN, Automotive Ethernet. Khi đội Network Architecture cập nhật file DBC/ARXML mới, kỹ sư BSW phải tiến hành **Reconciliation (Đối chiếu & Hợp nhất cấu hình)**: Giải quyết xung đột CAN ID, ánh xạ lại hàng trăm tín hiệu mà không làm phá vỡ các tính năng cũ.
+* **Tính phụ thuộc chéo dây chuyền (Multi-layer Dependencies):** Một thay đổi nhỏ ở tầng đáy sẽ kéo theo chuỗi thay đổi domino qua 5-6 tầng:
+  $$\text{Đổi 1 chân ADC MCAL} \implies \text{Đổi ADC Group} \implies \text{Đổi IoHwAb} \implies \text{Đổi Port SWC} \implies \text{Đổi System Signal} \implies \text{Đổi Com PDU} \implies \text{Đổi RTE Event} \implies \text{Đổi OS Task}$$
+* **Cấu hình thời gian thực (OS Scheduling & Memory Budget):**
+  * Phân bổ hàng chục Runnable vào các Task $1\text{ms}, 5\text{ms}, 10\text{ms}, 20\text{ms}, 100\text{ms}$.
+  * **Cấp phát tĩnh Stack Size cho từng Task:** Nếu cấu hình thiếu dù chỉ $64\text{ bytes}$ bộ nhớ ngăn xếp $\implies$ Khi xe đang chạy trên cao tốc với bus load cao, ngắt CAN ập tới gây **tràn ngăn xếp (Stack Overflow)** $\implies$ CPU sập HardFault làm xe khởi động lại đột ngột!
 
-* **Chặng 12 — Tầng 2.2 & 2.3 (CanIf & PduR Routing):**
-  * `CanIf` thực hiện bộ lọc phần mềm (**Software Acceptance Filter**): Nhận diện CAN ID `0x180` hợp lệ và được cấu hình cho ECU này.
-  * `CanIf` gọi `PduR_CanIfRxIndication()`.
-  * `PduR` tra cứu bảng định tuyến và chuyển tiếp nguyên khối tới module COM: `Com_RxIndication(ComRxPduId_TorqueCmd, PduInfoPtr);`
-
-* **Chặng 13 — Tầng 2.3 & Tầng 3 (COM Signal Unpacking & RTE Notification):**
-  * Module `COM` của Inverter thực hiện:
-    1. **Kiểm tra an toàn E2E:** Tính lại mã CRC-8 trên 7 byte dữ liệu và so sánh với Byte 1. Đồng thời kiểm tra Alive Counter (Byte 0) xem có bị nhảy cóc hoặc bị treo không. Nếu sai lệch, COM hủy bỏ gói tin và báo sang `Dem`!
-    2. **Signal Unpacking:** Trích xuất 16-bit tại vị trí StartBit 16 (Byte 2 và Byte 3):
-       $$\text{Raw} = (0x0B \ll 8) | 0xB8 = 3000 \implies \text{Physical Value} = 3000 \times 0.1 = 300\text{ Nm}$$
-    3. Cập nhật giá trị $300$ vào vùng nhớ đệm tín hiệu nội bộ của COM.
-    4. Gọi hàm thông báo được cấu hình trong ARXML: `Rte_COMCbk_TargetTorque();`
-  * Tầng **RTE** nhận được tín hiệu callback, lập tức kích hoạt sự kiện **`DataReceivedEvent`** và giải phóng cờ chờ của Task điều khiển biến tần.
-
-* **Chặng 14 — Tầng 4 (Application Layer — `SWC_MotorInverterControl`):**
-  * Runnable điều khiển động cơ thực thi:
-    ```c
-    void InverterControl_Runnable(void) {
-        uint16_t torque_command;
-        Std_ReturnType status = Rte_Read_RpTargetTorque_Torque(&torque_command);
-        
-        if (status == RTE_E_OK) {
-            // torque_command = 300 Nm
-            // Thực hiện thuật toán điều khiển trường FOC (Field-Oriented Control)
-            FOC_CalculateCurrentReference(torque_command, &Id_ref, &Iq_ref);
-            FOC_ExecuteSpaceVectorPWM(Id_ref, Iq_ref);
-        } else {
-            // Lỗi mất gói tin -> Kích hoạt chế độ phanh tái sinh an toàn
-            SafeTorqueOff_Execute();
-        }
-    }
-    ```
-  * Thuật toán FOC xuất các giá trị băm xung PWM điều khiển các cổng Driver công suất, đưa dòng điện xoay chiều 3 pha vào cuộn dây Stator của động cơ điện $\implies$ **Bánh xe quay, xe tăng tốc mượt mà và an toàn!**
+#### 3. "Hố Đen Thời Gian" Thực Sự: Tích Hợp, Debugging & Kiểm Định An Toàn ASIL-D
+Đây chính là phần việc ngốn nhiều thời gian nhất của kỹ sư BSW:
+* **Quản lý Linker Script & `MemMap.h`:** Viết file Linker Script (`.lsl` / `.ld`) phức tạp hàng nghìn dòng cho trình biên dịch Tasking / HighTec để phân bổ bộ nhớ: Vùng RAM không xóa khi reset ấm, vùng RAM cho DMA, vùng Flash cho Bootloader, vùng ROM cho Calibration.
+* **Gỡ lỗi tương tác Phần cứng - Phần mềm (HW/SW Debugging):** Khi nạp code vào ECU thật mà chip bị treo:
+  * Không thể dùng `printf()` để debug!
+  * Bắt buộc phải gắn mạch nạp chuyên dụng (**Lauterbach TRACE32 / J-Link**) câu dây trực tiếp vào cổng JTAG/DAP của chip trên mạch xe, đọc thanh ghi CPU, đọc mã máy Assembly để truy tìm con trỏ NULL hay Task bị nghẽn.
+* **Kiểm định an toàn chức năng ISO 26262 ASIL-D:** Đo kiểm **độ bao phủ mã nguồn (100% Statement, Branch, MC/DC Coverage)** trên môi trường mô phỏng và phần cứng thật; chạy phân tích tĩnh (QAC / Polyspace) đảm bảo tuân thủ nghiêm ngặt chuẩn **MISRA-C:2012**.
 
 ---
 
-### 16.6 Ma Trận Đối Chiếu Xuyên Suốt Toàn Diện (Cross-Layer Traceability Matrix)
+### 10.6 Phân Tích Thực Chiến Job Description (JD) BSW Tại VinFast: Bạn Sẽ Làm Gì Hàng Ngày & Chiến Lược Ứng Tuyển
 
-Bảng dưới đây đúc kết toàn bộ **14 chặng biến đổi** của tín hiệu bàn đạp ga xuyên suốt 4 tầng kiến trúc của cả 2 ECU:
+Dưới đây là bức tranh đối chiếu thực tế từ các bản tin tuyển dụng kỹ sư **Basic Software Engineer** tại VinFast:
 
-| Chặng | Hộp ECU | Tầng Kiến Trúc | Module / File Code C Phụ Trách | Hàm API / Thanh Ghi Tiêu Biểu | Dạng Dữ Liệu & Đơn Vị Tại Chặng Đó |
-| :---: | :---: | :--- | :--- | :--- | :--- |
-| **1** | **VCU** | **Tầng 1: Hardware** | Cảm biến Hall kép & Mạch RC | Chân giắc cắm VCU | Điện áp tương tự: $V_{\text{PPS1}} = 3.25\text{V}, V_{\text{PPS2}} = 1.625\text{V}$ |
-| **2** | **VCU** | **Tầng 2.1: MCAL** | Driver `Adc` (`Adc.c`) | Thanh ghi `ADC0->CDR[3]`, `Adc_ReadGroup()` | Số nguyên thô: $D_{\text{raw}} = 2662\text{ counts}$ (12-bit) |
-| **3** | **VCU** | **Tầng 2.2: ECU Abstraction**| Module `IoHwAb` (`IoHwAb.c`)| `IoHwAb_GetPedalPosition()` | Tỉ lệ phần trăm vật lý: $\text{Pedal} = 75.0\%$ |
-| **4** | **VCU** | **Tầng 3: RTE** | Môi trường `Rte` (`Rte.c`) | `Rte_Read_RpPedal_Position()` | Biến C chuẩn hóa: `uint8 pedal = 75` |
-| **5** | **VCU** | **Tầng 4: Application**| `SWC_TorqueCoordinator` | `TorqueCoordinator_Runnable_10ms()` | Đại lượng mô-men xoắn: $T_{\text{target}} = 300\text{ Nm}$ |
-| **6** | **VCU** | **Tầng 3: RTE** | Môi trường `Rte` (`Rte.c`) | `Rte_Write_PpTargetTorque_Torque()` | Chuyển tiếp VFB: Gọi `Com_SendSignal()` |
-| **7** | **VCU** | **Tầng 2.3: BSW Services** | `COM` & `PduR` (`Com.c`, `PduR.c`)| `Com_SendSignal()`, `PduR_ComTransmit()` | Mảng 8-byte I-PDU (E2E CRC + Raw `3000 = 0x0BB8`) |
-| **8** | **VCU** | **Tầng 2.2: ECU Abstraction**| Module `CanIf` (`CanIf.c`)| `CanIf_Transmit()` | L-PDU: CAN ID = `0x180`, DLC = `8` |
-| **9** | **VCU** | **Tầng 2.1: MCAL** | Driver `Can` (`Can.c`) | `Can_Write()`, Thanh ghi `CAN0->MB[0]` | Nạp thanh ghi Mailbox phần cứng, bật cờ `TX_REQ` |
-| **10**| **MẠNG**| **Tầng 1: Hardware** | CAN Transceiver (TJA1043) | Dây cáp mạng vi sai $CAN\_H / CAN\_L$ | Điện áp vi sai: $V_{\text{diff}} = 2.0\text{V}$ ($3.5\text{V} / 1.5\text{V}$), 500 kbps |
-| **11**| **MCU2**| **Tầng 2.1: MCAL** | Driver `Can` (`Can.c`) | `Can0_Rx_IRQHandler()`, `CanIf_RxIndication()` | Nhận khung tin, đọc thanh ghi Mailbox nhận |
-| **12**| **MCU2**| **Tầng 2.2 & 2.3: BSW** | `CanIf` & `PduR` | `CanIf_RxIndication()`, `PduR_CanIfRxIndication()` | Lọc CAN ID `0x180` và định tuyến lên `COM` |
-| **13**| **MCU2**| **Tầng 2.3: BSW & RTE**| `COM` & `Rte` | `Com_RxIndication()`, `Rte_COMCbk()` | Kiểm tra E2E CRC, Unpack `0x0BB8` $\to 300\text{ Nm}$, báo RTE |
-| **14**| **MCU2**| **Tầng 4: Application**| `SWC_MotorInverterControl`| `Rte_Read_RpTargetTorque_Torque()` | Nhận $300\text{ Nm} \to$ Băm xung PWM điều khiển mô-tơ quay! |
+```text
+========================================================================================================================
+           ĐỐI CHIẾU YÊU CẦU JD VINFAST ──► CÔNG VIỆC THỰC TẾ HÀNG NGÀY CỦA KỸ SƯ BSW
+========================================================================================================================
+[1. DIAG SKILLS ON UDS]         ──► Cấu hình Dem/Dcm, viết callback dịch vụ 0x22 (Read DID), 0x27 (Seed/Key), 0x2F (IO Ctrl)
+[2. TRICORE MEMORY ALLOCATION]  ──► Viết Linker Script (.lsl), chia RAM DSPR/PSPR 0-wait-state, LMURAM Spinlock, Dual-bank Flash
+[3. ETHERNET & CAN/LIN STACK]   ──► Cấu hình ComStack CAN-FD (E2E CRC), Automotive Ethernet (SOME/IP SOA, DoIP Flash siêu tốc)
+[4. INVERTER KNOW-HOW & LOW C]  ──► Lập trình CDD băm xung PWM Timer GTM (<10µs), SPI góc quay Resolver, thuật toán FOC mô-tơ
+[5. INTEGRATION & DEBUG TOOLS]  ──► Soi bus CANoe/CANalyzer, hiệu chuẩn CANape (XCP), săn lỗi HardFault bằng Lauterbach TRACE32
+========================================================================================================================
+```
+
+#### 1. Chi Tiết 5 Nhóm Công Việc Hàng Ngày Bạn Sẽ Được Giao Làm
+
+##### A. Nhóm Việc 1: Chẩn Đoán Lỗi Xe Bằng Chuẩn UDS (`Diag skills on UDS`)
+* Nhận bảng danh mục mã lỗi (**DTC Matrix**) từ đội thiết kế hệ thống xe VinFast.
+* Dùng công cụ **Vector DaVinci Configurator** cấu hình module `Dem`: Cài đặt thuật toán lọc lỗi (Debounce counter), cấu hình dữ liệu đóng băng (**Snapshot / Freeze Frame**) lưu trữ tốc độ xe, điện áp 12V, nhiệt độ pin lúc phát sinh sự cố.
+* Cấu hình module `Dcm` và **viết code C cho các hàm callback dịch vụ chẩn đoán**:
+  * **Dịch vụ 0x22 (Read DID):** Viết hàm C trả về số khung xe (VIN), số serial pin, nhiệt độ động cơ cho máy chẩn đoán tại xưởng dịch vụ VinFast.
+  * **Dịch vụ 0x2E (Write DID):** Viết logic ghi mã cấu hình xe (**Variant Coding** khi xuất xưởng tại Hải Phòng).
+  * **Dịch vụ 0x27 (Security Access):** Viết thuật toán mật mã hóa tính toán mã `Key` từ `Seed` ngẫu nhiên để mở khóa quyền chẩn đoán cấp cao.
+  * **Dịch vụ 0x2F (Input/Output Control):** Cho phép thợ kỹ thuật cưỡng bức bật quạt tản nhiệt, bóp còi hoặc bật xi-nhan kiểm tra xe.
+
+##### B. Nhóm Việc 2: Quản Lý Phân Bổ Bộ Nhớ Chip TriCore (`Memory allocation and its knowledge with tricore`)
+* Các ECU cốt lõi của VinFast (Inverter, BMS, VCU) sử dụng vi điều khiển đa nhân **Infineon AURIX™ TriCore™ TC3xx (TC387, TC397)**.
+* **Nhiệm vụ cụ thể:**
+  1. **Viết và chỉnh sửa Linker Script (`.lsl` / `.ld`):**
+     * Quyết định hàm/biến nào chạy trên **DSPR / PSPR** (RAM cục bộ tốc độ cực cao 0-wait-state của từng Core CPU) để đáp ứng thuật toán điều khiển động cơ micro-giây.
+     * Dữ liệu nào nằm ở **LMURAM (Shared RAM)** dùng chung giữa các Core kết hợp Spinlock chống tranh chấp dữ liệu.
+     * Phân bổ phân vùng Flash cho cơ chế **Dual-bank A/B Swap** phục vụ cập nhật OTA an toàn.
+  2. **Cấu hình `MemMap.h`:** Đặt chỉ thị `#pragma section` bao bọc mã nguồn C để trình biên dịch (Tasking / HighTec) ném code vào đúng phân vùng bộ nhớ.
+  3. **Kiểm soát Stack Overflow:** Kiểm tra file bản đồ bộ nhớ (`.map file`), tính toán cấp phát Stack Size tĩnh cho từng OS Task, đảm bảo không bao giờ bị tràn ngăn xếp.
+
+##### C. Nhóm Việc 3: Cấu Hình Ngăn Xếp Mạng CAN-FD & Automotive Ethernet (`Ethernet Autosar skills`, `CAN/LIN/ETH Stack`)
+* **Nhiệm vụ cụ thể trên Vector DaVinci Configurator:**
+  * **Mạng CAN-FD:** Cấu hình tốc độ baudrate $500\text{ kbps}$ / $2 - 5\text{ Mbps}$; cấu hình Signal Packing; kích hoạt cơ chế an toàn **E2E Protection (Profile 1/2: CRC-8 + Alive Counter)** cho tín hiệu chân ga và phanh.
+  * **Mạng Automotive Ethernet (100BASE-T1 / 1000BASE-T1):**
+    * Cấu hình driver `Eth`, `EthIf`, `TcpIp`, và `SoAd`.
+    * Cấu hình giao thức **SOME/IP** phục vụ kiến trúc hướng dịch vụ (SOA).
+    * Cấu hình giao thức **DoIP** (Diagnostics over IP) cho phép nạp lại toàn bộ firmware xe qua cổng mạng Ethernet trong vài phút (nhanh gấp 20 lần đường CAN).
+
+##### D. Nhóm Việc 4: Lập Trình Driver Nhúng Tầng Thấp & Kênh Bypass Inverter (`Know how related to Inverter is a plus`)
+* Nếu làm tại cụm Powertrain / Inverter xe điện VinFast:
+  * **Tự viết `IoHwAb`:** Đọc bản vẽ PCB $\to$ Code C đọc ADC thô $\to$ Chuyển đổi tuyến tính $\to$ Lọc trung bình động $\to$ Cung cấp API chuẩn cho RTE.
+  * **Tự viết driver `CDD` cho Biến Tần Inverter:**
+    * Lập trình thanh ghi Timer phần cứng (khối **GTM** trên chip Infineon AURIX) để băm xung PWM tần số $10 - 20\text{ kHz}$.
+    * Lập trình giao tiếp SPI đọc cảm biến góc quay trục mô-tơ (Resolver / Absolute Encoder) phục vụ giải thuật điều khiển vector từ thông (FOC).
+    * Tích hợp mã nguồn C của giải thuật FOC vào Task ngắt chu kỳ siêu ngắn ($50\,\mu\text{s} - 100\,\mu\text{s}$).
+
+##### E. Nhóm Việc 5: Tích Hợp Hệ Thống & Gỡ Lỗi Cấp Thấp (`Integration skills`, `Debug skills`)
+* **Tích hợp phần mềm:** Ghép nối SWC + MCAL + BSW + IoHwAb/CDD $\to$ Dùng DaVinci Developer nối Port $\to$ Bấm "Generate RTE" $\to$ Gọi Compiler biên dịch ra file nhị phân `.hex` / `.srec`. Giải quyết toàn bộ lỗi xung đột Header file, trùng macro, sai prototype.
+* **Gỡ lỗi trên bàn đo (Bench & HIL):**
+  * **Dùng Vector CANoe:** Bắt gói tin bus mạng, giả lập các ECU khác chưa hoàn thiện (Rest-bus Simulation) để kiểm tra ECU phản hồi.
+  * **Dùng Vector CANape:** Kết nối giao thức **XCP over CAN/Ethernet** để đo kiểm biến trong RAM và hiệu chuẩn bảng tham số (Look-up Table) khi xe đang chạy trên bàn Dyno.
+  * **Dùng mạch nạp Lauterbach TRACE32:** Khi nạp code vào ECU thật mà chip bị treo/sập nguồn $\implies$ Cắm JTAG/DAP vào bo mạch, soi thanh ghi CPU để truy tìm con trỏ trỏ sai địa chỉ hoặc Task bị Deadlock.
 
 ---
 
-> 🏆 **Đúc Kết Vàng Cho Kỹ Sư Kiến Trúc AUTOSAR:**  
-> Toàn bộ kiến trúc 4 tầng của AUTOSAR Classic sinh ra không phải để làm mọi thứ phức tạp hơn, mà để **cô lập các rủi ro và trách nhiệm kỹ thuật**:
-> 1. Đổi nhà sản xuất bàn đạp ga? $\implies$ Chỉ sửa thông số hiệu chuẩn trong **Tầng 2.2 (`IoHwAb`)**.
-> 2. Đổi vi điều khiển từ NXP S32K sang Infineon TriCore? $\implies$ Chỉ thay thế driver **Tầng 2.1 (MCAL)**.
-> 3. Đổi đường truyền từ CAN sang Ethernet? $\implies$ Chỉ sửa cấu hình định tuyến trong **Tầng 2.3 (ComStack)**.
-> 4. Đổi vị trí chuyển thuật toán tính mô-men xoắn từ VCU sang Inverter? $\implies$ Chỉ cấu hình lại file ARXML để công cụ sinh lại **Tầng 3 (RTE)**.
-> 5. **Toàn bộ thuật toán điều khiển nghiệp vụ ở Tầng 4 (Application SWC) được giữ nguyên 100% không cần sửa một dòng code nào!** Đây chính là sức mạnh tối thượng và giá trị thương mại hàng triệu đô-la của tiêu chuẩn AUTOSAR!
+#### 2. Chiến Lược Phỏng Vấn Kỹ Thuật Đỉnh Cao Tại VinFast
 
+Khi phỏng vấn cho vị trí BSW Engineer tại VinFast, bạn hoàn toàn có thể tự tin trả lời theo góc nhìn của một kỹ sư đã nắm sâu kiến trúc thực chiến:
+
+1. **Khi được hỏi về UDS & DiagStack:**
+   > *"Em nắm vững luồng xử lý của DiagStack: Gói tin từ CanIf $\to$ PduR $\to$ CanTp (chia gói ISO 15765-2) $\to$ Dcm. Em hiểu cơ chế cấu hình mã lỗi DTC, Freeze Frame trong Dem, và đã nắm vững cách triển khai code C cho các callback UDS như 0x22 (Read DID), 0x2E (Write DID), và thuật toán sinh Key từ Seed của dịch vụ 0x27 Security Access."*
+
+2. **Khi được hỏi về TriCore & Memory Allocation:**
+   > *"Em hiểu kiến trúc đa nhân của dòng Infineon AURIX TC3xx. Em biết cách sử dụng Linker Script (`.lsl`) để phân bổ các hàm thời gian thực khắt khe vào vùng RAM cục bộ DSPR/PSPR 0-wait-state của từng Core, sử dụng LMURAM cho shared data kết hợp Spinlock, và dùng macro `MemMap.h` theo chuẩn AUTOSAR để định vị bộ nhớ an toàn chống tràn Stack."*
+
+3. **Khi được hỏi về vai trò BSW tại VinFast:**
+   > *"Em hiểu rất rõ mô hình phát triển phần mềm ô tô: MCAL nhận từ hãng chip (NXP/Infineon), BSW Stack mua từ Vector/Elektrobit, RTE được sinh tự động. Phần việc giá trị nhất của kỹ sư BSW VinFast là cấu hình liên kết chéo ComStack/DiagStack/MemStack/OS, viết tay 100% tầng `IoHwAb` để khớp với sơ đồ bo mạch PCB in-house, viết các driver `CDD` (như FOC Inverter <10µs, SPI đo cell pin AFE), và xử lý bài toán gỡ lỗi tích hợp cấp thấp bằng Lauterbach và CANoe."*

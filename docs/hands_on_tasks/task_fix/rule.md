@@ -494,34 +494,32 @@ Mỗi khi hoàn thành một task, hãy tự kiểm tra 4 câu hỏi sau:
 
 ---
 
-## 10. 📦 QUY TẮC SAO LƯU DỰ ÁN HÀNG NGÀY (DAILY BACKUP RULES)
+## 10. 📦 QUY TẮC SAO LƯU DỰ ÁN (1-CLICK BACKUP TO CANVA & GITLAB)
 
-Nhằm đảm bảo an toàn tuyệt đối cho toàn bộ tài liệu nghiên cứu, bài giải thực hành và giải pháp kiến trúc của dự án, quy trình sao lưu hàng ngày được chuẩn hóa theo các nguyên tắc sau:
+Nhằm đảm bảo an toàn tuyệt đối cho toàn bộ tài liệu nghiên cứu, bài giải thực hành và giải pháp kiến trúc của dự án, quy trình sao lưu được kích hoạt chủ động bằng **1-Click Button**:
 
 ### 10.1. Phạm Vi Sao Lưu (Backup Scope): CHỈ SAO LƯU THƯ MỤC `docs/`
 * **Đối tượng được đóng gói:** Duy nhất thư mục [`docs/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/) (bao gồm toàn bộ 27 Hands-on Tasks, Solutions, Theory Deep Dives, Masterclasses, Task Fix Packages, và Báo cáo kỹ thuật).
-* **Lý do loại trừ thư mục `as/`:**
-  1. Thư mục `as/` chứa toàn bộ khung xương mã nguồn AUTOSAR tĩnh dung lượng lớn (~30 MB nhị phân), đã được quản lý và bảo vệ nguyên vẹn bởi lịch sử Git commit.
-  2. Việc nén và encode cả `as/` hàng ngày tạo ra các tệp Base64 rất nặng (~40 MB), gây tốn băng thông và làm chậm quá trình push Git không cần thiết.
-  3. Chỉ sao lưu thư mục `docs/` giúp tệp nén đạt kích thước siêu nhẹ (~840 KB zip / ~1.1 MB text Base64), đẩy lên GitLab trong chưa đầy 2 giây.
+* **Lý do loại trừ thư mục `as/`:** Thư mục `as/` chứa toàn bộ khung xương mã nguồn AUTOSAR tĩnh dung lượng lớn (~30 MB), đã được quản lý và bảo vệ nguyên vẹn bởi lịch sử Git commit.
 
-### 10.2. Quy Trình Kỹ Thuật 4 Bước Chuẩn Mực:
-1. **Nén (Compress):** Nén duy nhất thư mục `docs/` thành file zip tạm:
-   ```powershell
-   tar -a -c -f BackUp/Study_AUTOSAR_Backup.zip docs
-   ```
-2. **Mã hóa (Encode Base64):** Chuyển đổi sang text Base64 qua tiện ích tiêu chuẩn Windows `certutil`:
-   ```powershell
-   certutil -f -encode BackUp/Study_AUTOSAR_Backup.zip BackUp/Study_AUTOSAR_Backup.zip.txt
-   ```
-3. **Dọn dẹp (Cleanup):** Tự động xóa file `.zip` trung gian ngay sau khi encode, **chỉ lưu giữ duy nhất file `.txt`** trong thư mục `BackUp/`.
-4. **Đồng bộ (Git Sync):** Stage, commit và push tệp `Study_AUTOSAR_Backup.zip.txt` lên GitLab remote `origin/main`.
+### 10.2. Quy Trình 1-Click Kèm Banner Ngày Giờ Trực Quan:
+1. **Nén (Compress):** Nén duy nhất thư mục `docs/` thành file zip tạm thời `BackUp/Study_AUTOSAR_Backup.zip`.
+2. **Mã hóa sang Image PNG kèm Note Ngày Giờ (Visual Banner):** 
+   * Sử dụng [`BackUp/Zip2Image.bat`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/Zip2Image.bat) chuyển đổi sang tệp ảnh PNG [`BackUp/Study_AUTOSAR_Backup.png`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/Study_AUTOSAR_Backup.png).
+   * **Bổ sung Banner trực quan:** Trên đầu bức ảnh in rõ tiêu đề và ngày giờ: `STUDY AUTOSAR BACKUP ARCHIVE | Created: YYYY-MM-DD HH:mm:ss`. Khi dán vào slide Canva, người dùng và người xem nhìn thấy ngay thông tin thời điểm tạo bản sao lưu.
+3. **Dọn dẹp file tạm (Cleanup):** Tự động xóa file `.zip` trung gian ngay sau khi encode xong.
+4. **Loại bỏ ghi nhật ký:** Đã loại bỏ hoàn toàn việc ghi log để giữ repository gọn gàng.
+5. **Đồng bộ GitLab:** Tự động stage, commit và push toàn bộ thay đổi lên GitLab (`origin/main`).
+6. **Nạp ảnh vào Clipboard (chuẩn Ctrl+C):** Nạp đường dẫn file ảnh và luồng ảnh PNG vào Clipboard (chuẩn Windows Explorer) để sẵn sàng dán.
+7. **Mở Google Chrome vào Canva:** Tự động khởi chạy Google Chrome mở thẳng vào link thiết kế Canva. Người dùng chỉ cần click vào slide và bấm `Ctrl+V`.
 
-### 10.3. Cơ Chế Lập Lịch Tự Động (18:30 Hàng Ngày):
-* Tác vụ được kích hoạt tự động vào đúng **18:30:00 (6h30 chiều)** mỗi ngày thông qua **Windows Task Scheduler** (`Study_AUTOSAR_Daily_Backup`) thực thi script [`BackUp/backup_daily.ps1`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/backup_daily.ps1).
-* Kỹ sư có thể giải mã khôi phục thư mục tài liệu bất cứ lúc nào qua công cụ [`BackUp/ConvertBackUpFile.bat`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/ConvertBackUpFile.bat) hoặc lệnh:
+### 10.3. Nút Kích Hoạt 1-Click (1-Click Button):
+* Kỹ sư chỉ cần nhấp đúp chuột vào:
+  - File [`1CLICK_BACKUP_TO_CANVA.bat`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/1CLICK_BACKUP_TO_CANVA.bat) tại thư mục gốc dự án.
+  - Hoặc shortcut trên màn hình Desktop: `C:\Users\liem.vu\Desktop\1CLICK_BACKUP_TO_CANVA.bat`.
+* Kỹ sư có thể giải mã khôi phục thư mục tài liệu bất cứ lúc nào qua công cụ [`BackUp/Zip2Image.bat`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/BackUp/Zip2Image.bat) (chọn phím `[2]`) hoặc lệnh:
   ```powershell
-  certutil -f -decode BackUp/Study_AUTOSAR_Backup.zip.txt BackUp/Study_AUTOSAR_Backup.zip
+  powershell -NoProfile -ExecutionPolicy Bypass -File "BackUp\Zip2Img_Decode.ps1" -InputImage "BackUp\Study_AUTOSAR_Backup.png" -OutputFile "BackUp\Study_AUTOSAR_Backup.zip"
   ```
 
 

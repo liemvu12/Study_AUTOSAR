@@ -1,11 +1,11 @@
 # CHUYÊN ĐỀ 02: AUTOSAR OS (OSEK/VDX Standard) & MCAL Core Deep Dive
-## HANDS-ON TASK PLAN — 7 Tasks (~20 giờ thực hành)
+## HANDS-ON TASK PLAN — 8 Tasks (~24 giờ thực hành)
 
 > 📚 **Tài liệu lý thuyết đối chiếu:** [`docs/theory/02_AUTOSAR_OS_And_MCAL_Deep_Dive.md`](../theory/02_AUTOSAR_OS_And_MCAL_Deep_Dive.md)  
 > 💡 **Bộ Lời Giải Mẫu Chi Tiết (Full Working Solutions):** [`docs/hands_on_tasks/solutions/02_OS_MCAL_Solutions.md`](solutions/02_OS_MCAL_Solutions.md)  
 > 📜 **Quy tắc vàng & Nguồn chân lý (Golden Rules):** [`docs/hands_on_tasks/task_fix/rule.md`](task_fix/rule.md) (File ARXML là nguồn chân lý duy nhất)  
-> 🔧 **Source code base:** [`as/com/as.infrastructure/system/kernel/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/) & [`as/com/as.infrastructure/arch/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/)  
-> ⏱️ **Tổng thời lượng:** ~20 giờ (Phân cấp từ Nhập môn $\rightarrow$ Trung cấp $\rightarrow$ Chuyên sâu)  
+> 🔧 **Source code base:** [`as/com/as.infrastructure/system/kernel/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/), [`as/com/as.infrastructure/arch/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/) & [`as/com/as.infrastructure/include/IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h)  
+> ⏱️ **Tổng thời lượng:** ~24 giờ (Phân cấp từ Nhập môn $\rightarrow$ Trung cấp $\rightarrow$ Chuyên sâu)  
 
 ---
 
@@ -19,14 +19,15 @@
 ### 📊 Ma Trận Trọng Số & Mức Độ Ưu Tiên (BSW Priority Matrix)
 
 | Task | Tên Nhiệm Vụ | Mức Độ | Trọng Số BSW | Lý Do Kỹ Nghệ & Kỹ Năng Cốt Lõi |
-| :--- | :--- | :---: | :---: | :--- |
-| **Task 2.1** | **Build OSEK OS từ Source Code & Khảo Sát Kernel APIs** | 🟢 **Dễ (P1)** | **15%** | **Làm chủ Toolchain & Khởi động:** Nắm vững cấu trúc mã nguồn Kernel (`freeosek`, `trampoline`, `askar`), làm chủ quy trình biên dịch với SCons trên POSIX Simulator và QEMU ARM Cortex-M3. |
-| **Task 2.2** | **MCAL Power-On Sequencing & Hardware Dependency** | 🟡 **Vừa (P1)** | **20%** | **Sống còn khi Bring-up bo mạch mới:** Hiểu và hiện thực hóa chuỗi phụ thuộc phần cứng bắt buộc: `Mcu` (Clock/PLL) $\rightarrow$ `Wdg` (Watchdog) $\rightarrow$ `Port` (PinMux) $\rightarrow$ `Dio` (GPIO). Tránh lỗi truy cập ngoại vi khi chưa cấp xung nhịp. |
-| **Task 2.3** | **Basic Task Định Kỳ & Khảo Sát Conformance Classes (BCC1 vs BCC2)** | 🟢 **Dễ $\rightarrow$ Vừa (P2)** | **15%** | **Tối ưu hóa RAM & Hàng đợi Kích hoạt:** Cấu hình `<Task>` & `<Alarm>` trong `app.xml`, đối soát `Os_Cfg.h`, phân biệt Single Activation (`Activation="1"`) và Multiple Activations (`Activation="3"`). |
+| :--- | :--- | :--- | :---: | :--- |
+| **Task 2.1** | **Build OSEK OS từ Source Code & Khảo Sát Kernel APIs** | 🟢 **Dễ (P1)** | **10%** | **Làm chủ Toolchain & Khởi động:** Nắm vững cấu trúc mã nguồn Kernel (`freeosek`, `trampoline`, `askar`), làm chủ quy trình biên dịch với SCons trên POSIX Simulator và QEMU ARM Cortex-M3. |
+| **Task 2.2** | **MCAL Power-On Sequencing & Hardware Dependency** | 🟡 **Vừa (P1)** | **15%** | **Sống còn khi Bring-up bo mạch mới:** Hiểu và hiện thực hóa chuỗi phụ thuộc phần cứng bắt buộc: `Mcu` (Clock/PLL) $\rightarrow$ `Wdg` (Watchdog) $\rightarrow$ `Port` (PinMux) $\rightarrow$ `Dio` (GPIO). Tránh lỗi truy cập ngoại vi khi chưa cấp xung nhịp. |
+| **Task 2.3** | **Basic Task Định Kỳ & Khảo Sát Conformance Classes (BCC1 vs BCC2)** | 🟢 **Dễ $\rightarrow$ Vừa (P2)** | **10%** | **Tối ưu hóa RAM & Hàng đợi Kích hoạt:** Cấu hình `<Task>` & `<Alarm>` trong `app.xml`, đối soát `Os_Cfg.h`, phân biệt Single Activation (`Activation="1"`) và Multiple Activations (`Activation="3"`). |
 | **Task 2.4** | **Extended Task Event-Driven & Đối Chiếu Ngắt ISR Cat 1 vs Cat 2** | 🟡 **Vừa (P1)** | **15%** | **Đồng bộ hướng sự kiện & Phân cấp ngắt:** Khai báo Extended Task kèm `<Event>` trong `app.xml`, đối soát `EVENT_MASK_*` & `EXTENDED_TASK`, lập trình vòng lặp 4 bước `WaitEvent`/`GetEvent`/`ClearEvent`, kiểm chứng tiếm quyền khi mô phỏng ISR Cat 2 gọi `SetEvent`, mổ xẻ ngắt siêu tốc Cat 1 vs ngắt đồng bộ OS Cat 2. |
 | **Task 2.5** | **Immediate Priority Ceiling (IPCP) & Chứng Minh Không Context Switch** | 🟡 **Vừa $\rightarrow$ Khó (P1)** | **15%** | **Triệt tiêu Deadlock & Hiểu sâu về Assembly:** Khai báo `<Resource>` trong ARXML, chứng minh Resource trong AUTOSAR luôn rảnh khi gọi `GetResource()`, thời gian thực thi $O(1)$, Context Switch chỉ diễn ra tại `ReleaseResource()`. |
 | **Task 2.6** | **Schedule Table — Định Thời Đồng Bộ Đa Chu Kỳ BSW** | 🔴 **Khó (P2)** | **10%** | **Triệt tiêu Jitter trong mạng ô tô:** Thay thế hàng chục Alarm rời rạc bằng một Schedule Table duy nhất, phân bổ các Expiry Point đồng bộ cho các BSW `_MainFunction()` (10ms, 20ms, 50ms). |
 | **Task 2.7** | **Bảo Vệ Bộ Nhớ & Bắt Lỗi Hệ Thống: Stack Watermark + ErrorHook & DET** | 🔴 **Khó (P2)** | **10%** | **An toàn chức năng ISO 26262:** Bật `ErrorHook` và `PostTaskHook` trong ARXML, dùng kỹ thuật Pattern Fill (`0xDEADBEEF`) phát hiện tràn ngăn xếp, bẫy lỗi hệ thống qua `ErrorHook` và `Det_ReportError`. |
+| **Task 2.8** | **Hand-Coded `IoHwAb` Driver — Đọc ADC Thô, Lọc Số IIR, Cầu Phân Áp & Kích Relay/PWM** | 🔴 **Khó (P1)** | **15%** | **Cầu nối sống còn giữa Phần cứng & Ứng dụng:** Viết mã nguồn C tay 100% cho tầng `IoHwAb` bám sát [`IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h) & [`IoHwAb_Types.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb_Types.h), chuyển đổi ADC thô sang mV, lọc số chống nhiễu EMC, điều khiển Contactor/Relay và mở API chuẩn cho RTE/SWC. |
 
 ---
 
@@ -1050,6 +1051,154 @@ void Initialize_Task_Stack_Watermarks(void)
 1. `PostTaskHook` truy cập hợp lệ con trỏ stack thực tế của Task qua `TaskConstArray[current_task].pStack` mà không gây HardFault.
 2. Khi giả lập tràn ngăn xếp (ghi đè `stack_bottom[0] = 0x12345678`), `PostTaskHook` phát hiện sự sai lệch ngay lập tức khi Task nhả CPU và gọi `ShutdownOS(E_OS_SYS_STACK)`.
 3. Mọi mã lỗi OS phát sinh đều được `ErrorHook` ghi nhận và chuyển tiếp an toàn sang `Det_ReportError(MODULE_ID_OS, ...)`.
+
+---
+
+### TASK 2.8: Hand-Coded `IoHwAb` Driver — Đọc ADC Thô, Lọc Số IIR, Cầu Phân Áp & Kích Relay/PWM (🔴 Khó — ~4h)
+
+#### 🎯 Mục tiêu:
+Viết tay 100% mã nguồn C cho module **`IoHwAb` (I/O Hardware Abstraction)** theo chuẩn AUTOSAR bám sát [`as/com/as.infrastructure/include/IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h) và [`IoHwAb_Types.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb_Types.h). Module này đóng vai trò là "chiếc cầu nối độc quyền" giữa các driver MCAL (`Adc`, `Dio`, `Pwm`) với các ứng dụng điều khiển xe trên tầng RTE (`SWC_PedalSensor`, `SWC_ContactorControl`).
+
+#### 📖 Kiến thức cốt lõi & Vị trí kiến trúc:
+1. **Tại sao `IoHwAb` bắt buộc phải viết tay (Hand-coded in-house)?**
+   * Tầng MCAL do hãng chip cung cấp chỉ trả về giá trị thô: ADC trả về Ticks ($0 - 4095$), GPIO chỉ biết High/Low.
+   * Tầng Application (SWC) chỉ được phép xử lý giá trị vật lý: Điện áp chân ga ($0 - 5000\text{ mV}$), Góc mở bướm ga ($0 - 100\%$), Dòng điện đóng Contactor ($A$).
+   * Tầng `IoHwAb` là nơi duy nhất chứa **bí mật phần cứng bo mạch PCB**: Sơ đồ cầu phân áp điện trở, hệ số cảm biến nhiệt độ NTC, thuật toán lọc số chống nhiễu EMC, và mạch kích Transistor đóng relay.
+2. **Các API chuẩn trong `as/` đối chiếu:**
+   * [`as/com/as.infrastructure/include/IoHwAb.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb.h):
+     * `IOHWAB_INIT_ID = 0x10` $\implies$ `void IoHwAb_Init(void)`
+     * `IOHWAB_ANALOG_GET_ID = 0x20` $\implies$ `Std_ReturnType IoHwAb_Analog_Get(IoHwAb_SignalType Signal, IoHwAb_AnalogValueType *Value, IoHwAb_StatusType *Status)`
+     * `IOHWAB_DIGITAL_SET_ID = 0x31` $\implies$ `Std_ReturnType IoHwAb_Digital_Set(IoHwAb_SignalType Signal, IoHwAb_LevelType Level)`
+     * `IOHWAB_PWMDUTY_SET_ID = 0x40` $\implies$ `Std_ReturnType IoHwAb_PwmDuty_Set(IoHwAb_SignalType Signal, IoHwAb_DutyType Duty)`
+   * [`as/com/as.infrastructure/include/IoHwAb_Types.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/IoHwAb_Types.h):
+     * `IoHwAb_LevelType` (`STD_LOW`, `STD_HIGH`)
+     * `IoHwAb_DutyType` ($0$ đến $1000\text{ per mille}$ theo `IOHWAB_DUTY_MAX`)
+     * `IoHwAb_QualityType` (`IOHWAB_INIVAL`, `IOHWAB_ERR`, `IOHWAB_BAD`, `IOHWAB_GOOD`)
+
+#### 📋 Hướng dẫn từng bước & Cài đặt mã nguồn C:
+
+##### Bước 1: Khai báo Signal ID & Trạng thái lưu trữ bộ lọc (`IoHwAb_Cfg.h` & `IoHwAb.c`)
+```c
+/* as/com/as.infrastructure/include/IoHwAb_Cfg.h */
+#ifndef IOHWAB_CFG_H_
+#define IOHWAB_CFG_H_
+
+#define IOHWAB_SIGNAL_PEDAL_MAIN     0   /* Cảm biến chân ga 1 (ADC Channel 0) */
+#define IOHWAB_SIGNAL_PEDAL_SUB      1   /* Cảm biến chân ga 2 (ADC Channel 1) */
+#define IOHWAB_SIGNAL_MAIN_CONTACTOR 2   /* Rơ-le Contactor pin 400V (DIO Pin 5) */
+#define IOHWAB_SIGNAL_COOLING_FAN    3   /* Quạt làm mát Inverter (PWM Channel 2) */
+
+#endif
+```
+
+##### Bước 2: Hiện thực thuật toán giải mã phần cứng & Bộ lọc số IIR (`IoHwAb.c`)
+```c
+/* as/com/as.infrastructure/system/IoHwAb/IoHwAb.c */
+#include "IoHwAb.h"
+#include "IoHwAb_Types.h"
+#include "IoHwAb_Cfg.h"
+#include "Adc.h"
+#include "Dio.h"
+#include "Pwm.h"
+
+/* Bộ đệm lưu trữ giá trị lọc số (IIR Low-Pass Filter) */
+static sint32 Filtered_Pedal_Main_mV = 0;
+static sint32 Filtered_Pedal_Sub_mV  = 0;
+static boolean IoHwAb_Initialized    = FALSE;
+
+void IoHwAb_Init(void) {
+    Filtered_Pedal_Main_mV = 0;
+    Filtered_Pedal_Sub_mV  = 0;
+    IoHwAb_Initialized = TRUE;
+}
+
+/* 
+ * Thuật toán đọc ADC & Chuyển đổi vật lý:
+ * Mạch cầu chia áp bo mạch PCB: R1 = 10k, R2 = 10k -> V_pin = V_adc * 2
+ * ADC 12-bit: Vref = 3300 mV, Max Ticks = 4095
+ */
+Std_ReturnType IoHwAb_Analog_Get(IoHwAb_SignalType Signal, IoHwAb_AnalogValueType *Value, IoHwAb_StatusType *Status) {
+    if (!IoHwAb_Initialized || Value == NULL || Status == NULL) {
+        return E_NOT_OK;
+    }
+
+    if (Signal == IOHWAB_SIGNAL_PEDAL_MAIN) {
+        /* Đọc giá trị thô từ MCAL ADC Group */
+        Adc_ValueGroupType raw_ticks = Adc_ReadGroup_Sample(0); // Giả lập đọc ADC Ch0
+        
+        /* Chuyển sang điện áp chân chip (mV) */
+        sint32 raw_voltage_mV = (sint32)((uint32)raw_ticks * 3300UL / 4095UL);
+        
+        /* Áp dụng tỷ lệ cầu phân áp phần cứng: V_input = V_adc * (R1 + R2) / R2 = V_adc * 2 */
+        sint32 physical_voltage_mV = raw_voltage_mV * 2;
+
+        /* Áp dụng bộ lọc số IIR Low-Pass: y[n] = 0.25 * x[n] + 0.75 * y[n-1] */
+        Filtered_Pedal_Main_mV = (physical_voltage_mV * 25 + Filtered_Pedal_Main_mV * 75) / 100;
+
+        *Value = Filtered_Pedal_Main_mV;
+        
+        /* Đánh giá tính toàn vẹn phần cứng (Electrical Diagnostic) */
+        if (raw_ticks < 50 || raw_ticks > 4050) {
+            /* Dây cảm biến bị chạm mass hoặc chạm nguồn 5V */
+            Status->quality = IOHWAB_ERR;
+        } else {
+            Status->quality = IOHWAB_GOOD;
+        }
+        return E_OK;
+    }
+    return E_NOT_OK;
+}
+
+/* Điều khiển Digital: Đóng ngắt Contactor pin cao áp */
+Std_ReturnType IoHwAb_Digital_Set(IoHwAb_SignalType Signal, IoHwAb_LevelType Level) {
+    if (!IoHwAb_Initialized) return E_NOT_OK;
+
+    if (Signal == IOHWAB_SIGNAL_MAIN_CONTACTOR) {
+        Dio_LevelType dio_level = (Level == IOHWAB_HIGH) ? STD_HIGH : STD_LOW;
+        Dio_WriteChannel(DIO_CHANNEL_CONTACTOR, dio_level);
+        return E_OK;
+    }
+    return E_NOT_OK;
+}
+
+/* Điều khiển PWM: Băm xung quạt làm mát Inverter (0 đến 1000 per mille) */
+Std_ReturnType IoHwAb_PwmDuty_Set(IoHwAb_SignalType Signal, IoHwAb_DutyType Duty) {
+    if (!IoHwAb_Initialized || Duty > IOHWAB_DUTY_MAX) return E_NOT_OK;
+
+    if (Signal == IOHWAB_SIGNAL_COOLING_FAN) {
+        /* Chuyển đổi Duty 0-1000 per mille sang giá trị MCAL PWM (0-0x8000) */
+        uint16 mcal_duty = (uint16)((uint32)Duty * 0x8000UL / 1000UL);
+        Pwm_SetDutyCycle(PWM_CHANNEL_FAN, mcal_duty);
+        return E_OK;
+    }
+    return E_NOT_OK;
+}
+```
+
+##### Bước 3: Ánh xạ API từ tầng RTE / SWC gọi xuống `IoHwAb`
+Trong tầng ứng dụng VCU (`SWC_PedalSensor.c` hoặc `SWC_ContactorControl.c`), Application không được phép gọi trực tiếp `Adc_ReadGroup()` hay `Dio_WriteChannel()`, mà bắt buộc phải gọi qua giao diện `IoHwAb`:
+```c
+/* SWC_PedalSensor.c */
+void PedalSensor_Runnable_10ms(void) {
+    IoHwAb_AnalogValueType pedal_mV;
+    IoHwAb_StatusType status;
+    
+    Std_ReturnType ret = IoHwAb_Analog_Get(IOHWAB_SIGNAL_PEDAL_MAIN, &pedal_mV, &status);
+    if (ret == E_OK && status.quality == IOHWAB_GOOD) {
+        /* Gửi giá trị điện áp đã lọc sạch lên thuật toán VCU */
+        Rte_Write_PedalVoltage_mV(pedal_mV);
+    } else {
+        /* Báo lỗi cảm biến sang Dem */
+        Dem_SetEventStatus(DTC_PEDAL_SENSOR_CIRCUIT_FAIL, DEM_EVENT_STATUS_FAILED);
+    }
+}
+```
+
+#### ✅ Tiêu chí thành công:
+1. Module `IoHwAb` biên dịch độc lập không phụ thuộc vào nền tảng vi điều khiển bên dưới.
+2. Bộ lọc số IIR triệt tiêu hoàn toàn các gai nhiễu điện từ giả lập (spikes) trên tín hiệu ADC.
+3. Khi ngắt dây cảm biến ($ADC < 50\text{ ticks}$), `IoHwAb` trả về `IOHWAB_ERR`, bảo vệ xe không bị tăng ga ngoài ý muốn.
+4. Điều khiển Contactor và Quạt PWM tuân thủ chính xác thang đo `IOHWAB_DUTY_MAX = 1000u`.
 
 ---
 

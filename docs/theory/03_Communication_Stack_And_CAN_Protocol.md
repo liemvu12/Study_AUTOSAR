@@ -1124,122 +1124,115 @@ Nếu bạn đã quen với môi trường Linux Automotive:
 - Chức năng của `socket(PF_CAN, SOCK_DGRAM, CAN_ISOTP)` chính là module **CanTp** trong AUTOSAR (tự động phân mảnh, ghép mảnh, gửi Flow Control BS/STmin).
 - Công đoạn phức tạp "bit-shifting" và masking từ DBus sang Signal (mà ở Linux bạn hay dùng `candump` kết hợp custom parser) được AUTOSAR trừu tượng hóa toàn bộ vào module **COM** bằng code C được gen tự động từ ARXML!
 
+#### D. Cuốn "Từ Điển" Của Mạng Ô Tô: File DBC (`.dbc`) & Ma Trận Mạng (CAN Communication Matrix)
+
+> 💡 **Bản chất cốt tử:** Khi bạn dùng phần mềm bắt gói tin (Vector CANoe, SavvyCAN, PCAN-View, Wireshark) cắm vào cổng OBD của xe, bạn sẽ chỉ thấy các chuỗi Byte Hex thô vô nghĩa chạy ào ạt:  
+> `CAN ID: 0x180 | DLC: 8 | Data: C8 12 04 00 00 00 00 00`  
+> Để phần mềm có thể tự động "dịch" 8 byte Hex đó thành: **SoC Pin = 100%, Điện áp = 360.2V, Dòng điện = 12.5A**, bắt buộc bạn phải nạp vào tool một tệp đặc biệt: **File `.dbc` (CAN DataBase File)**!
+
+1. **File DBC là gì?**
+   - Định dạng do hãng **Vector Informatik** sáng tạo (chuẩn phần mềm CANdb++), sau này trở thành tiêu chuẩn thực tế (*De facto standard*) của toàn bộ nền công nghiệp ô tô toàn cầu. Trong chuẩn AUTOSAR thuần túy, nội dung này được chuẩn hóa thành tệp **ARXML System Description (Communication Matrix)**.
+   - File DBC lưu trữ toàn bộ "bản đồ quy ước" của chiếc xe: Danh sách các hộp ECU (`BU_`), danh sách bản tin (`BO_`), và vị trí từng tín hiệu vật lý (`SG_`) nằm ở bit số mấy, dài bao nhiêu bit, thứ tự byte Intel (Little Endian) hay Motorola (Big Endian).
+
+2. **Công thức giải mã vật lý cốt lõi:**
+   $$\text{Physical Value} = (\text{Raw Value} \times \text{Factor}) + \text{Offset}$$
+   * Ví dụ tín hiệu SoC Pin: $\text{Raw Value} = 0\text{xC8} = 200$. Với $\text{Factor} = 0.5, \text{Offset} = 0 \implies \text{Physical SoC} = 200 \times 0.5 + 0 = \mathbf{100\%}$.
+
+3. **Tầm quan trọng sống còn của File DBC:**
+   - **Là "Hợp Đồng Giao Tiếp" (Communication Contract) giữa Hãng xe (OEM) và Nhà cung cấp (Tier-1):** Hãng xe (VinFast, BMW, Toyota) thiết kế mạng CAN, tạo ra file DBC và gửi cho các đối tác phụ tùng (Bosch, Denso, LG VS). Mọi ECU xuất xưởng bắt buộc phải phát/nhận đúng $100\%$ theo file DBC này.
+   - **Đầu vào sinh mã tự động cho Tầng COM:** Tool cấu hình (Vector DaVinci Configurator, EB tresos) nạp file DBC/ARXML để tự động sinh ra mã nguồn C cho module `COM` ([`Com_PBcfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Com_PBcfg.c)), đóng gói các hàm `Com_SendSignal()` / `Com_ReceiveSignal()`.
+   - **Công cụ kiểm thử & Chẩn đoán xe:** Kỹ sư HIL Test, kỹ sư thử nghiệm xe đường trường cắm máy tính vào xe chỉ cần load file DBC là theo dõi được toàn bộ trạng thái xe trên đồ thị thời gian thực.
+
+> 📚 **Đọc thêm tài liệu chuyên sâu & Thực hành:**
+> * Toàn bộ cú pháp chi tiết file DBC (`VERSION`, `BU_`, `BO_`, `SG_`), lập trình Python giải mã với thư viện `cantools`: Xem tại 👉 [docs/theory/10_CAN_DBC_Format_And_Tools.md](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/10_CAN_DBC_Format_And_Tools.md).
+> * Hướng dẫn thực hành nạp DBC vào phần mềm **SavvyCAN** để đón frame từ ECU ảo và vẽ đồ thị tín hiệu: Xem tại 👉 [docs/hands_on_tasks/01_Architecture_VFB_Tasks.md (Bước 5)](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/hands_on_tasks/01_Architecture_VFB_Tasks.md#L154-L170).
+
 ---
 
 ## 3. Kiến Trúc Ngăn Xếp ComStack Chi Tiết Từng Module
 
-### Sơ Đồ Kiến Trúc Phân Tầng ComStack (ASCII Architecture View)
+### Sơ Đồ Kiến Trúc Toàn Diện & Chuỗi Gọi Hàm ComStack (Unified Architecture & API Flow View)
 
-```text
-+-----------------------------------------------------------------------------------+
-|                            APPLICATION LAYER (SWC)                                |
-|           [EngineControl]         [BrakeControl]         [BodyGateway]            |
-+-----------------------------------------+-----------------------------------------+
-                                          | Rte_Read() / Rte_Write()
-+-----------------------------------------v-----------------------------------------+
-|                            RUNTIME ENVIRONMENT (RTE)                              |
-|                 Signals & Callbacks Mapping (Virtual Functional Bus)              |
-+--------------------+--------------------------------------------------------------+
-                     |
-                     | Com_SendSignal() / Com_ReceiveSignal()
-+--------------------v--------------------------------------------------------------+
-| BSW: SERVICES      |                                                              |
-|                    |   +------------------------------------+                     |
-|                    |   |             Module DCM             |                     |
-|                    |   |      (UDS Diagnostic Requests)     |                     |
-|                    |   +------------------+-----------------+                     |
-|                    |                      |                                       |
-|    +---------------+----------------+     | DcmTransmit()                         |
-|    |           Module COM           |     |                                       |
-|    |  • Signal Packing/Unpacking    |     |                                       |
-|    |  • Periodic/Direct Transmission|     |                                       |
-|    |  • Signal Deadline Monitoring  |     |                                       |
-|    +---------------+----------------+     |                                       |
-|                    | I-PDU                |                                       |
-|                    v                      v                                       |
-|    +--------------------------------------------------------+                     |
-|    |                Module PDU Router (PduR)                |                     |
-|    |        Zero-Copy Static Routing (1:1, Multicast 1:N)   |                     |
-|    +--------------------+-------------------------------+---+                     |
-+-------------------------|-------------------------------|-------------------------+
-                          |                               |
-                          | Gói tin dài (> 8 Bytes)       | Gói tin ngắn (<= 8 Bytes)
-+-------------------------v-------------------------------|-------------------------+
-| BSW: TRANSPORT &        |                               |                         |
-| ECU ABSTRACTION         v                               |                         |
-|            +----------------------------+               |                         |
-|            |        Module CanTp        |               |                         |
-|            |   (ISO 15765-2 Transport)  |               |                         |
-|            |  Segmentation & Flow Ctrl  |               |                         |
-|            +--------------+-------------+               |                         |
-|                           | N-PDU                       | Direct I-PDU            |
-|                           +--------------+   +----------+                         |
-|                                          |   |                                    |
-|                                          v   v                                    |
-|            +--------------------------------------------------------+             |
-|            |                      Module CanIf                      |             |
-|            |             (CAN Hardware Object Interface)            |             |
-|            |      Software Filtering, HTH/HRH, Transceiver Ctrl     |             |
-|            +-----------------------------+--------------------------+             |
-+------------------------------------------|----------------------------------------+
-                                           | L-PDU (Can_Write)
-+------------------------------------------v----------------------------------------+
-| BSW: MCAL DRIVER                         |                                        |
-|            +--------------------------------------------------------+             |
-|            |                 Module MCAL Can Driver                 |             |
-|            |        Hardware Mailboxes, FIFOs, Rx/Tx Interrupts     |             |
-|            +-----------------------------+--------------------------+             |
-+------------------------------------------|----------------------------------------+
-                                           | Physical Register Access & CAN_Tx/Rx
-+------------------------------------------v----------------------------------------+
-| PHYSICAL HARDWARE                        |                                        |
-|            +--------------------------------------------------------+             |
-|            |             CAN Transceiver & Cặp Dây Vi Sai           |             |
-|            |                Đường truyền CAN_H / CAN_L              |             |
-|            +--------------------------------------------------------+             |
-+-----------------------------------------------------------------------------------+
-```
-
-### Sơ Đồ Luồng Gọi Hàm & Tương Tác Giữa Các Module (Mermaid Flowchart - High Contrast)
+Sơ đồ hợp nhất dưới đây lột tả đồng thời cả **5 tầng kiến trúc tĩnh** theo chuẩn AUTOSAR Classic và **chuỗi gọi hàm động (Dynamic API Calls)** giữa các module, đồng thời phân định rõ ràng 2 luồng dữ liệu then chốt của ô tô: **Luồng tín hiệu chu kỳ ngắn ($\le 8$ Bytes)** và **Luồng chẩn đoán ISO-TP gói dài ($> 8$ Bytes)**.
 
 ```mermaid
 flowchart TD
-    subgraph LAYER_APP ["APPLICATION & RUNTIME ENVIRONMENT (RTE)"]
-        SWC["Application SWC (Engine, Brake, Gateway)"]
-        RTE["RTE (Rte_Read, Rte_Write, Callbacks)"]
-        SWC <--> RTE
+    %% TẦNG 4: APPLICATION LAYER
+    subgraph LAYER_APP ["TẦNG 4: APPLICATION LAYER (SWCs)"]
+        SWC_ENG["SWC_EngineControl<br>(Tốc độ vòng tua, Vị trí bàn đạp ga)"]
+        SWC_DIAG["SWC_DiagnosticClient<br>(Yêu cầu đọc mã lỗi DTC / Flashing ECU)"]
     end
 
-    subgraph LAYER_SVC ["BSW: COMMUNICATION SERVICES"]
+    %% TẦNG 3: RUNTIME ENVIRONMENT
+    subgraph LAYER_RTE ["TẦNG 3: RUNTIME ENVIRONMENT (RTE - VFB)"]
+        RTE["RTE (Môi trường thực thi Virtual Functional Bus)<br>Rte_Write_VehicleSpeed() / Rte_Read_Pedal()"]
+    end
+
+    %% TẦNG 2.3: BSW COMMUNICATION SERVICES
+    subgraph LAYER_SVC ["TẦNG 2.3: BSW COMMUNICATION SERVICES"]
         direction TB
-        COM["Module COM\n(Goi/Giai nen Signal, Deadline Monitoring)"]
-        DCM["Module DCM\n(UDS Diagnostic Services)"]
-        PDUR["Module PDU Router - PduR\n(Zero-Copy Routing Table, Multicast 1:N)"]
-        
-        RTE <--> COM
-        COM <--> PDUR
-        DCM <--> PDUR
+        COM["Module COM (AUTOSAR COM)<br>• Đóng/Bóc tách tín hiệu (Signal Packing/Unpacking)<br>• Giám sát thời gian chết (Deadline Monitoring)<br>• Chế độ phát: Periodic (Chu kỳ) / Direct / Mixed"]
+        DCM["Module DCM (Diagnostic Comm Manager)<br>• Máy trạng thái chẩn đoán ISO 14229 UDS<br>• Quản lý phiên chẩn đoán & Kiểm soát bảo mật Seed/Key"]
+        PDUR["Module PduR (PDU Router)<br>• Bảng định tuyến tĩnh Zero-Copy Routing<br>• Phân luồng: Direct 1:1 vs Đa kênh Multicast 1:N"]
     end
 
-    subgraph LAYER_IF_TP ["BSW: TRANSPORT & ECU ABSTRACTION"]
-        CANTP["Module CanTp (ISO 15765-2)\n(Cat/Ghep mang SF, FF, CF, Flow Control)"]
-        CANIF["Module CanIf (CAN Interface)\n(HTH/HRH Filtering, Bus Off Management)"]
-        
-        PDUR <-->|"N-SDU (> 8 Bytes)"| CANTP
-        PDUR <-->|"Direct I-PDU (<= 8 Bytes)"| CANIF
-        CANTP <-->|"N-PDU Frames"| CANIF
+    %% TẦNG 2.2: TRANSPORT & ECU ABSTRACTION
+    subgraph LAYER_TP_IF ["TẦNG 2.2: TRANSPORT PROTOCOL & ECU ABSTRACTION"]
+        CANTP["Module CanTp (ISO 15765-2 Transport Protocol)<br>• Cắt mảnh (Segmentation) & Ghép mảnh (Reassembly)<br>• Máy trạng thái: Single Frame (SF), First Frame (FF), Flow Control (FC), Consecutive Frame (CF)"]
+        CANIF["Module CanIf (CAN Interface)<br>• Trừu tượng hóa bộ đệm phần cứng HTH / HRH<br>• Lọc ID phần mềm, Quản lý nguồn & trạng thái Bus-Off"]
     end
 
-    subgraph LAYER_MCAL ["BSW: MCAL DRIVER"]
-        CAN["Module MCAL Can Driver\n(Hardware Mailbox Registers, FIFOs, ISR)"]
-        CANIF <--> CAN
+    %% TẦNG 2.1: MCAL DRIVER
+    subgraph LAYER_MCAL ["TẦNG 2.1: MCAL CAN DRIVER"]
+        CAN["Module MCAL Can Driver<br>• Quản lý thanh ghi phần cứng Mailboxes / Message RAM<br>• Xử lý ngắt phần cứng Tx/Rx Interrupt (ISR)"]
     end
 
-    subgraph LAYER_HW ["PHYSICAL HARDWARE"]
-        PHY["CAN Transceiver & Cap Day Vi Sai (CAN_H / CAN_L)"]
-        CAN <--> PHY
+    %% TẦNG 1: HARDWARE
+    subgraph LAYER_HW ["TẦNG 1: PHẦN CỨNG BO MẠCH & ĐƯỜNG TRUYỀN (PCB & BUS)"]
+        PHY["CAN Transceiver (TJA1043) & Cặp dây xoắn vi sai CAN_H / CAN_L (120 Ohm)"]
     end
+
+    %% Tuyến App <-> RTE
+    SWC_ENG <-->|Sender-Receiver Port| RTE
+    SWC_DIAG <-->|Client-Server Port| RTE
+
+    %% Tuyến RTE <-> Services
+    RTE <-->|"Com_SendSignal() / Com_ReceiveSignal()"| COM
+    RTE <-->|"Dcm_DiagnosticService()"| DCM
+
+    %% Tuyến Services nội bộ
+    COM <-->|"I-PDU: PduR_ComTransmit() / Com_RxIndication()"| PDUR
+    DCM <-->|"D-PDU: Dcm_Transmit() / Dcm_RxIndication()"| PDUR
+
+    %% PHÂN LUỒNG TẠI PDUR (Short vs Long Messages)
+    PDUR -->|"1. Gói tin dài > 8 Bytes (ISO-TP UDS): CanTp_Transmit()"| CANTP
+    CANTP -->|"N-SDU Rx Indication: PduR_CanTpRxIndication()"| PDUR
+    
+    PDUR -->|"2. Gói tin thường <= 8 Bytes (Direct I-PDU): CanIf_Transmit()"| CANIF
+    CANIF -->|"Direct Rx Indication: PduR_CanIfRxIndication()"| PDUR
+
+    %% Tuyến CanTp <-> CanIf
+    CANTP <-->|"N-PDU Frames (SF, FF, FC, CF): CanIf_Transmit()"| CANIF
+
+    %% Tuyến CanIf <-> MCAL Can
+    CANIF <-->|"L-PDU: Can_Write() / CanIf_TxConfirmation()"| CAN
+    CAN -->|"CanIf_RxIndication() (từ Can_Isr)"| CANIF
+
+    %% Tuyến MCAL Can <-> Hardware
+    CAN <-->|"Thanh ghi Memory-Mapped I/O & Mức điện áp Tx/Rx"| PHY
 ```
+
+> [!TIP]
+> #### 🔍 Bảng Đối Chiếu 2 Tuyến Dữ Liệu Cốt Lõi Trên ComStack
+> 
+> | Tiêu Chí Kỹ Thuật | 1. Tuyến Tín Hiệu Thường (Periodic Signals $\le 8$ Bytes) | 2. Tuyến Chẩn Đoán / Dữ Liệu Dài (Diagnostics $> 8$ Bytes) |
+> | :--- | :--- | :--- |
+> | **Mục đích nghiệp vụ** | Truyền thông số vận hành thời gian thực: Tốc độ xe, vị trí chân ga, điện áp pin, nhiệt độ động cơ. | Truyền bản tin chẩn đoán UDS (ISO 14229), nạp phần mềm Bootloader (Flashing), đọc Freeze Frame. |
+> | **Module khởi phát** | `COM` (Module đóng gói tín hiệu nghiệp vụ). | `DCM` (Diagnostic Communication Manager). |
+> | **Đường đi qua PduR** | $\text{COM} \longrightarrow \text{PduR} \longrightarrow \mathbf{CanIf} \longrightarrow \text{Can}$ *(Bypass CanTp)*. | $\text{DCM} \longrightarrow \text{PduR} \longrightarrow \mathbf{CanTp} \longrightarrow \text{CanIf} \longrightarrow \text{Can}$. |
+> | **Vai trò của CanTp** | **Hoàn toàn không can thiệp** (để triệt tiêu độ trễ micro-giây). | **Bắt buộc:** Cắt gói tin hàng trăm byte thành các frame nhỏ 8-byte qua cơ chế Flow Control ($BS, ST_{\min}$). |
+> | **API chiều gửi (Tx)** | `Com_SendSignal()` $\to$ `PduR_ComTransmit()` $\to$ `CanIf_Transmit()` $\to$ `Can_Write()`. | `Dcm_Transmit()` $\to$ `PduR_DcmTransmit()` $\to$ `CanTp_Transmit()` $\to$ `CanIf_Transmit()` $\to$ `Can_Write()`. |
+> | **API chiều nhận (Rx)** | `Can_Isr()` $\to$ `CanIf_RxIndication()` $\to$ `PduR_CanIfRxIndication()` $\to$ `Com_RxIndication()` $\to$ `Rte_Read()`. | `Can_Isr()` $\to$ `CanIf_RxIndication()` $\to$ `CanTp_RxIndication()` $\to$ `PduR_CanTpRxIndication()` $\to$ `Dcm_RxIndication()`. |
 
 ### 3.1 Module COM (AUTOSAR COM SWS)
 
@@ -1714,7 +1707,23 @@ Thay vì phụ thuộc vào các bộ phần mềm thương mại đắt đỏ (
 
 ---
 
-### 7.2 Cấu Hình Tầng MCAL Can: Thanh Ghi Baudrate, Seg1/Seg2 & Mailbox HOH
+#### 📊 Bảng Ánh Xạ Các Module Cấu Hình Chương 7 Vào Kiến Trúc Phân Tầng AUTOSAR
+
+Để không bị nhầm lẫn giữa các tầng khi đọc cấu hình thực tế, bảng dưới đây định vị chính xác vị trí phân tầng chuẩn AUTOSAR của từng module xuất hiện trong Chương 7:
+
+| Mục Cấu Hình | Module AUTOSAR | Tầng Kiến Trúc Chuẩn (Standard Layer) | Phân Tầng Chi Tiết | Trách Nhiệm Kỹ Nghệ Cốt Lõi |
+| :--- | :--- | :--- | :--- | :--- |
+| **Mục 7.2** | **`Can`** | **Tầng 2.1: MCAL** | *Microcontroller Abstraction Layer* | Quản lý thanh ghi phần cứng vi điều khiển: Bit Timing (Baudrate, Seg1, Seg2), Mailbox phần cứng HOH (`Can0Hth`, `Can0Hrh`), ngắt NVIC ISR. |
+| **Mục 7.3** | **`CanIf`** | **Tầng 2.2: ECU Abstraction** | *Communication Hardware Abstraction* | **Trừu tượng hóa bo mạch CAN ECU:** Gom CAN Controller (nội MCU) và CAN Transceiver (ngoài PCB) thành một thực thể; che giấu Mailbox phần cứng thành `PduId`; lọc CAN ID phần mềm. |
+| **Mục 7.4** | **`CanTp`** | **Tầng 2.2 / Transport** | *Communication Transport Protocol (ISO 15765-2)* | Vận chuyển đa khung: Cắt nhỏ (Segmentation) và ghép lại (Reassembly) các gói tin chẩn đoán UDS/OBD lớn (> 8 bytes) qua cơ chế Flow Control ($BS, ST_{\min}$). |
+| **Mục 7.5** | **`PduR`** | **Tầng 2.3: Service Layer** | *Communication Services (Routing Engine)* | **Tổng đài chuyển mạch tĩnh:** Định tuyến PDU giữa các module Service (`Com`, `Dcm`) và tầng dưới (`CanIf`, `CanTp`) hoàn toàn độc lập với phần cứng. |
+| *(Tham chiếu)* | **`COM`** | **Tầng 2.3: Service Layer** | *Communication Services (Signal Gateway)* | Đóng/bóc tách biến tín hiệu (Signal Packing/Unpacking), kiểm tra chu kỳ truyền phát và giám sát hạn định (Deadline Monitoring). |
+| *(Tham chiếu)* | **`RTE`** | **Tầng 3: RTE Layer** | *Runtime Environment (VFB)* | Cung cấp các hàm API chuẩn (`Rte_Write`, `Rte_Read`) nối từ Application SWC xuống tầng Service. |
+| *(Tham chiếu)* | **`SWC`** | **Tầng 4: Application** | *Application Software Components* | Chứa thuật toán điều khiển ứng dụng xe hơi (Engine, Brake, BMS, Gateway). |
+
+---
+
+### 7.2 Cấu Hình Tầng MCAL Can [Tầng 2.1 — Microcontroller Abstraction Layer]
 
 #### 1. Định nghĩa trong file cấu hình [autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L115-L125):
 ```xml
@@ -1781,7 +1790,10 @@ Khi hàm `Can_Init(&Can_ConfigData)` được hệ điều hành kích hoạt:
 
 ---
 
-### 7.3 Cấu Hình Tầng CanIf: Bảng Định Tuyến PDU & Bộ Lọc Nhận Dạng (Acceptance Filter)
+### 7.3 Cấu Hình Tầng CanIf [Tầng 2.2 — ECU Abstraction Layer]
+
+> 📌 **Vị trí kiến trúc:** Module **`CanIf` (CAN Interface)** nằm tại **Tầng 2.2: ECU Abstraction Layer** (phân nhóm *Communication Hardware Abstraction*).  
+> **Nhiệm vụ cốt lõi:** Trừu tượng hóa toàn bộ phần cứng CAN của bo mạch ECU (kết hợp CAN Controller nội vi MCU và chip CAN Transceiver ngoài mạch in PCB). Nó che giấu các Mailbox phần cứng (`Can0Hth`, `Can0Hrh`), chỉ phơi ra cho Tầng Service (`PduR`, `CanTp`, `CanNm`) các mã logic trừu tượng là `CanTxPduId` và `CanRxPduId`.
 
 Tầng CanIf chịu trách nhiệm phân loại luồng dữ liệu: frame nào của UDS Diag gửi lên CanTp, frame nào của tín hiệu điều khiển gửi lên PduR/Com, frame nào của Network Management gửi lên CanNm.
 
@@ -1863,7 +1875,10 @@ const CanIf_RxPduConfigType CanIfRxPduConfigData[] = {
 
 ---
 
-### 7.4 Cấu Hình Tầng CanTp: Tham Số Vận Tải ISO 15765-2 (DoCAN)
+### 7.4 Cấu Hình Tầng CanTp [Tầng 2.2 / Transport — ISO 15765-2 Protocol Layer]
+
+> 📌 **Vị trí kiến trúc:** Module **`CanTp` (CAN Transport Protocol)** nằm ở tầng vận chuyển giao thức mạng (thường được xếp vào **Tầng 2.2: ECU Abstraction / Transport Layer**).  
+> **Nhiệm vụ cốt lõi:** Vận chuyển các gói tin dữ liệu lớn (> 8 bytes) cho giao thức chẩn đoán UDS (ISO 14229) bằng cách phân mảnh thành các Single Frame (SF), First Frame (FF), Consecutive Frame (CF) và quản lý điều khiển luồng Flow Control (FC).
 
 Tầng CanTp chịu trách nhiệm cắt nhỏ và ghép lại các gói tin UDS lớn (lên tới $4095$ bytes).
 
@@ -1898,9 +1913,10 @@ Tầng CanTp chịu trách nhiệm cắt nhỏ và ghép lại các gói tin UDS
 
 ---
 
-### 7.5 Cấu Hình Tầng PduR: Ma Trận Định Tuyến Liên Tầng (Routing Engine)
+### 7.5 Cấu Hình Tầng PduR [Tầng 2.3 — Service Layer: Communication Services]
 
-PduR hoạt động như một tổng đài chuyển mạch gói tin nội bộ.
+> 📌 **Vị trí kiến trúc:** Module **`PduR` (PDU Router)** nằm chính xác tại **Tầng 2.3: Service Layer** (phân nhóm *Communication Services*).  
+> **Nhiệm vụ cốt lõi:** Hoạt động như một "tổng đài chuyển mạch router tĩnh nội bộ" ở tầng dịch vụ. Nó hoàn toàn độc lập với phần cứng bo mạch (Hardware-Independent), chịu trách nhiệm định tuyến các gói tin PDU giữa các module Service (`Com`, `Dcm`) và tầng dưới (`CanIf`, `CanTp`).
 
 #### 1. Định nghĩa trong [autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L231-L293):
 ```xml
