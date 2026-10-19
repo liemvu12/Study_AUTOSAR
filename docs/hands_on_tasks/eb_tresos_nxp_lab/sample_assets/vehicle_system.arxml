@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<AUTOSAR xmlns="http://autosar.org/schema/r4.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://autosar.org/schema/r4.0 autosar_4-0-3.xsd">
+  <AR-PACKAGES>
+    <AR-PACKAGE>
+      <SHORT-NAME>VehicleProject</SHORT-NAME>
+      <ELEMENTS>
+        <!-- System Signal: Battery Voltage -->
+        <SYSTEM-SIGNAL>
+          <SHORT-NAME>SS_BatteryVoltage</SHORT-NAME>
+          <DYNAMIC-LENGTH>false</DYNAMIC-LENGTH>
+        </SYSTEM-SIGNAL>
+        <!-- System Signal: Battery Current -->
+        <SYSTEM-SIGNAL>
+          <SHORT-NAME>SS_BatteryCurrent</SHORT-NAME>
+          <DYNAMIC-LENGTH>false</DYNAMIC-LENGTH>
+        </SYSTEM-SIGNAL>
+        <!-- I-Signal: Battery Voltage -->
+        <I-SIGNAL>
+          <SHORT-NAME>IS_BatteryVoltage</SHORT-NAME>
+          <DATA-TYPE-POLICY>PORT-INTERFACE-BLUEPRINT</DATA-TYPE-POLICY>
+          <LENGTH>16</LENGTH>
+          <SYSTEM-SIGNAL-REF DEST="SYSTEM-SIGNAL">/VehicleProject/SS_BatteryVoltage</SYSTEM-SIGNAL-REF>
+        </I-SIGNAL>
+        <!-- I-Signal: Battery Current -->
+        <I-SIGNAL>
+          <SHORT-NAME>IS_BatteryCurrent</SHORT-NAME>
+          <DATA-TYPE-POLICY>PORT-INTERFACE-BLUEPRINT</DATA-TYPE-POLICY>
+          <LENGTH>16</LENGTH>
+          <SYSTEM-SIGNAL-REF DEST="SYSTEM-SIGNAL">/VehicleProject/SS_BatteryCurrent</SYSTEM-SIGNAL-REF>
+        </I-SIGNAL>
+        <!-- I-PDU: BMS Status PDU -->
+        <I-SIGNAL-I-PDU>
+          <SHORT-NAME>IPDU_BMS_Status</SHORT-NAME>
+          <LENGTH>8</LENGTH>
+          <I-PDU-TIMING-SPECIFICATIONS>
+            <I-PDU-TIMING>
+              <TRANSMISSION-MODE-DECLARATION>
+                <TRANSMISSION-MODE-TRUE-TIMING>
+                  <CYCLIC-TIMING>
+                    <REPEATING-TIME>
+                      <VALUE>0.05</VALUE> <!-- 50ms period -->
+                    </REPEATING-TIME>
+                  </CYCLIC-TIMING>
+                </TRANSMISSION-MODE-TRUE-TIMING>
+              </TRANSMISSION-MODE-DECLARATION>
+            </I-PDU-TIMING>
+          </I-PDU-TIMING-SPECIFICATIONS>
+          <I-SIGNAL-TO-PDU-MAPPINGS>
+            <I-SIGNAL-TO-I-PDU-MAPPING>
+              <SHORT-NAME>Mapping_BatteryVoltage</SHORT-NAME>
+              <I-SIGNAL-REF DEST="I-SIGNAL">/VehicleProject/IS_BatteryVoltage</I-SIGNAL-REF>
+              <PACKING-BYTE-ORDER>MOST-SIGNIFICANT-BYTE-FIRST</PACKING-BYTE-ORDER>
+              <START-POSITION>0</START-POSITION>
+            </I-SIGNAL-TO-I-PDU-MAPPING>
+            <I-SIGNAL-TO-I-PDU-MAPPING>
+              <SHORT-NAME>Mapping_BatteryCurrent</SHORT-NAME>
+              <I-SIGNAL-REF DEST="I-SIGNAL">/VehicleProject/IS_BatteryCurrent</I-SIGNAL-REF>
+              <PACKING-BYTE-ORDER>MOST-SIGNIFICANT-BYTE-FIRST</PACKING-BYTE-ORDER>
+              <START-POSITION>16</START-POSITION>
+            </I-SIGNAL-TO-I-PDU-MAPPING>
+          </I-SIGNAL-TO-I-PDU-MAPPINGS>
+        </I-SIGNAL-I-PDU>
+        <!-- CAN Physical Frame -->
+        <CAN-FRAME>
+          <SHORT-NAME>Frame_BMS_Status</SHORT-NAME>
+          <FRAME-LENGTH>8</FRAME-LENGTH>
+          <PDU-TO-FRAME-MAPPINGS>
+            <PDU-TO-FRAME-MAPPING>
+              <SHORT-NAME>PduMapping_BMS_Status</SHORT-NAME>
+              <PDU-REF DEST="I-SIGNAL-I-PDU">/VehicleProject/IPDU_BMS_Status</PDU-REF>
+              <START-POSITION>0</START-POSITION>
+            </PDU-TO-FRAME-MAPPING>
+          </PDU-TO-FRAME-MAPPINGS>
+        </CAN-FRAME>
+      </ELEMENTS>
+    </AR-PACKAGE>
+  </AR-PACKAGES>
+</AUTOSAR>

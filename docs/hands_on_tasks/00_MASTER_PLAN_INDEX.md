@@ -15,7 +15,7 @@ docs/hands_on_tasks/
 ├── 00_MASTER_PLAN_INDEX.md          ← File này (Roadmap tổng thể)
 ├── 01_Architecture_VFB_Tasks.md     ← Chuyên đề 01: Layered Arch & VFB (5 tasks)
 ├── 02_OS_MCAL_Tasks.md              ← Chuyên đề 02: AUTOSAR OS & MCAL (5+1 tasks)
-├── 03_ComStack_CAN_Tasks.md         ← Chuyên đề 03: ComStack & CAN Protocol (10 tasks)
+├── 03_ComStack_CAN_Tasks.md         ← Chuyên đề 03: ComStack & CAN Protocol (11 tasks)
 ├── 04_Diagnostic_Memory_Tasks.md    ← Chuyên đề 04: UDS Diagnostic & Memory (5+1 tasks)
 ├── 05_Toolchain_ARXML_Tasks.md      ← Chuyên đề 05: Toolchain & ARXML (4+1 tasks)
 ├── 06_RealWorld_BMS_VCU_Tasks.md    ← Chuyên đề 06: BMS / VCU / Body ECU (3+1 tasks)
@@ -36,13 +36,14 @@ docs/hands_on_tasks/
 |:---:|---|---|:---:|:---:|:---:|
 | 01 | [Architecture & VFB](./01_Architecture_VFB_Tasks.md) | Layered Architecture, RTE, Memory, OS Hooks | 5 tasks | ~12 giờ | Tuần 1 |
 | 02 | [OS & MCAL](./02_OS_MCAL_Tasks.md) | OSEK OS, Task, ISR, MCAL Drivers, IoHwAb | 8 tasks | ~24 giờ | Tuần 1–2 |
-| 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, 6-Layer ComStack E2E, CanTp, COM, Oscilloscope, ARXML, CanSM | 10 tasks | ~25 giờ | Tuần 2 |
+| 03 | [ComStack & CAN](./03_ComStack_CAN_Tasks.md) | CAN Protocol, 6-Layer ComStack E2E, CanTp, COM Endianness, Oscilloscope, ARXML, CanSM, Multi-Driver | 12 tasks | ~30.5 giờ | Tuần 2 |
 | 04 | [Diagnostic & Memory](./04_Diagnostic_Memory_Tasks.md) | UDS, DCM, DEM, NvM, Fee, Linker Script | 6 tasks | ~18 giờ | Tuần 3 |
 | 05 | [Toolchain & ARXML](./05_Toolchain_ARXML_Tasks.md) | ARXML, EcuM, BswM, Code Gen | 4+1 tasks | ~12 giờ | Tuần 3–4 |
 | 06 | [Real-World BMS/VCU/Body](./06_RealWorld_BMS_VCU_Tasks.md) | Mini BMS, VCU Torque, BCM Sleep | 3+1 tasks | ~30 giờ | Tuần 4 |
 | 07 | [LIN Stack](./07_LIN_Stack_Tasks.md) | LIN Protocol, LinIf Schedule, Wiper Control | 4 tasks | ~8 giờ | Tuần 4 |
 | 08 | [Automotive Ethernet](./08_Ethernet_SOMEIP_DoIP_Tasks.md) | 100BASE-T1, SOME/IP, DoIP, SoAd, vECU Vector XL | 5 tasks | ~12 giờ | Tuần 4 |
-| | **TỔNG** | | **41 tasks** | **~141 giờ** | **4–5 Tuần** |
+| ⭐ | [EB tresos Studio NXP Lab](./eb_tresos_nxp_lab/README.md) | Thực hành công cụ thay thế DaVinci: Cấu hình MCAL S32K, ComStack, Import DBC/ARXML, Code Gen | 5 Labs | ~14 giờ | Mở rộng |
+| | **TỔNG** | | **48 tasks / labs** | **~160.5 giờ** | **4–5 Tuần** |
 
 ---
 

@@ -404,6 +404,24 @@ Bootloader sinh ra **không phải để làm nền tảng nuôi ngoại vi cho 
   * Đặt `ascore` ngay tại gốc `0x00000000` (sửa `linker-app.lds`).
   * Nạp trực tiếp qua mạch nạp ST-Link/J-Link hoặc chạy trong QEMU: Board thật và máy ảo vẫn chạy đủ 100% ngoại vi (CAN, GPIO, ADC, Timer), giúp kỹ sư tập trung kiểm thử logic thuật toán mà không tốn thời gian kiểm tra CRC của Bootloader.
 
+##### 5. Tổng Quan Kiến Trúc: Tách Biệt Thuật Toán Khỏi Dữ Liệu & 4 Nhiệm Vụ Sống Còn Của Mọi Hàm `_Init()`
+
+> ❓ **Băn khoăn bản lề của Kỹ sư BSW:**  
+> *"Tại sao trong toàn bộ các file mã nguồn C của BSW (`Can.c`, `CanIf.c`, `PduR.c`, `Com.c`), ta không bao giờ thấy hardcode các ID mạng CAN hay chu kỳ gửi nhận? Tại sao mọi hàm `_Init()` đều nhận một con trỏ cấu hình `const <Module>_ConfigType *ConfigPtr`?"*
+
+###### A. Triết Lý Thiết Kế Cốt Tử:
+1. **Mã C BSW là Generic 100%:** Một hãng Tier-1 (Bosch, Continental) bán cùng một bộ mã nguồn C cho hàng trăm OEM (VinFast, BMW, Ford). Mã C không bao giờ phải sửa hay biên dịch lại khi thay đổi mạng CAN của xe.
+2. **ARXML là Nguồn Chân Lý Duy Nhất (Single Source of Truth):** Toàn bộ cấu hình xe (ID bản tin, Signal bit start, chu kỳ ms, Task priority) được lưu trong file XML/ARXML. Công cụ CodeGen đọc ARXML sinh ra các file cấu hình tĩnh trong Flash ROM (`*_Cfg.c`, `*_PBcfg.c`, `*_Lcfg.c`).
+3. **Các hàm `_Init()` là cây cầu kết nối:** Khi khởi động, hệ thống gọi `Module_Init(ConfigPtr)` để liên kết dữ liệu cấu hình từ Flash ROM vào các thuật toán BSW.
+
+###### B. Khái Lược 4 Nhiệm Vụ Sống Còn Của Mọi Hàm `_Init()`:
+1. **Neo con trỏ cấu hình (Pointer Anchoring):** Lưu địa chỉ `ConfigPtr` vào biến con trỏ `static` nội bộ (như `CanIf_ConfigPtr`, `PduRConfig`, `ComConfig`), giúp hàng triệu lần gọi hàm runtime sau đó truy xuất trực tiếp $O(1)$ mà không phải truyền lại tham số.
+2. **Liên kết Bộ đệm RAM (RAM Buffer Binding):** Gắn các mảng RAM tĩnh đọc/ghi (như `IPduBuffer` trong COM, FIFO RingBuffer trong CanIf, mảng HTH trong MCAL CAN, bộ đệm đa khung trong CanTp) vào các đối tượng quản lý trạng thái runtime.
+3. **Thiết lập giá trị ban đầu (Initial Values & Registers):** Nạp giá trị `InitialValue` cho tín hiệu COM, nạp thanh ghi phần cứng MCAL (Baudrate, Filter Mask) và kích hoạt bộ đếm thời gian chu kỳ.
+4. **Kích hoạt Máy trạng thái (FSM State Transition):** Đổi cờ trạng thái module từ `UNINIT` sang `INITIALIZED`, mở khóa cho các API runtime vượt qua chốt kiểm tra của Development Error Tracer (DET).
+
+> 📚 **Đọc thêm chuyên sâu:** Để xem phân tích chuyên sâu chi tiết từng micro-second của chuỗi khởi động từ Phase 0 đến Phase 5 (Reset Vector $\rightarrow$ EcuM Pre-OS $\rightarrow$ StartOS $\rightarrow$ EcuM Post-OS $\rightarrow$ BswM Mode Switch $\rightarrow$ Rte_Start) cùng giải phẫu chi tiết cấu trúc Callout Stubs của `EcuM`, vui lòng đọc thêm tại tài liệu chuyên khảo: [`docs/deep_dive/ECU_STARTUP_AND_SHUTDOWN_DEEP_DIVE.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/deep_dive/ECU_STARTUP_AND_SHUTDOWN_DEEP_DIVE.md).
+
 ---
 
 <a id="4"></a>

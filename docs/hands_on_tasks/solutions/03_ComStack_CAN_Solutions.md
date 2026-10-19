@@ -1,5 +1,5 @@
 # LỜI GIẢI TOÀN DIỆN CHUYÊN ĐỀ 03 — COMMUNICATION STACK & CAN PROTOCOL
-## Đáp Án Thực Hành Chi Tiết 11 Tasks: End-to-End CAN Trace, Bit Timing, CanIf, CanTp, COM, Bus Load, Physical Oscilloscope, ARXML Toolchain, CanSM Bus-Off & System ARXML RTE Routing
+## Đáp Án Thực Hành Chi Tiết 12 Tasks: End-to-End CAN Trace, Bit Timing, CanIf, CanTp, COM, Bus Load, Physical Oscilloscope, ARXML Toolchain, CanSM Bus-Off, System ARXML RTE Routing & CanIf Multi-Driver Abstraction
 
 > 📚 **Tài liệu lý thuyết đối chiếu:** [`docs/theory/03_Communication_Stack_And_CAN_Protocol.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/03_Communication_Stack_And_CAN_Protocol.md)  
 > 📑 **Ma trận gói tin & DBC:** [`docs/theory/10_CAN_DBC_Format_And_Tools.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/10_CAN_DBC_Format_And_Tools.md)  
@@ -207,20 +207,186 @@ print(f"STM32F107: BRP={result[0]}, Seg1={result[1]}, Seg2={result[2]}, Total TQ
 
 ---
 
-## 🔀 LỜI GIẢI TASK 3.6: COM — Signal Packing & Endianness
+## 🔀 LỜI GIẢI TASK 3.6: COM — Thuật Toán Đóng Gói Tín Hiệu & Xử Lý Endianness (Intel vs Motorola)
 
-1. **Đoạn mã C trích xuất tín hiệu không làm biến dạng bit lân cận:**
-   ```c
-   /* Trích xuất tín hiệu GearPosition (4-bit, Byte 2, bits [7:4]) */
-   uint8 raw_byte = pdu_buffer[2];
-   uint8 gear = (raw_byte >> 4) & 0x0F;
+### Phần A: Bảng Phân Bổ Bitmask & Tọa Độ Bit Khung `Bms_BatteryPackStatus` (0x280)
 
-   /* Đóng gói lại tín hiệu Gear mới vào PDU */
-   pdu_buffer[2] = (pdu_buffer[2] & 0x0F) | ((new_gear & 0x0F) << 4);
-   ```
-2. **Khác biệt Intel (Little Endian) vs Motorola (Big Endian):**
-   - **Intel:** Byte thấp ở địa chỉ thấp (LSB First). Start Bit quy định vị trí của LSB.
-   - **Motorola:** Byte cao ở địa chỉ thấp (MSB First). Start Bit quy định vị trí của MSB.
+| Tên Tín Hiệu | Endianness | Byte Index | Bit Range Chiếm Chỗ | Raw Bits Mask | Giải Thích Vị Trí Bit |
+| :--- | :---: | :---: | :---: | :---: | :--- |
+| `Sig_PackVoltage` | Intel | Byte 0 & Byte 1 | Bits [15:0] | Byte 0: `0xFF`, Byte 1: `0xFF` | Start bit 0 (LSB tại bit 0 Byte 0, MSB tại bit 7 Byte 1). |
+| `Sig_PackCurrent` | Motorola | Byte 2 & Byte 3 | Bits [23:8] | Byte 2: `0xFF`, Byte 3: `0xFF` | Start bit 23 (MSB tại bit 7 Byte 2, LSB tại bit 0 Byte 3). |
+| `Sig_MaxCellTemp` | Intel | Byte 4 | Bits [39:32] | Byte 4: `0xFF` | Start bit 32 (trọn vẹn Byte 4). |
+| `Sig_ContactorState`| Intel | Byte 5 | Bits [41:40] | Byte 5: `0x03` | Bits [1:0] của Byte 5. |
+| `Sig_InterlockFault`| Intel | Byte 5 | Bit 42 | Byte 5: `0x04` | Bit [2] của Byte 5. |
+| `Sig_RollingCounter`| Motorola | Byte 6 | Bits [55:52] | Byte 6: `0xF0` | Start bit 55 (MSB tại bit 7 Byte 6), chiếm 4 bit cao [7:4] của Byte 6. |
+
+👉 **Kiểm tra va chạm (Overlap Check):**
+* Byte 0, 1: `Sig_PackVoltage` (16 bits) $\implies$ Đầy đủ 2 bytes.
+* Byte 2, 3: `Sig_PackCurrent` (16 bits) $\implies$ Đầy đủ 2 bytes.
+* Byte 4: `Sig_MaxCellTemp` (8 bits) $\implies$ Trọn 1 byte.
+* Byte 5: Bit 0, 1 (`Contactor`), Bit 2 (`Interlock`), Bits 3..7 rỗng (`0x00`) $\implies$ Hoàn toàn không chồng lấn.
+* Byte 6: Bits 7..4 (`RollingCounter`), Bits 3..0 rỗng $\implies$ Hoàn toàn an toàn.
+
+---
+
+### Phần B: Hiện Thực Mã Nguồn C Thuật Toán Signal Packing & Unpacking
+
+```c
+#include <stdio.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <assert.h>
+
+typedef uint8_t  uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef int8_t   sint8;
+typedef int16_t  sint16;
+typedef int32_t  sint32;
+
+/* ========================================================================= */
+/* 1. MỞ RỘNG DẤU CHO SỐ NGUYÊN CÓ DẤU (TWO'S COMPLEMENT SIGN EXTENSION)     */
+/* ========================================================================= */
+sint32 Com_SignExtend(uint32 raw_val, uint8 bit_len) {
+    if (bit_len == 0 || bit_len >= 32) return (sint32)raw_val;
+    uint32 sign_mask = 1U << (bit_len - 1);
+    if (raw_val & sign_mask) {
+        /* Nếu bit dấu là 1 -> Bật toàn bộ các bit phía trên thành 1 */
+        uint32 extend_mask = ~((1U << bit_len) - 1U);
+        return (sint32)(raw_val | extend_mask);
+    }
+    return (sint32)raw_val;
+}
+
+/* ========================================================================= */
+/* 2. ĐÓNG GÓI & TRÍCH XUẤT TÍN HIỆU INTEL (LITTLE ENDIAN)                  */
+/* ========================================================================= */
+void Com_PackSignal_Intel(uint8* pdu_buf, uint32 raw_val, uint8 start_bit, uint8 bit_len) {
+    uint8 bit_pos = start_bit;
+    for (uint8 i = 0; i < bit_len; i++) {
+        uint8 byte_idx = bit_pos / 8;
+        uint8 bit_idx  = bit_pos % 8;
+        uint8 bit_val  = (raw_val >> i) & 0x01;
+
+        /* Xóa bit cũ tại vị trí và chèn bit mới */
+        pdu_buf[byte_idx] = (pdu_buf[byte_idx] & ~(1U << bit_idx)) | (bit_val << bit_idx);
+        bit_pos++;
+    }
+}
+
+uint32 Com_UnpackSignal_Intel(const uint8* pdu_buf, uint8 start_bit, uint8 bit_len) {
+    uint32 raw_val = 0;
+    uint8 bit_pos = start_bit;
+    for (uint8 i = 0; i < bit_len; i++) {
+        uint8 byte_idx = bit_pos / 8;
+        uint8 bit_idx  = bit_pos % 8;
+        uint8 bit_val  = (pdu_buf[byte_idx] >> bit_idx) & 0x01;
+
+        raw_val |= ((uint32)bit_val << i);
+        bit_pos++;
+    }
+    return raw_val;
+}
+
+/* ========================================================================= */
+/* 3. ĐÓNG GÓI & TRÍCH XUẤT TÍN HIỆU MOTOROLA (BIG ENDIAN - MSB START BIT)    */
+/* ========================================================================= */
+/* Theo chuẩn Vector DBC: start_bit là vị trí của MSB. Đường đi Zigzag Sawtooth */
+void Com_PackSignal_Motorola(uint8* pdu_buf, uint32 raw_val, uint8 start_bit, uint8 bit_len) {
+    uint8 curr_bit = start_bit;
+    for (uint8 i = 0; i < bit_len; i++) {
+        uint8 byte_idx = curr_bit / 8;
+        uint8 bit_idx  = curr_bit % 8;
+        /* Lấy bit từ MSB xuống LSB: bit có trọng số (bit_len - 1 - i) */
+        uint8 bit_val  = (raw_val >> (bit_len - 1 - i)) & 0x01;
+
+        pdu_buf[byte_idx] = (pdu_buf[byte_idx] & ~(1U << bit_idx)) | (bit_val << bit_idx);
+
+        /* Đi lùi trong byte; khi chạm đáy bit 0 -> nhảy sang byte kế tiếp tại bit 7 */
+        if (bit_idx == 0) {
+            curr_bit += 15; /* curr_bit = (byte_idx + 1) * 8 + 7 */
+        } else {
+            curr_bit--;
+        }
+    }
+}
+
+uint32 Com_UnpackSignal_Motorola(const uint8* pdu_buf, uint8 start_bit, uint8 bit_len) {
+    uint32 raw_val = 0;
+    uint8 curr_bit = start_bit;
+    for (uint8 i = 0; i < bit_len; i++) {
+        uint8 byte_idx = curr_bit / 8;
+        uint8 bit_idx  = curr_bit % 8;
+        uint8 bit_val  = (pdu_buf[byte_idx] >> bit_idx) & 0x01;
+
+        raw_val = (raw_val << 1) | bit_val;
+
+        if (bit_idx == 0) {
+            curr_bit += 15;
+        } else {
+            curr_bit--;
+        }
+    }
+    return raw_val;
+}
+```
+
+---
+
+### Phần C: Giải Đáp 3 Sự Cố Endianness Kinh Điển Trên Xe Thật
+
+#### 1. Sự Cố 1: Tốc Độ Xe 10 km/h Biến Thành 2560 km/h
+* **Nguyên nhân cốt lõi:**  
+  Giá trị vận tốc $10 = 0\text{x000A}$.
+  - VCU phát định dạng Motorola: Byte 0 = `0x00` (Byte cao chứa MSB), Byte 1 = `0x0A` (Byte thấp chứa LSB).
+  - Cluster nhận nhầm là Intel: Cluster xem Byte 0 là LSB (`0x00`) và Byte 1 là MSB (`0x0A`).
+  - Do đó giá trị đọc được là: $\text{Value} = (0\text{x0A} \ll 8) | 0\text{x00} = 0\text{x0A00} = \mathbf{2560\text{ km/h}}$!
+* **Giải pháp khắc phục:**  
+  Đồng bộ lại cấu hình DBC sang `@0+` (Motorola) trên Cluster. Nếu không thể sửa DBC, áp dụng macro hoán đổi byte:
+  ```c
+  #define SWAP_UINT16(x) (uint16)(((uint16)(x) << 8) | ((uint16)(x) >> 8))
+  uint16 true_speed = SWAP_UINT16(received_raw_speed);
+  ```
+
+#### 2. Sự Cố 2: Đảo Dấu Dòng Điện Pin Gây Cắt Nguồn Sạc
+* **Nguyên nhân cốt lõi:**  
+  Dòng sạc $+150\text{A}$ có giá trị $\text{Raw} = +1500 = 0\text{x05DC}$.
+  - Khi hoán đổi thứ tự byte do cấu hình sai Start Bit, giá trị bị đọc thành $0\text{xDC05}$.
+  - Vì đây là biến có dấu 16-bit (`sint16`), bit 15 là bit 1 (`0xD...` có bit cao nhất = 1) $\implies$ CPU kích hoạt phép bù 2, diễn giải $0\text{xDC05}$ thành số âm: **$-9211$** (tương đương dòng xả cực đại $-921.1\text{A}$).
+  - VCU tưởng xe bị ngắn mạch xả dòng phá hủy pin nên lập tức ngắt Contactor khẩn cấp.
+* **Biện pháp phòng ngừa:** Viết Unit Test bao phủ trọn vẹn 3 biên: Biên âm lớn nhất (`0x8000`), Số 0 (`0x0000`), và Biên dương lớn nhất (`0x7FFF`).
+
+#### 3. Sự Cố 3: Ghi Đè Xóa Mất Tín Hiệu An Toàn Liền Kề
+* **Nguyên nhân:** Câu lệnh `pdu_buf[5] = drive_mode;` ghi đè toàn bộ 8 bit của Byte 5, khiến cờ `Sig_InterlockFault` tại bit 2 bị ép về 0 (xóa mất cờ cảnh báo lỗi).
+* **Khắc phục chuẩn AUTOSAR COM:**
+  ```c
+  /* Giữ nguyên các bit khác, chỉ ghi đè bits [1:0] của DriveMode */
+  pdu_buf[5] = (pdu_buf[5] & ~0x03) | (drive_mode & 0x03);
+  ```
+
+---
+
+### Phần D: Kết Quả Giải Mã Gói Tin Thực Tế `Test_Pdu[8]`
+
+Cho mảng dữ liệu:
+```c
+uint8 Test_Pdu[8] = { 0x48, 0x0E, 0x05, 0xDC, 0x55, 0x02, 0x0A, 0x00 };
+```
+
+1. **`Sig_PackVoltage` (Intel, Start bit 0, Len 16, Factor 0.1):**
+   - Byte 0 = `0x48`, Byte 1 = `0x0E` $\implies \text{Raw} = (0\text{x0E} \ll 8) | 0\text{x48} = 0\text{x0E48} = 3656$.
+   - $\text{Physical} = 3656 \times 0.1 = \mathbf{365.6\text{ V}}$.
+2. **`Sig_PackCurrent` (Motorola, Start bit 23, Len 16, Factor 0.1, Offset -500.0):**
+   - Byte 2 = `0x05`, Byte 3 = `0xDC` $\implies \text{Raw} = (0\text{x05} \ll 8) | 0\text{xDC} = 0\text{x05DC} = 1500$.
+   - $\text{Physical} = (1500 \times 0.1) - 500.0 = 150.0 - 500.0 = \mathbf{-350.0\text{ A}}$ *(Xe đang phóng dòng xả 350A)*.
+3. **`Sig_MaxCellTemp` (Intel, Start bit 32, Len 8, Factor 1.0, Offset -40.0):**
+   - Byte 4 = `0x55` (Dec: 85) $\implies \text{Physical} = (85 \times 1.0) - 40.0 = \mathbf{+45.0^\circ\text{C}}$.
+4. **`Sig_ContactorState` (Intel, Start bit 40, Len 2):**
+   - Byte 5 bits [1:0] = `0x02 & 0x03` = **2** $\implies$ Trạng thái: **Closed (Đang đóng an toàn)**.
+5. **`Sig_InterlockFault` (Intel, Start bit 42, Len 1):**
+   - Byte 5 bit [2] = `(0x02 >> 2) & 0x01` = **0** $\implies$ Trạng thái: **Normal (Nắp pin kín)**.
+6. **`Sig_RollingCounter` (Motorola, Start bit 55, Len 4):**
+   - Byte 6 bits [7:4] = `(0x0A >> 4) & 0x0F` = **0** (hoặc `0x0A` có bit cao là 0).
 
 ---
 
@@ -476,3 +642,133 @@ void Pedal_Runnable(void)
        }
        ```
   4. 👉 Đây chính là cơ chế bảo vệ an toàn tối thượng theo tiêu chuẩn **ISO 26262 ASIL-D** trong hệ thống truyền động ô tô!
+
+
+---
+
+## 🛠️ LỜI GIẢI TASK 3.12: CanIf Multi-Driver Abstraction & Vendor Infix Dispatching
+
+### 📌 PHẦN A: ĐỐI SOÁT TÍNH ĐỘC LẬP PHẦN CỨNG TRONG MÃ NGUỒN NATIVE
+
+#### 1. Khảo Sát Mã Nguồn Thực Tế Trong `CanIf.c`:
+Khi mở file [`as/com/as.infrastructure/communication/CanIf/CanIf.c: L790`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L790), chúng ta quan sát thấy hàm truyền dữ liệu:
+```c
+Can_ReturnType ret = Can_Write(canPdu.id, &canPdu);
+```
+Tương tự, các hàm điều khiển chế độ và ngắt:
+* Chuyển trạng thái: `Can_SetControllerMode(Controller, Transition)`
+* Khóa ngắt: `Can_DisableControllerInterrupts(Controller)`
+* Mở ngắt: `Can_EnableControllerInterrupts(Controller)`
+
+#### 2. Phân Tích So Sánh Với Lập Trình Bare-Metal Truyền Thống:
+* **Trong Bare-Metal / Non-AUTOSAR:** 
+  Mỗi nhà sản xuất MCU sử dụng một tên hàm và cấu trúc tham số riêng biệt:
+  ```c
+  #if defined(MCU_STM32F4)
+      HAL_CAN_AddTxMessage(&hcan1, &pTxHeader, aData, &TxMailbox);
+  #elif defined(MCU_S32K144)
+      FLEXCAN_DRV_Send(INST_CANCOM1, mailbox, &tx_info, msg_id, msg_data);
+  #elif defined(MCU_AURIX_TC397)
+      IfxMultican_Can_sendMessage(&canSrcMsgBox, &msg);
+  #endif
+  ```
+  Cách tiếp cận này khiến mã nguồn tầng trên bị phụ thuộc chặt chẽ vào con chip, phát sinh "rừng `#ifdef`" cực kỳ phức tạp và không thể kiểm định ASIL độc lập.
+* **Trong AUTOSAR:**
+  Tài liệu đặc tả **AUTOSAR SWS CAN Driver** bắt buộc mọi hãng bán dẫn phải viết gói MCAL bao bọc phần cứng của họ vào đúng chữ ký hàm:
+  ```c
+  Can_ReturnType Can_Write(Can_HwHandleType Hth, const Can_PduType* PduInfo);
+  ```
+  Nhờ đó, mã nguồn `CanIf.c` là mã tĩnh 100%, **hoàn toàn sạch bóng `#ifdef` của các hãng chip** và được biên dịch trực tiếp trên mọi nền tảng MCU mà không cần thay đổi bất kỳ dòng code logic nào.
+
+---
+
+### 🧩 PHẦN B: HIỆN THỰC HÓA BẢNG ĐIỀU PHỐI CON TRỎ HÀM ĐA DRIVER (MULTI-DRIVER)
+
+#### 1. Định Nghĩa Kiểu Dữ Liệu Bảng Dispatch Trong `CanIf_Types.h`:
+```c
+typedef struct {
+    Can_ReturnType (*CanWrite)(Can_HwHandleType Hth, const Can_PduType* PduInfo);
+    Can_ReturnType (*CanSetControllerMode)(uint8 Controller, Can_ControllerStateType Transition);
+    void (*CanDisableControllerInterrupts)(uint8 Controller);
+    void (*CanEnableControllerInterrupts)(uint8 Controller);
+} CanIf_CanDriverDispatchType;
+```
+
+#### 2. Mã C Được Tool Cấu Hình Tự Động Sinh Ra Trong `CanIf_Cfg.c`:
+Khi kỹ sư cấu hình 2 Driver với Vendor Infix trên ARXML, Toolchain sẽ tự động tạo bảng con trỏ hàm hằng số (`const`) đặt trên bộ nhớ Flash ROM:
+```c
+/* ========================================================================= */
+/* AUTO-GENERATED BY TOOL CONFIGURATOR (CanIf_Cfg.c) - DO NOT EDIT MANUALLY! */
+/* ========================================================================= */
+#include "Can_FlexCAN.h"  /* Driver nội vi On-chip MCU */
+#include "Can_Mcp2518.h"  /* Driver ngoại vi SPI CAN Controller */
+
+const CanIf_CanDriverDispatchType CanIf_DriverTable[2] = {
+    [0] = { /* CAN_DRIVER_FLEXCAN */
+        .CanWrite                      = Can_FlexCAN_Write,
+        .CanSetControllerMode          = Can_FlexCAN_SetControllerMode,
+        .CanDisableControllerInterrupts = Can_FlexCAN_DisableControllerInterrupts,
+        .CanEnableControllerInterrupts  = Can_FlexCAN_EnableControllerInterrupts
+    },
+    [1] = { /* CAN_DRIVER_MCP2518 */
+        .CanWrite                      = Can_Mcp2518_Write,
+        .CanSetControllerMode          = Can_Mcp2518_SetControllerMode,
+        .CanDisableControllerInterrupts = Can_Mcp2518_DisableControllerInterrupts,
+        .CanEnableControllerInterrupts  = Can_Mcp2518_EnableControllerInterrupts
+    }
+};
+```
+
+#### 3. Hàm Điều Phối `CanIf_Transmit()` Đạt Tốc Độ $O(1)$:
+```c
+Std_ReturnType CanIf_Transmit(PduIdType CanTxPduId, const PduInfoType* PduInfoPtr)
+{
+    /* 1. Tra cứu cấu hình PDU truyền từ bảng sinh mã */
+    const CanIf_TxPduConfigType* txEntry = &CanIfTxPduConfigData[CanTxPduId];
+    
+    /* 2. Lấy tham chiếu Hardware Transmit Handle và Driver ID */
+    const CanIf_HthConfigType* hthRef = txEntry->CanIfCanTxPduHthRef;
+    uint8 driverId = hthRef->CanDriverId; /* 0: FlexCAN, 1: MCP2518 */
+
+    /* 3. Đóng gói Can_PduType */
+    Can_PduType canPdu;
+    canPdu.id     = txEntry->CanIfCanTxPduIdCanId;
+    canPdu.length = PduInfoPtr->SduLength;
+    canPdu.sdu    = PduInfoPtr->SduDataPtr;
+    canPdu.swPduHandle = CanTxPduId;
+
+    /* 4. Điều phối gọi Driver tương ứng qua bảng con trỏ hàm - O(1) */
+    Can_ReturnType ret = CanIf_DriverTable[driverId].CanWrite(hthRef->HthId, &canPdu);
+
+    return (ret == CAN_OK) ? E_OK : E_NOT_OK;
+}
+```
+
+---
+
+### ⚡ PHẦN C: TỐI ƯU HÓA HIỆU NĂNG & THẨM ĐỊNH AN TOÀN CHỨC NĂNG
+
+#### 1. Kỹ Thuật Tối Ưu Hóa Zero-Cost Single Driver Optimization:
+* **Vấn đề hiệu năng của Con Trỏ Hàm:**
+  Trên các dòng vi điều khiển ô tô ARM Cortex-M4/M7 hoặc Cortex-R5, việc gọi hàm qua con trỏ hàm (`Indirect Call`) khiến CPU không thể dự đoán nhánh (Branch Target Buffer miss), làm đứt gãy đường ống thực thi lệnh (Pipeline Stall mất từ 3 đến 5 chu kỳ xung nhịp). Đồng thời, trình biên dịch GCC/IAR/GHS bị vô hiệu hóa khả năng tối ưu hóa nội dòng (Inlining).
+* **Giải pháp Macro Zero-Cost trong `CanIf_Cfg.h`:**
+  ```c
+  #define CANIF_MULTIPLE_DRIVERS_SUPPORT  STD_OFF /* Tắt khi ECU chỉ có 1 Driver */
+
+  #if (CANIF_MULTIPLE_DRIVERS_SUPPORT == STD_ON)
+      /* Đa Driver: Dùng bảng con trỏ hàm */
+      #define CanIf_HwWrite(driverId, hth, pdu)  CanIf_DriverTable[driverId].CanWrite(hth, pdu)
+  #else
+      /* Đơn Driver (Chiếm >90% ECU): Gọi trực tiếp không qua con trỏ hàm */
+      #define CanIf_HwWrite(driverId, hth, pdu)  Can_Write(hth, pdu)
+  #endif
+  ```
+  Nhờ macro này, khi hệ thống chỉ có 1 driver, lệnh gọi trong `CanIf_Transmit()` sẽ được thay thế trực tiếp bằng `Can_Write(hth, pdu)`, triệt tiêu hoàn toàn độ trễ CPU.
+
+#### 2. Thẩm Định An Toàn Chức Năng (ISO 26262 ASIL-D & MISRA-C:2012):
+* **Rủi ro của Con Trỏ Hàm:** 
+  MISRA-C:2012 (Quy tắc 11.1) và ISO 26262 kiểm soát rất chặt chẽ con trỏ hàm vì nếu con trỏ hàm nằm trên bộ nhớ RAM, một sự cố tràn bộ đệm (Buffer Overflow) hoặc hiện tượng đảo bit do tia bức xạ vũ trụ (Single Event Upset - SEU) có thể làm biến đổi địa chỉ con trỏ, dẫn đến việc CPU nhảy vào vùng nhớ rác hoặc vòng lặp vô tận (HardFault).
+* **Tại sao kiến trúc AUTOSAR an toàn tuyệt đối:**
+  1. Toàn bộ bảng con trỏ hàm `CanIf_DriverTable[]` được khai báo kèm từ khóa `const`, buộc Linker phải ánh xạ bảng này vào **bộ nhớ Flash ROM (Read-Only Memory)**.
+  2. Bảng này do **Tool sinh mã tự động** tính toán địa chỉ hàm tại thời điểm biên dịch (Compile-time / Link-time), không có bất kỳ dòng code nào được phép ghi đè lên bảng này lúc runtime.
+  3. Cơ chế bảo vệ phần cứng MPU (Memory Protection Unit) khóa quyền ghi vào phân vùng Flash này, ngăn chặn 100% rủi ro con trỏ bị giả mạo hay hỏng hóc bộ nhớ.

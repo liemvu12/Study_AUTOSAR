@@ -1,11 +1,11 @@
 # CHUYÊN ĐỀ 03: Communication Stack & CAN Protocol Hands-on Tasks
-## KẾ HOẠCH BÀI TẬP THỰC HÀNH CHUYÊN SÂU — 11 Tasks (~28 giờ)
+## KẾ HOẠCH BÀI TẬP THỰC HÀNH CHUYÊN SÂU — 12 Tasks (~30.5 giờ)
 
 > 📚 **Tài liệu lý thuyết đối chiếu:** [`docs/theory/03_Communication_Stack_And_CAN_Protocol.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/03_Communication_Stack_And_CAN_Protocol.md)  
 > 📑 **Ma trận gói tin & DBC:** [`docs/theory/10_CAN_DBC_Format_And_Tools.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/10_CAN_DBC_Format_And_Tools.md)  
 > 💡 **Bộ Lời Giải Mẫu Chi Tiết (Solutions):** [`docs/hands_on_tasks/solutions/03_ComStack_CAN_Solutions.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/hands_on_tasks/solutions/03_ComStack_CAN_Solutions.md)  
 > 🔧 **Source code base:** [`as/com/as.infrastructure/communication/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/)  
-> ⏱️ **Tổng thời lượng ước tính:** ~28 giờ
+> ⏱️ **Tổng thời lượng ước tính:** ~30.5 giờ
 
 ---
 
@@ -18,12 +18,13 @@
 | **Task 3.3** | **Khảo Sát CAN Driver MCAL — Cấu Hình Mailbox HTH / HRH & Ring Buffer** | 🟡 Intermediate | ~3h | Phân tích `Can_Write()`, struct `Can_PduType`, HTH, HRH, bảo vệ vùng nhớ găng |
 | **Task 3.4** | **CanIf Software Acceptance Filter — Lọc CAN ID Bằng Mặt Nạ Bitmask** | 🟡 Intermediate | ~2h | Hàm `CanIf_RxIndication()`, giải mã công thức bitmask lọc ID và chống tràn Mailbox |
 | **Task 3.5** | **CanTp Multi-Frame Transmission — Phân Mảnh UDS (ISO 15765-2 DoCAN)** | 🔴 Advanced | ~3.5h | Giao thức ISOTP: First Frame (FF), Flow Control (FC), Consecutive Frame (CF), BS & STmin |
-| **Task 3.6** | **COM — Signal Packing Into I-PDU & Endianness (Intel vs Motorola)** | 🔴 Advanced | ~3h | Đóng gói nhiều Signal vào 1 I-PDU 8 bytes, xử lý Byte Order và Start Bit |
+| **Task 3.6** ✨| **COM — Thuật Toán Đóng Gói Tín Hiệu & Xử Lý Endianness (Intel vs Motorola)** | 🔴 Advanced | ~3.5h | Ma trận 64-bit, giải mã đường đi Zigzag Motorola, tự code hàm Pack/Unpack C đa Endianness, Sign Extension & bắt 3 lỗi xe thật |
 | **Task 3.7** | **Bus Load Calculation & Overload Monitoring** | 🟡 Intermediate | ~2h | Công thức tính % Bus Load, đếm frames trong CAN ISR và phát cảnh báo quá tải (>70%) |
 | **Task 3.8** ✨ | **Tầng Vật Lý, Trở Kháng Đầu Cuối 120Ω & Bắt Bệnh Sóng Oscilloscope** | 🟡 Intermediate | ~2.5h | Tính trở $60\Omega$, phân tích sóng $V_{\text{diff}}$, bắt 4 bệnh: Ringing hụt trở, sụt áp, Ground Shift |
 | **Task 3.9** ✨ | **Trở Thành BSW Engineer — Cấu Hình ARXML & Sinh Mã C Bằng Python Toolchain** | 🔴 Advanced | ~3h | Thêm PDU mới vào `autosar.arxml`, chạy `argen` (`GenCanIf.py`, `GenPduR.py`), verify code C sinh ra |
 | **Task 3.10** ✨| **Khảo Sát Fault Confinement & Bus-Off Recovery CanSM State Machine** | 🔴 Advanced | ~2.5h | Đếm lỗi TEC/REC, máy trạng thái CanSM phục hồi Bus-Off (L1 Fast Recovery / L2 Slow Recovery) |
 | **Task 3.11** 🚀| **Kiến Trúc Sư Hệ Thống — Phân Bổ SWC Trong System ARXML & Điều Hướng RTE** | 🔴 Advanced | ~3h | Thực hành mapping SWC vào ECU trong ARXML; so sánh mã C sinh ra của RTE: Intra-ECU RAM vs Inter-ECU CAN `Com_SendSignal` |
+| **Task 3.12** 🛠️| **CanIf Multi-Driver Abstraction & Vendor Infix Dispatching** | 🔴 Advanced | ~2.5h | Cơ chế Vendor Infix, giải mã bí quyết CanIf không dùng `#ifdef`, thiết kế bảng con trỏ hàm đa driver và tối ưu hóa Zero-Cost |
 
 ---
 
@@ -32,7 +33,8 @@
 
 > 🎯 **Mục tiêu:** Trace 1 thông điệp CAN xuyên suốt 6 tầng kiến trúc AUTOSAR theo cả 2 chiều hoàn toàn dựa trên **mã nguồn gốc có sẵn của dự án `as` (100% Native Code Base)**:
 > 1. **Chiều Gửi (Tx Path):** Trace dòng chảy gói tin thời gian gốc **`TxMsgTime` (CAN ID: `0x101`)** qua toàn bộ ngăn xếp BSW COM và gói tin quản trị mạng gốc **`OSEK_NM_TX` (CAN ID: `0x401`)** từ Lõi BSW $\longrightarrow$ PduR $\longrightarrow$ CanIf $\longrightarrow$ MCAL Driver $\longrightarrow$ Dây Bus CAN vật lý.
-> 2. **Chiều Nhận (Rx Path):** Trace dòng chảy gói tin tốc độ xe gốc **`RxMsgAbsInfo` (CAN ID: `0x102`)** từ Khung mạng vật lý MCAL $\longrightarrow$ CanIf $\longrightarrow$ PduR $\longrightarrow$ COM $\longrightarrow$ RTE $\longrightarrow$ Application SWC (`widget_refresh.c`).
+> 2. **Chiều Nhận (Rx Path):** Trace dòng chảy gói tin tốc độ xe gốc **`RxMsgAbsInfo` (CAN ID: `0x102`)** từ Khung mạng vật lý MCAL $\longrightarrow$ CanIf $\longrightarrow$ PduR $\longrightarrow$ COM $\longrightarrow$ RTE $\longrightarrow$ Application SWC (`widget_refresh.c`).  
+> 📦 **Gói vá mã nguồn & Source Diff hoàn chỉnh:** [`docs/hands_on_tasks/task_fix/07_task_3_1_comstack_can_transmission_flow/`](task_fix/07_task_3_1_comstack_can_transmission_flow/README.md) (Gói vá chuẩn hóa luồng gửi PDU định kỳ 20ms từ SWC BMS xuống mạng CAN).
 
 ### 📂 Tệp Cần Đọc & Đối Chiếu:
 1. [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L352) (Dòng 352: Cấu hình I-PDU `TxMsgTime`).
@@ -105,20 +107,167 @@
 
 ---
 
-## TASK 3.6: COM — Signal Packing into I-PDU & Endianness (Intel vs Motorola)
-**Thời gian ước tính:** ~3h | **Mức độ:** Advanced
+## TASK 3.6: COM — Thuật Toán Đóng Gói Tín Hiệu & Xử Lý Endianness (Intel vs Motorola Forward/Backward)
+**Thời gian ước tính:** ~3.5h | **Mức độ:** 🔴 Advanced
 
-**Mục tiêu (Objective):** Hiểu cách module COM đóng gói nhiều tín hiệu rời rạc vào một khung I-PDU 8 bytes tuân thủ quy tắc Byte Order.
+> 🎯 **Mục tiêu kỹ nghệ cốt tử:**  
+> Trong kỹ nghệ mạng ô tô, **Endianness (Thứ tự Byte & Bit Layout)** là một trong những nguồn gốc sinh lỗi nguy hiểm và phổ biến nhất (gây lỗi đọc sai tốc độ xe, đảo dấu dòng điện sạc pin thành dòng xả, hoặc ghi đè làm sai lệch các bit điều khiển an toàn lân cận).  
+> Nhiệm vụ này rèn luyện cho bạn năng lực:
+> 1. Vẽ và đọc thông thạo **Ma Trận CAN Frame 64-Bit** theo cả 2 quy chuẩn: **Intel (Little Endian)** và **Motorola (Big Endian / Sawtooth Zigzag Path)**.
+> 2. Phân biệt sự khác biệt bản chất giữa cách quy ước Start Bit của chuẩn **Vector DBC (CANdb++)** và chuẩn **AUTOSAR ARXML**.
+> 3. Tự tay viết thuật toán C đóng gói (`Com_PackSignal`) và trích xuất (`Com_UnpackSignal`) tín hiệu có độ dài tùy ý ($1..32$ bits), nằm vắt qua ranh giới Byte, bảo toàn nguyên vẹn các bit xung quanh và tự động mở rộng dấu (Sign Extension) cho số nguyên có dấu.
+> 4. Bắt bệnh 3 sự cố Endianness kinh điển trên xe hơi thương mại và đối chiếu mã nguồn gốc của module COM trong dự án `as`.
 
-**Cấu hình Signals Mẫu:**
-* `VehicleSpeed`: 16-bit, Byte 0-1, Big-endian (Motorola), Factor = 0.1 km/h.
-* `GearPosition`: 4-bit, Byte 2 bits [7:4].
-* `DoorStatus`: 1-bit, Byte 2 bit [3].
+### 📂 Tệp Cần Đọc & Đối Chiếu:
+1. Lý thuyết tham chiếu:
+   - [Mục 2 & Mục 3.1 trong `03_Communication_Stack_And_CAN_Protocol.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/03_Communication_Stack_And_CAN_Protocol.md) (Khái niệm Signal, I-PDU, Shadow Buffer và Mục D về file DBC).
+   - [Mục 2 & Mục 3 trong `10_CAN_DBC_Format_And_Tools.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/10_CAN_DBC_Format_And_Tools.md) (Cú pháp `SG_`, quy ước `@1+` Intel vs `@0+` Motorola, công thức Factor/Offset).
+2. Mã nguồn COM nguyên bản:
+   - [`as/com/as.infrastructure/communication/Com/Com_Com.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Com.c) (Hàm `Com_SendSignal` và `Com_ReceiveSignal`).
+3. Cấu hình I-PDU trong mã nguồn sinh:
+   - [`as/build/nt/lm3s6965evb/ascore/config/Com_PBcfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Com_PBcfg.c) (Mảng cấu hình `ComSignal[]` và thuộc tính `ComSignalEndianness`).
 
-**Yêu cầu công việc:**
-1. Đọc [`as/com/as.infrastructure/communication/Com/Com_Com.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Com.c) (`Com_SendSignal` và `Com_ReceiveSignal`).
-2. Viết đoạn code C minh họa cách tính toán bitmask để chèn/trích xuất tín hiệu không làm biến dạng các bit lân cận trong cùng một byte.
-3. Phân biệt sự khác nhau giữa **Intel (Little Endian)** và **Motorola (Big Endian)** khi định nghĩa start bit trong file DBC và ARXML.
+---
+
+### 🔬 PHẦN A: BẢN ĐỒ MA TRẬN 64-BIT & QUY TẮC ĐI DÂY BIT (BIT LAYOUT)
+
+Một khung truyền CAN tiêu chuẩn gồm 8 bytes ($64\text{ bits}$), được đánh số từ Byte 0 đến Byte 7. Mỗi Byte có 8 bit, đánh số từ bit 7 (MSB của Byte) xuống bit 0 (LSB của Byte):
+
+```text
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                       MA TRẬN 64-BIT CỦA KHUNG CAN 8 BYTES (CAN BIT MATRIX)                     │
+├────────┬────────────────────────────────────────────────────────────────────────────────────────┤
+│ Byte 0 │ Bit 7  │ Bit 6  │ Bit 5  │ Bit 4  │ Bit 3  │ Bit 2  │ Bit 1  │ Bit 0 (LSB Frame)     │
+│ Byte 1 │ Bit 15 │ Bit 14 │ Bit 13 │ Bit 12 │ Bit 11 │ Bit 10 │ Bit 9  │ Bit 8                 │
+│ Byte 2 │ Bit 23 │ Bit 22 │ Bit 21 │ Bit 20 │ Bit 19 │ Bit 18 │ Bit 17 │ Bit 16                │
+│ Byte 3 │ Bit 31 │ Bit 30 │ Bit 29 │ Bit 28 │ Bit 27 │ Bit 26 │ Bit 25 │ Bit 24                │
+│ Byte 4 │ Bit 39 │ Bit 38 │ Bit 37 │ Bit 36 │ Bit 35 │ Bit 34 │ Bit 33 │ Bit 32                │
+│ Byte 5 │ Bit 47 │ Bit 46 │ Bit 45 │ Bit 44 │ Bit 43 │ Bit 42 │ Bit 41 │ Bit 40                │
+│ Byte 6 │ Bit 55 │ Bit 54 │ Bit 53 │ Bit 52 │ Bit 51 │ Bit 50 │ Bit 49 │ Bit 48                │
+│ Byte 7 │ Bit 63 │ Bit 62 │ Bit 61 │ Bit 60 │ Bit 59 │ Bit 58 │ Bit 57 │ Bit 56 (MSB Frame)     │
+└────────┴────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+#### 1. Quy Tắc Intel (Little Endian — Ký hiệu `@1+` hoặc `@1-` trong DBC):
+* **Start Bit:** Luôn luôn là vị trí của **LSB (Least Significant Bit - Bit có trọng số nhỏ nhất $2^0$)**.
+* **Chiều phát triển bit:** Đi thẳng tăng dần theo thứ tự địa chỉ Byte (Byte thấp chứa bit thấp, Byte cao chứa bit cao).
+* **Ví dụ:** Tín hiệu 12-bit `Sig_Intel_12b` có `StartBit = 12`:
+  - LSB nằm tại **Bit 12** (Byte 1, bit 4).
+  - Tín hiệu chiếm: Bit 12, 13, 14, 15 (Byte 1) và Bit 16, 17, 18, 19, 20, 21, 22, 23 (Byte 2).
+  - Chiều đi: Liên tục tăng dần từ Byte 1 $\longrightarrow$ Byte 2.
+
+#### 2. Quy Tắc Motorola (Big Endian — Ký hiệu `@0+` hoặc `@0-` trong DBC):
+* **Start Bit trong chuẩn Vector DBC:** Quy định vị trí của **MSB (Most Significant Bit - Bit có trọng số lớn nhất)**!
+* **Start Bit trong chuẩn AUTOSAR ARXML:** Một số tool quy định Start Bit là LSB (Motorola LSB / Backward). Đây là nguyên nhân hàng đầu gây hiểu lầm giữa kỹ sư OEM và Tier-1!
+* **Đường đi răng cưa Zigzag (Sawtooth Path):**
+  - Trong cùng một Byte: Bit đi từ MSB (bit 7) giảm dần về LSB (bit 0).
+  - Khi hết Byte: Nhảy sang Byte tiếp theo (Byte địa chỉ cao hơn) và bắt đầu từ bit cao nhất của byte đó!
+* **Ví dụ:** Tín hiệu 12-bit `Sig_Motorola_12b` có `StartBit = 12` (theo chuẩn Vector DBC MSB):
+  - MSB nằm tại **Bit 12** (Byte 1, bit 4).
+  - Các bit tiếp theo trong Byte 1: Bit 11, 10, 9, 8 (tổng cộng 5 bits trong Byte 1).
+  - Chuyển sang Byte 2: Nhảy lên đỉnh Byte 2 tại Bit 23, đi tiếp: Bit 23, 22, 21, 20, 19, 18, 17 (tổng cộng 7 bits trong Byte 2).
+  - LSB kết thúc tại: **Bit 17** (Byte 2, bit 1).
+
+---
+
+### 🛠️ PHẦN B: BÀI TOÁN THỰC CHIẾN — TỰ VIẾT BỘ MÃ ĐÓNG GÓI & TRÍCH XUẤT C
+
+Xét khung bản tin CAN `Bms_BatteryPackStatus` (CAN ID: `0x280`, DLC: 8 bytes) dùng cho xe điện với ma trận tín hiệu thực tế sau:
+
+| Tên Tín Hiệu (Signal Name) | Kiểu Dữ Liệu | Chiều Dài (Bits) | Endianness | Start Bit (DBC) | Factor | Offset | Đơn Vị | Dải Giá Trị Vật Lý |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| `Sig_PackVoltage` | `uint16` | 16 | **Intel (Little)** | 0 | 0.1 | 0 | $\text{V}$ | $0.0\text{V} - 6553.5\text{V}$ |
+| `Sig_PackCurrent` | `sint16` | 16 | **Motorola (Big)** | 23 | 0.1 | -500.0 | $\text{A}$ | $-500.0\text{A} - +500.0\text{A}$ |
+| `Sig_MaxCellTemp` | `sint8` | 8 | **Intel (Little)** | 32 | 1.0 | -40.0 | $^\circ\text{C}$ | $-40^\circ\text{C} - +120^\circ\text{C}$ |
+| `Sig_ContactorState` | `uint8` | 2 | **Intel (Little)** | 40 | 1.0 | 0 | Enum | 0: Open, 1: Precharge, 2: Closed |
+| `Sig_InterlockFault` | `uint8` | 1 | **Intel (Little)** | 42 | 1.0 | 0 | Flag | 0: Normal, 1: Fault |
+| `Sig_RollingCounter` | `uint8` | 4 | **Motorola (Big)** | 55 | 1.0 | 0 | Ctr | $0 - 15$ |
+
+#### Yêu Cầu 1: Lập Bảng Phân Bổ Bitmask & Tọa Độ (Bit Mapping Table)
+1. Hãy xác định tọa độ chính xác (Byte index, Bit range) của từng tín hiệu trong mảng 8 bytes `uint8 IPdu_Buffer[8]`.
+2. Kiểm tra xem có bất kỳ tín hiệu nào bị chồng lấn (Overlapping collision) lên nhau hay không.
+
+#### Yêu Cầu 2: Hiện Thực Hàm C Đóng Gói (Signal Packing Driver)
+Viết các hàm C chuẩn mực thực hiện chèn dữ liệu thô (Raw Value) vào bộ đệm `IPdu_Buffer[8]` mà **không làm thay đổi hay xóa các bit lân cận** trong cùng byte (sử dụng toán tử bitmask `AND` xóa vùng nhớ cũ và `OR` chèn dữ liệu mới):
+
+```c
+/* Chèn tín hiệu Intel (Little Endian) vào I-PDU */
+void Com_PackSignal_Intel(uint8* pdu_buf, uint32 raw_val, uint8 start_bit, uint8 bit_len);
+
+/* Chèn tín hiệu Motorola (Big Endian - MSB Start Bit theo chuẩn DBC) vào I-PDU */
+void Com_PackSignal_Motorola(uint8* pdu_buf, uint32 raw_val, uint8 start_bit, uint8 bit_len);
+```
+
+#### Yêu Cầu 3: Hiện Thực Hàm C Trích Xuất & Mở Rộng Dấu (Unpacking & Sign Extension)
+Viết các hàm C trích xuất dữ liệu từ `IPdu_Buffer[8]` và chuyển đổi sang giá trị vật lý (`float`):
+
+```c
+/* Trích xuất tín hiệu Intel không dấu */
+uint32 Com_UnpackSignal_Intel(const uint8* pdu_buf, uint8 start_bit, uint8 bit_len);
+
+/* Trích xuất tín hiệu Motorola không dấu */
+uint32 Com_UnpackSignal_Motorola(const uint8* pdu_buf, uint8 start_bit, uint8 bit_len);
+
+/* Giải mã tín hiệu có dấu (Two's Complement Sign Extension) */
+sint32 Com_SignExtend(uint32 raw_val, uint8 bit_len);
+```
+> ⚠️ **Lưu ý kỹ thuật:** Nếu tín hiệu có chiều dài $12\text{ bits}$ âm (ví dụ giá trị nhị phân `0xF38` tương đương $-200$), nếu ép kiểu trực tiếp sang `sint32`, CPU sẽ hiểu là $+3896$ vì bit thứ 11 là bit 1 nhưng các bit từ 12 đến 31 vẫn là bit 0. Hàm `Com_SignExtend` bắt buộc phải điền bit 1 vào toàn bộ các bit cao còn lại!
+
+---
+
+### 💀 PHẦN C: BẮT BỆNH 3 SỰ CỐ ENDIANNESS KINH ĐIỂN TRÊN XE THẬT
+
+Phân tích nguyên nhân gốc rễ (Root Cause), hậu quả thực tế và giải pháp khắc phục cho 3 lỗi sau:
+
+#### 1. Sự Cố 1: "Chiếc Xe Chạy Tốc Độ Siêu Thanh 2560 km/h" (The High-Low Byte Swap)
+* **Hiện tượng:** Xe đang chạy thử nghiệm ở vận tốc $10\text{ km/h}$. Màn hình đồng hồ táp-lô (Cluster) bất ngờ nhảy vọt lên hiển thị $2560\text{ km/h}$, còi báo quá tốc độ rú liên tục và hệ thống ESP khóa cứng phanh khẩn cấp.
+* **Dữ liệu CAN:** ECU VCU gửi tín hiệu `VehicleSpeed` 16-bit (Factor = 1.0 km/h, không Offset) tại Byte 0 và Byte 1.
+  - VCU gửi giá trị $10$ (`0x000A`) theo định dạng **Motorola (Big Endian)**: Byte 0 = `0x00`, Byte 1 = `0x0A`.
+  - Màn hình Cluster cấu hình nhầm thành **Intel (Little Endian)**.
+* **Nhiệm vụ:**
+  - Giải thích tại sao Cluster lại đọc ra giá trị $2560\text{ km/h}$.
+  - Viết công thức hoán đổi byte (Byte Swapping macro) để xử lý trong trường hợp không thể sửa file DBC.
+
+#### 2. Sự Cố 2: "Xe Bị Cắt Nguồn Đột Ngột Do Đảo Dấu Dòng Điện Pin" (Sign Bit Disaster)
+* **Hiện tượng:** Xe điện đang cắm sạc tại trụ sạc nhanh DC 150kW. Dòng sạc thực tế đang nạp vào pin là $+150.0\text{A}$. Bất ngờ hộp VCU phát lệnh ngắt Relay khẩn cấp vì nghi ngờ xe đang bị "chập mạch phóng điện cực đại".
+* **Dữ liệu CAN:** Tín hiệu `Sig_PackCurrent` 16-bit Signed (Factor = 0.1, Offset = 0).
+  - Giá trị dòng sạc $+150\text{A} \implies \text{Raw} = +1500 = 0\text{x05DC}$.
+  - Do cấu hình sai vị trí Start Bit giữa Motorola MSB và Motorola LSB, byte chứa bit dấu bị tráo sang vị trí khác khiến VCU nhận diện bit MSB là bit 1 (số âm).
+* **Nhiệm vụ:** Phân tích cơ chế gây sai lệch và trình bày cách viết Unit Test để kiểm tra độ bao phủ dấu (Negative/Positive/Zero Boundary Testing).
+
+#### 3. Sự Cố 3: "Ghi Đè Xóa Mất Tín Hiệu An Toàn Liền Kề" (Neighboring Bit Collision)
+* **Hiện tượng:** Khi kỹ sư kích hoạt chế độ lái `Sig_DriveMode = 2` (Sport Mode), đèn báo lỗi mở nắp thùng pin `Sig_InterlockFault` bất ngờ bị tắt ngấm, làm vô hiệu hóa cơ chế an toàn điện giật.
+* **Dữ liệu CAN:**
+  - `Sig_DriveMode` chiếm bits [1:0] của Byte 5.
+  - `Sig_InterlockFault` chiếm bit [2] của Byte 5.
+* **Nhiệm vụ:** Chỉ ra lỗi sai trong câu lệnh gán C sơ đẳng: `pdu_buf[5] = drive_mode;` và sửa lại bằng kỹ thuật bitmasking đúng chuẩn AUTOSAR COM.
+
+---
+
+### 🧪 PHẦN D: KIỂM CHỨNG VỚI GÓI TIN THỰC TẾ (VERIFICATION TESTBENCH)
+
+Cho gói tin CAN 8 bytes thực tế bắt được từ máy phân tích CAN analyzer:
+```c
+uint8 Test_Pdu[8] = { 0x48, 0x0E, 0x05, 0xDC, 0x55, 0x02, 0x0A, 0x00 };
+```
+Áp dụng ma trận tín hiệu ở **Phần B**, hãy:
+1. **Giải mã thủ công bằng tay (Manual Calculation):**
+   - Tính giá trị Raw Value và giá trị vật lý Physical Value của 4 tín hiệu: `Sig_PackVoltage`, `Sig_PackCurrent`, `Sig_MaxCellTemp`, `Sig_ContactorState`.
+2. **Viết chương trình C độc lập (`test_signal_packing.c`):**
+   - Chạy hàm unpack để giải mã `Test_Pdu[8]` và so sánh kết quả với tính toán bằng tay (sử dụng `assert()` để verify).
+   - Thử nghiệm pack các giá trị vật lý mới:
+     - `Voltage = 400.0 V`
+     - `Current = -125.5 A`
+     - `Temp = 35 °C`
+     - `Contactor = Closed (2)`
+   - In ra chuỗi hex của `IPdu_Buffer[8]` sau khi đóng gói và giải thích từng byte.
+
+---
+
+### 🛠️ Tiêu Chí Thành Công (Success Criteria):
+* Vẽ đúng ma trận bit 64-bit và biểu diễn chính xác đường đi Zigzag của tín hiệu Motorola.
+* Viết hoàn chỉnh các hàm C `Com_PackSignal_Intel`, `Com_PackSignal_Motorola`, `Com_UnpackSignal_Intel`, `Com_UnpackSignal_Motorola`, `Com_SignExtend` biên dịch không có warning/error và vượt qua 100% test cases.
+* Giải thích chính xác nguyên nhân và đưa ra giải pháp kỹ nghệ triệt để cho 3 sự cố Endianness trên xe thật.
 
 ---
 
@@ -319,4 +468,68 @@ Xét tính năng điều khiển vị trí bàn đạp ga trên xe điện:
 
 ---
 
-> 🎉 **Tổng kết:** Hoàn thành trọn vẹn 11 nhiệm vụ trên, bạn sẽ nắm vững toàn bộ kiến thức kỹ nghệ thực chiến của ngăn xếp CAN AUTOSAR — từ tính toán vật lý, đo đạc oscilloscope, phân tích driver MCAL, cấu hình ma trận ARXML, phân mảnh chẩn đoán UDS, xử lý sự cố Bus-Off, cho đến vai trò System Architect phân bổ SWC và điều hướng thông điệp trên toàn xe!
+## TASK 3.12: CanIf Multi-Driver Abstraction & Vendor Infix Dispatching
+**Thời gian ước tính:** ~2.5h | **Mức độ:** Advanced
+
+> 🎯 **Mục tiêu:**  
+> 1. Đọc và phân tích trực tiếp mã nguồn [`as/com/as.infrastructure/communication/CanIf/CanIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c) để chứng minh vì sao tầng `CanIf` hoàn toàn độc lập với các hãng chip bán dẫn và không cần bất kỳ khối `#ifdef` nào.
+> 2. Thiết kế giải pháp kiến trúc cho một **ECU Gateway hỗn hợp** điều khiển đồng thời 2 khối CAN Controller từ 2 hãng khác nhau:
+>    - **CAN 0 & CAN 1 (Nội vi MCU):** Module FlexCAN tích hợp trong vi điều khiển NXP S32K.
+>    - **CAN 2 (Ngoại vi SPI):** Chip điều khiển CAN rời kết nối qua bus SPI (Microchip MCP2518FD hoặc TI TCAN4550).
+> 3. Hiện thực hóa quy chuẩn **Vendor Infix** (`Can_FlexCAN_*` vs `Can_Mcp2518_*`) và thiết kế cấu trúc **Bảng Con Trỏ Hàm (Function Pointer Dispatch Table)** trong `CanIf_Cfg.c`.
+> 4. Phân tích cơ chế tối ưu hóa thời gian thực **Zero-Cost Inlining** khi hệ thống chỉ có duy nhất 1 CAN Driver.
+
+---
+
+### 📂 Tệp Cần Đọc & Đối Chiếu:
+1. [`as/com/as.infrastructure/communication/CanIf/CanIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c) (Hàm `CanIf_Transmit` gọi `Can_Write`).
+2. [`as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c) (Bảng cấu hình HTH, TxPdu, RxPdu do ArGen sinh ra).
+3. [`docs/theory/03_Communication_Stack_And_CAN_Protocol.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/03_Communication_Stack_And_CAN_Protocol.md#L1382-L1445) (Hộp Kỹ Nghệ Thực Chiến: Vì Sao CanIf Không Cần `#ifdef`).
+
+---
+
+### 📝 Yêu Cầu Thực Hiện Chi Tiết:
+
+#### Phần A: Khảo Sát Tính Độc Lập Phần Cứng Trong Mã Nguồn Native
+1. Mở file [`CanIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c). Tìm tất cả các vị trí gọi xuống tầng MCAL CAN Driver:
+   - Hàm truyền khung tin: `Can_Write()`
+   - Hàm chuyển chế độ: `Can_SetControllerMode()`
+   - Hàm bật/tắt ngắt: `Can_EnableControllerInterrupts()`, `Can_DisableControllerInterrupts()`
+2. Hãy chỉ ra điểm khác biệt giữa cách gọi hàm này so với cách viết bare-metal dùng `#ifdef STM32` / `#ifdef NXP`.
+3. Giải thích vai trò của tài liệu đặc tả **AUTOSAR SWS CAN Driver** trong việc ép buộc các hãng bán dẫn phải tuân thủ chuẩn giao diện C.
+
+#### Phần B: Thiết Kế Bảng Con Trỏ Hàm Điều Phối Đa Driver (Multi-Driver Dispatching)
+Giả sử bạn là BSW Architect thiết kế hệ thống cho Gateway ECU có 2 Driver:
+* Driver 0 (`CAN_DRIVER_FLEXCAN`): Tên hàm là `Can_FlexCAN_Write`, `Can_FlexCAN_SetControllerMode`.
+* Driver 1 (`CAN_DRIVER_MCP2518`): Tên hàm là `Can_Mcp2518_Write`, `Can_Mcp2518_SetControllerMode`.
+
+1. **Thiết kế kiểu dữ liệu cấu hình trong `CanIf_Types.h`:**
+   ```c
+   typedef struct {
+       Can_ReturnType (*CanWrite)(Can_HwHandleType Hth, const Can_PduType* PduInfo);
+       Can_ReturnType (*CanSetControllerMode)(uint8 Controller, Can_ControllerStateType Transition);
+   } CanIf_CanDriverDispatchType;
+   ```
+2. **Viết đoạn code mà Tool Configurator sẽ tự động sinh ra trong `CanIf_Cfg.c`:**
+   - Khởi tạo mảng tĩnh `CanIf_DriverTable[]` chứa con trỏ hàm trỏ tới 2 driver trên.
+3. **Viết lại hàm điều phối `CanIf_Transmit()`:**
+   - Dựa vào `CanTxPduId`, tra cứu ra Controller ID $\rightarrow$ Tra ra Driver ID $\rightarrow$ Gọi hàm qua con trỏ với chi phí $O(1)$.
+
+#### Phần C: Tối Ưu Hóa Zero-Cost & Câu Hỏi Phỏng Vấn Chuyên Sâu
+1. **Zero-Cost Single Driver Optimization:**
+   - Hầu hết các ECU thông thường (>90%) chỉ có 1 driver MCAL duy nhất. Nếu vẫn dùng con trỏ hàm `CanIf_DriverTable[0].CanWrite()` thì sẽ gây ra tổn thất hiệu năng gì cho CPU ARM Cortex-M/R? (Gợi ý: Function pointer gián tiếp làm mất khả năng Compiler Inline, gây Branch Misprediction và Pipeline Stall).
+   - Hãy thiết kế cặp macro `#if (CANIF_MULTIPLE_DRIVERS_SUPPORT == STD_ON)` trong `CanIf_Cfg.h` để khi chỉ có 1 driver, lệnh gọi `CanIf_CanWrite()` sẽ chuyển thành Direct Inlined Call tới `Can_Write()`.
+2. **An Toàn Chức Năng ISO 26262 & MISRA-C:**
+   - Trong tiêu chuẩn an toàn ô tô ISO 26262 (ASIL-D) và MISRA-C:2012 (Rule 11.1), tại sao việc dùng con trỏ hàm (Function Pointer) bị kiểm soát rất ngặt nghèo?
+   - Tại sao nguyên tắc "Tool gen ra bảng hằng số `const` đặt trên Flash ROM" lại giải quyết được vấn đề an toàn con trỏ hàm?
+
+---
+
+### 🛠️ Tiêu Chí Thành Công (Success Criteria):
+* Viết đúng cấu trúc bảng điều phối con trỏ hàm đa driver theo chuẩn AUTOSAR SWS CanIf.
+* Hiện thực hóa thành công macro tối ưu hóa Zero-Cost chuyển đổi linh hoạt giữa Single-Driver và Multi-Driver.
+* Giải thích thuyết phục câu hỏi phỏng vấn về chi phí CPU cycle và an toàn bộ nhớ ROM/RAM.
+
+---
+
+> 🎉 **Tổng kết:** Hoàn thành trọn vẹn 12 nhiệm vụ trên, bạn sẽ nắm vững toàn bộ kiến thức kỹ nghệ thực chiến của ngăn xếp CAN AUTOSAR — từ tính toán vật lý, đo đạc oscilloscope, phân tích driver MCAL, cấu hình ma trận ARXML, phân mảnh chẩn đoán UDS, xử lý sự cố Bus-Off, trừu tượng hóa đa driver MCAL, cho đến vai trò System Architect phân bổ SWC và điều hướng thông điệp trên toàn xe!

@@ -1,4 +1,4 @@
-﻿# ECU STARTUP & SHUTDOWN DEEP DIVE
+# ECU STARTUP & SHUTDOWN DEEP DIVE
 **Tác giả:** Principal BSW Integration Engineer
 **Kinh nghiệm:** 15 năm trong lĩnh vực AUTOSAR & Automotive Software
 
@@ -117,6 +117,53 @@ Bắt đầu vòng đời của tầng Application (ASW).
 - **Generated code từ ARXML:** RTE (Runtime Environment) là code được sinh tự động dựa trên software components (SWC) architecture.
 - **Activate TriggerPoints:** RTE sẽ kết nối các cổng (ports) giữa các SWC, khởi tạo các biến nội bộ.
 - **SchM schedule:** Scheduler Manager sẽ bắt đầu gọi các Runnables (hàm chức năng của ASW) dựa trên các Timer events (ví dụ: Task 10ms, Task 50ms). Hệ thống chính thức bước vào trạng thái vận hành bình thường (NORMAL OPERATION).
+
+### Phase 6 — Giải Phẫu Bên Trong Thân Hàm `_Init()`: 4 Nhiệm Vụ Sống Còn Của Mọi Module BSW
+
+Một câu hỏi kỹ nghệ bản lề là: *"Khi `EcuM_AL_DriverInitZero/One` hoặc `EcuM_StartupTwo` gọi hàng loạt hàm `Mcu_Init(&Mcu_Config)`, `Can_Init(&Can_Config)`, `CanIf_Init(&CanIf_Config)`, `PduR_Init(&PduR_Config)`, `Com_Init(&Com_Config)`, thì bản chất bên trong thân các hàm này thực sự làm những gì?"*
+
+Toàn bộ các hàm khởi tạo trong thế giới AUTOSAR Classic đều tuân thủ nguyên tắc **Tách biệt tuyệt đối giữa Thuật toán thực thi (Generic Logic) và Dữ liệu cấu hình (Configuration Data)**. Chúng thực thi 4 nhiệm vụ sống còn:
+
+```text
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                   MÔ HÌNH 4 BƯỚC KHỞI TẠO BẮT BUỘC TRONG MỌI HÀM _INIT() CỦA AUTOSAR             │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+   [ BẢNG CẤU HÌNH TỪ ARXML ]                 [ HÀM KHỞI TẠO BSW ]               [ TÁC ĐỘNG VÙNG NHỚ RAM ]
+  (Nằm trong Flash / ROM tĩnh)                (Chạy 1 lần khi Boot)                 (Biến nội bộ BSW)
+
+  1. Bảng Pointer/Data Cfg        ──► Module_Init(ConfigPtr)      ──► Gán: Module_ConfigPtr = ConfigPtr; (Anchor)
+  2. Cấp phát mảng tĩnh RAM       ──► Binding Buffer              ──► Gán: RuntimePtr = RAM_Buffer; (Binding)
+  3. Tham số chu kỳ / Default     ──► Set Initial Values          ──► Gán: Timer = Period; Data = InitVal;
+  4. Máy trạng thái Module        ──► FSM Transition              ──► Gán: Module_State = INITIALIZED;
+```
+
+#### 1. Neo con trỏ cấu hình (Pointer Anchoring):
+* **Bản chất:** Bảng dữ liệu cấu hình sinh ra từ ARXML (như `CanIf_Config`, `PduR_Config`, `ComConfiguration`) được đặt tại vùng nhớ Flash ROM (`const`).
+* **Hành vi:** Hàm `_Init` lưu địa chỉ con trỏ `ConfigPtr` vào biến nội bộ `static`:
+  - `Can.c: L403-L413`: `Can_Global.config = config;` và `Can_Global.initRun = CAN_READY;`
+  - `CanIf.c: L480`: `CanIf_ConfigPtr = ConfigPtr;`
+  - `PduR.c: L66`: `PduRConfig = ConfigPtr;`
+  - `Com.c: L236`: `ComConfig = config;`
+* **Mục đích:** Hàng triệu chu kỳ thực thi runtime sau đó (`Com_SendSignal`, `CanIf_Transmit`, `PduR_CanIfRxIndication`) không cần truyền lại tham số cấu hình mà truy xuất trực tiếp $O(1)$ qua con trỏ đã neo.
+
+#### 2. Liên kết Bộ đệm RAM (RAM Buffer Binding):
+* **Bản chất:** File cấu hình sinh ra từ ARXML là `const` (chỉ đọc, nằm ở Flash ROM). Để hệ thống nhận/phát và xử lý dữ liệu động, mỗi tầng BSW bắt buộc phải sở hữu các vùng đệm RAM đọc/ghi riêng biệt. Hàm `_Init` thực hiện liên kết (binding) các đối tượng quản lý runtime với các mảng RAM tĩnh này:
+  - **MCAL CAN ([Can.c: L423-L464](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c#L423-L464)):** Liên kết con trỏ `canUnit = GET_PRIVATE_DATA(ctlrId)` vào mảng RAM `CanUnit[ctlrId]` và xây dựng bảng tra cứu phần cứng trong RAM `Can_Global.CanHTHMap[hoh->CanObjectId]`.
+  - **CanIf ([CanIf.c: L496-L498](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L496-L498)):** Khởi tạo các bộ đệm vòng FIFO trong RAM `RB_INIT(canifRx)`, `RB_INIT(canifTx)`, `RB_INIT(canifTxInd)` và cấu trúc kênh `CanIf_Global.channelData[]`.
+  - **CanTp ([CanTp.c: L1107-L1120](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanTp/CanTp.c#L1107-L1120)):** Gắn cấu hình N-SDU vào mảng RAM runtime `runtimeData = &CanTpRunTimeData.runtimeDataList[...]` chứa bộ đệm tạm thời `canFrameBuffer` và con trỏ `pdurBuffer`.
+  - **PduR ([PduR.c: L90-L130](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR.c#L90-L130)):** Quản lý bộ đệm hàng đợi FIFO `PduRTxBuffer_type` (cho Gateway/Buffered routing) hoặc bypass hoàn toàn ở chế độ Direct Zero-Cost (`TxBufferRef = NULL`).
+  - **COM ([Com.c: L274](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com.c#L274)):** Liên kết `IPdu->ComIPduDataPtr` với mảng RAM tĩnh `TxMsgBmsStatus_IPduBuffer[8]` ([Com_PbCfg.c: L139](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Com_PbCfg.c#L139)) và nạp dữ liệu mặc định.
+  - **OS System:** Khởi tạo Task Control Block và liên kết con trỏ hàng đợi ưu tiên vào các mảng RAM tĩnh `ReadyFIFO_prio*` và Stack RAM riêng biệt `Task_Stack_*`.
+
+#### 3. Thiết lập giá trị ban đầu (Initial Values & Hardware Registers):
+* **Hành vi:**
+  - Với MCAL (`Can_Init`): Nạp trực tiếp các tham số Baudrate (BRP, TS1, TS2) và bộ lọc vào thanh ghi phần cứng (`CAN_BTR`, `CAN_FMR`).
+  - Với BSW (`Com_Init`): Đọc trường `InitialValue` trong ARXML để nạp giá trị mặc định cho toàn bộ Signals trước khi xe lăn bánh, thiết lập các bộ đếm thời gian chu kỳ (`ComTxModeTimePeriodTimer`).
+
+#### 4. Kích hoạt Máy trạng thái (FSM State Transition & DET Validation):
+* **Hành vi:** Đổi cờ trạng thái module từ `UNINIT` sang `INITIALIZED` (hoặc `ONLINE` / `STOPPED`).
+* **Mục đích:** Toàn bộ các API runtime của AUTOSAR đều có macro kiểm tra hợp lệ của Development Error Tracer (DET), ví dụ: `VALIDATE_NO_RV(CanIf_Global.initRun, CANIF_RXINDICATION_ID, CANIF_E_UNINIT)`. Nếu bước 4 không hoàn tất, toàn bộ các lời gọi truyền nhận sau đó sẽ bị DET chặn đứng và loại bỏ (Drop) ngay lập tức!
 
 ---
 
