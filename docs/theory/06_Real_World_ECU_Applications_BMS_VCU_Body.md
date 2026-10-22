@@ -4,7 +4,7 @@
 > **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
 > **Định hướng nghề nghiệp:** **BSW Integration Engineer** & **ECU Software Engineer (BMS / VCU / Body)**  
 > **Mã nguồn đối chiếu thực tế:** Kho mã nguồn [Study_AUTOSAR-main/as/](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as) (`com/as.infrastructure/`)  
-> **Vị trí tài liệu:** [Study_AUTOSAR-main/docs/06_Real_World_ECU_Applications_BMS_VCU_Body.md](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/06_Real_World_ECU_Applications_BMS_VCU_Body.md)
+> **Vị trí tài liệu:** [docs/theory/06_Real_World_ECU_Applications_BMS_VCU_Body.md](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/06_Real_World_ECU_Applications_BMS_VCU_Body.md)
 
 ---
 
@@ -158,10 +158,19 @@ void BatteryState_CalculateSoC_Runnable(void)
 
 void BatteryState_Shutdown_Runnable(void)
 {
-    // Lưu NvM trước khi tắt xe để không bị mất SoC (ví dụ xe đỗ qua đêm)
+    // Lưu ý kiến trúc AUTOSAR: NvM_WriteBlock là API BẤT ĐỒNG BỘ (Asynchronous)
+    // Hàm nạp yêu cầu vào hàng đợi và trả về E_OK ngay lập tức với trạng thái NVM_REQ_PENDING.
+    // Thao tác ghi vật lý xuống chip Flash thực tế do Fee_MainFunction() & Fls_MainFunction() xử lý ngầm.
+    // ECU chỉ được phép cắt nguồn hoàn toàn khi NvM_GetErrorStatus() trả về NVM_REQ_OK!
     NvM_WriteBlock(NvMConf_NvMBlockDescriptor_SoC_Block, &Accumulated_Discharge_mAs);
 }
-```
+`
+
+> 🔍 **Đối Chiếu Mã Nguồn Ứng Dụng SWC Trong Dự Án Study_AUTOSAR:**  
+> Trong kho mã nguồn thực tế, các thành phần phần mềm ứng dụng được tổ chức tại thư mục [s/com/as.application/swc/](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/swc/):
+> - **Đồng hồ táp-lô:** [Swc_Gauge.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/swc/gauge/Swc_Gauge.c) tiêu thụ tín hiệu tốc độ xe từ CAN Rx PDU.
+> - **Đèn cảnh báo Telltale:** [Swc_Telltale.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/swc/telltale/Swc_Telltale.c) giao tiếp qua cổng RTE sinh tự động [Rte_SwcTelltale.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/swc/telltale/Rte_SwcTelltale.c).
+> - **Chu kỳ phát tín hiệu BMS:** Được điều phối trong [s/release/ascore/app/app.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/release/ascore/app/app.c#L591-L606) thông qua Alarm định kỳ kích hoạt TASK(Task_Bms_Tx_20ms).``
 
 #### 2.3 Tích Hợp Chẩn Đoán Lỗi DEM Cho BMS (Quá Áp, Quá Dòng, Quá Nhiệt)
 

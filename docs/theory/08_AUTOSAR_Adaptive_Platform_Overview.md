@@ -1,7 +1,28 @@
-# Tài Liệu Chuyên Sâu Về AUTOSAR Adaptive Platform
+# 08. AUTOSAR Adaptive Platform Overview Masterclass
+## Masterclass Kỹ Nghệ: Nền Tảng AUTOSAR Adaptive Platform, Kiến Trúc Hướng Dịch Vụ SOA, ara::com, Execution Management, SOME/IP Protocol & Mô Phỏng C++ iceoryx
 
-**Tác giả:** Principal AUTOSAR Architect
-**Mục đích:** Cung cấp cái nhìn toàn diện, chuyên sâu và thực tiễn về nền tảng AUTOSAR Adaptive, từ kiến trúc, các module chính đến ứng dụng thực tế và phỏng vấn.
+> **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
+> **Cấp độ:** Universal Learning Resource (Từ Classic BSW Engineer đến Adaptive HPC Architect)  
+> **Tiêu chuẩn tham chiếu:** AUTOSAR Adaptive Platform Release R22-11 / R20-11 (`AUTOSAR_EXP_AdaptivePlatformOverview`)  
+> **Vị trí tài liệu:** [`docs/theory/08_AUTOSAR_Adaptive_Platform_Overview.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/08_AUTOSAR_Adaptive_Platform_Overview.md)  
+
+---
+
+## Mục Lục
+1. [Tại Sao AUTOSAR Adaptive Ra Đời?](#1-tại-sao-autosar-adaptive-ra-đời)
+2. [So Sánh Toàn Diện: Adaptive vs Classic Architecture](#2-kiến-trúc-adaptive-vs-classic)
+3. [Kiến Trúc AUTOSAR Adaptive Stack (ara::*)](#3-autosar-adaptive-stack-architecture)
+4. [Kiến Trúc Hướng Dịch Vụ: Service-Oriented Architecture (SOA)](#4-service-oriented-architecture-soa)
+5. [Mổ Xẻ Tầng Truyền Thông: ara::com Deep Dive](#5-aracom-deep-dive)
+6. [Giao Thức Mạng SOME/IP & SOME/IP-SD (Service Discovery)](#6-someip-protocol)
+   - [6.1 Chu Trình Bắt Tay Động Của SOME/IP-SD (Offer, Find, Subscribe, Ack)](#61-chu-trình-bắt-tay-động-của-someip-sd-offer-find-subscribe-ack)
+7. [Quản Lý Vòng Đời Ứng Dụng: Execution Management (ara::exec)](#7-execution-management--application-lifecycle)
+8. [Quản Lý Bộ Nhớ Bền Vững: Persistency (ara::per)](#8-persistency-araper)
+9. [Chẩn Đoán Trong Adaptive Platform: Diagnostics (ara::diag & DoIP)](#9-diagnostics-trong-adaptive-aradiag)
+10. [Ví Dụ Ứng Dụng Thực Tế Trên Xe (Real Vehicle Use Cases)](#10-real-vehicle-examples)
+11. [Lộ Trình Chuyển Đổi: Migration Path Classic ──► Adaptive](#11-migration-path-classic--adaptive)
+12. [Bộ 30 Câu Hỏi Phỏng Vấn Kỹ Sư AUTOSAR Adaptive Platform](#12-interview-qa--30-câu-hỏi-phỏng-vấn-kỹ-sư-autosar-adaptive)
+13. [Bài Tập Thực Hành Hands-on: Mô Phỏng SOA Bằng C++ và Eclipse iceoryx](#13-hands-on-exercise-mô-phỏng-soa-với-iceoryx)
 
 ---
 
@@ -195,12 +216,40 @@ Mỗi gói tin SOME/IP có header 16 byte:
 7. **Return Code (8 bit):** Trạng thái (`E_OK`, `E_NOT_OK`, v.v.).
 
 ### SOME/IP-SD (Service Discovery)
-Là giao thức con chạy trên nền UDP Multicast (Port 30490).
-Bao gồm các bản tin:
-- **Offer Service:** "Tôi là Camera, tôi có dịch vụ ID 0x1234 ở IP này, port này".
-- **Find Service:** "Ai có dịch vụ ID 0x1234 không?".
-- **Subscribe Eventgroup:** "Tôi muốn nhận dữ liệu Eventgroup X của dịch vụ 0x1234".
-- **SubscribeAck:** Chấp nhận kết nối.
+Là giao thức con chạy trên nền UDP Multicast (Port 30490) để các Service Consumer và Service Provider tự động tìm thấy nhau mà không cần cấu hình IP/Port cứng lúc build-time.
+
+### 6.1 Chu Trình Bắt Tay Động Của SOME/IP-SD (Offer, Find, Subscribe, Ack)
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                   CHU TRÌNH BẮT TAY DỊCH VỤ ĐỘNG QUA SOME/IP-SD (PORT 30490)                     │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│   SERVICE PROVIDER (Camera ECU)                                SERVICE CONSUMER (ADAS HPC)       │
+│   [IP: 192.168.1.10:30500]                                     [IP: 192.168.1.50:40100]          │
+│                │                                                            │                    │
+│                │  1. SOME/IP-SD OfferService (UDP Multicast 224.0.0.1)      │                    │
+│                │  "Dịch vụ CameraServiceID 0x1234 có sẵn tại IP:192.168.1.10"│                    │
+│                │───────────────────────────────────────────────────────────>│                    │
+│                │                                                            │                    │
+│                │  (Hoặc Consumer chủ động: 1*. SOME/IP-SD FindService)      │                    │
+│                │< - - - - - - - - - - - - - - - - - - - - - - - - - - - - - │                    │
+│                │                                                            │                    │
+│                │  2. SOME/IP-SD SubscribeEventgroup (UDP Unicast)           │                    │
+│                │  "Cho phép tôi đăng ký nhận Eventgroup 0x0001 (Frame ảnh)" │                    │
+│                │<───────────────────────────────────────────────────────────│                    │
+│                │                                                            │                    │
+│                │  3. SOME/IP-SD SubscribeEventgroupAck                      │                    │
+│                │  "Xác nhận chấp thuận đăng ký, TTL = 10 giây"             │                    │
+│                │───────────────────────────────────────────────────────────>│                    │
+│                │                                                            │                    │
+│                │  ════════════ BƯỚC VÀO PHA TRUYỀN DỮ LIỆU THỰC SỰ ═════════│                    │
+│                │  4. SOME/IP Event Notification (TCP hoặc UDP Payload)      │                    │
+│                │  (Dữ liệu video streaming, đối tượng nhận diện ADAS)       │                    │
+│                │───────────────────────────────────────────────────────────>│                    │
+│                │                                                            │                    │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ### Serialization
 Các kiểu dữ liệu C++ (`struct`, `vector`, `string`) được chuyển thành mảng byte thô. Ví dụ, `uint32` mất 4 byte Big-endian. Array có thể có trường độ dài (Length field) đi kèm.

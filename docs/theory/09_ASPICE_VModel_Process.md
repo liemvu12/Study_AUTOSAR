@@ -1,4 +1,25 @@
-# ASPICE và V-Model Process trong Automotive
+# 09. ASPICE & V-Model Process Masterclass
+## Masterclass Kỹ Nghệ: Quy Trình Phát Triển Phần Mềm Ô Tô ASPICE PAM v3.1 / v4.0, Mô Hình Chữ V (V-Model), Ma Trận Truy Xuất Nguồn Gốc (Traceability) & Sản Phẩm Giao Nộp Của Kỹ Sư BSW
+
+> **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
+> **Cấp độ:** Universal Learning Resource (Từ Developer đến Quality / Technical Project Lead)  
+> **Tiêu chuẩn tham chiếu:** Automotive SPICE (ASPICE) PAM v3.1 / v4.0, VDA Scope, HIS Scope, ISO/IEC 330xx  
+> **Vị trí tài liệu:** [`docs/theory/09_ASPICE_VModel_Process.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/09_ASPICE_VModel_Process.md)  
+
+---
+
+## Mục Lục
+1. [Vòng Đời Phát Triển Phần Mềm Ô Tô (Automotive Software Development Lifecycle)](#1-automotive-software-development-lifecycle)
+2. [Tổng Quan Về Tiêu Chuẩn ASPICE (Automotive SPICE Overview)](#2-aspice-overview)
+3. [Yêu Cầu Truy Xuất Nguồn Gốc Hai Chiều (Bidirectional Traceability)](#3-traceability--yêu-cầu-quan-trọng-nhất)
+4. [Quy Trình Chuẩn Từ Yêu Cầu Khách Hàng Đến Bản Phát Hành (Customer Req ──► Release)](#4-typical-workflow-customer-req--release)
+5. [Các Cấp Độ Kiểm Thử Trong Dự Án AUTOSAR (Testing Levels)](#5-testing-levels-trong-autosar-project)
+6. [Hệ Sinh Thái Công Cụ Kỹ Nghệ Ô Tô (Tools Ecosystem)](#6-tools-ecosystem)
+7. [Kỹ Sư BSW Trong Bối Cảnh Đánh Giá ASPICE (BSW Engineer in ASPICE Context)](#7-bsw-engineer-trong-aspice-context)
+   - [7.1 Ma Trận Sản Phẩm Bàn Giao Cốt Tử Của Kỹ Sư BSW Khi Đi Audit (SWE.2, SWE.3, SWE.5)](#71-ma-trận-sản-phẩm-bàn-giao-cốt-tử-của-kỹ-sư-bsw-khi-đi-audit-swe2-swe3-swe5)
+8. [Bộ 20 Câu Hỏi Phỏng Vấn Thực Chiến Về ASPICE & Quy Trình Kỹ Nghệ Ô Tô](#8-interview-qa--20-câu-hỏi-về-aspice--quy-trình)
+
+---
 
 ## 1. Automotive Software Development Lifecycle
 
@@ -162,6 +183,16 @@ Một Kỹ sư Basic Software (BSW Engineer) trong quy trình ASPICE không ch�
 - Software Unit Detailed Design (SWDD).
 - Unit Test Specification & Unit Test Report.
 - Review records (Biên bản review).
+
+### 7.1 Ma Trận Sản Phẩm Bàn Giao Cốt Tử Của Kỹ Sư BSW Khi Đi Audit (SWE.2, SWE.3, SWE.5)
+
+Khi đối diện với chuyên gia đánh giá độc lập (ASPICE Lead Assessor), kỹ sư BSW bắt buộc phải xuất trình đủ 3 bộ hồ sơ kỹ thuật then chốt:
+
+| Nhóm Quy Trình ASPICE | Trọng Trách Kỹ Sư BSW | Bộ Hồ Sơ / Sản Phẩm Giao Nộp (Audit Evidence Deliverable) |
+| :--- | :--- | :--- |
+| **SWE.2 — Software Architectural Design** | Thiết kế phân bổ tài nguyên tĩnh và luồng thực thi động của BSW. | • **Static Architecture:** Sơ đồ khối các module BSW, phân vùng bộ nhớ Flash/RAM (`MemMap.h`, Linker Script).<br>• **Dynamic Architecture:** Bảng phân bổ OS Task, chu kỳ Alarm, cơ chế IPCP Resource, sơ đồ gọi hàm ComStack/DiagStack.<br>• **Resource Consumption Report:** Báo cáo đo lường tải CPU (CPU Load $< 70\%$) và giới hạn RAM/ROM Stack. |
+| **SWE.3 — Software Detailed Design & Unit Construction** | Hiện thực hóa mã nguồn tuân thủ tiêu chuẩn code an toàn ô tô. | • **MISRA-C:2012 Compliance Report:** 0 lỗi vi phạm quy tắc bắt buộc (Mandatory Rules); lập biên bản giải trình (*Deviation Record*) có chữ ký Safety Manager cho các rule ngoại lệ.<br>• **Code Complexity Metric:** Độ phức tạp Cyclomatic Complexity ($CCN \le 10$) cho toàn bộ các hàm viết tay (Hand-coded CDD / Callouts).<br>• **Data Dictionary:** Bảng tra cứu toàn bộ kiểu dữ liệu và biến toàn cục/IRV. |
+| **SWE.5 — Software Integration & Integration Test** | Tích hợp các module BSW thành firmware hoàn chỉnh và kiểm thử liên tầng. | • **Integration Test Specification:** Kịch bản kiểm thử tương tác giữa các tầng (RTE $\leftrightarrow$ Com $\leftrightarrow$ CanIf $\leftrightarrow$ Can).<br>• **Bidirectional Traceability Matrix:** Bảng ma trận ánh xạ 2 chiều từ Software Architecture Interfaces (SWE.2) sang Test Cases (SWE.5).<br>• **HIL / vHIL Test Execution Log:** Nhật ký chạy kiểm thử tự động trên card mạng CANoe/vTESTstudio xác nhận không có tin nhắn lỗi hoặc timeout. |
 
 ---
 

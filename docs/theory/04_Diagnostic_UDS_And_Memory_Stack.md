@@ -263,7 +263,47 @@ Quản trị tài nguyên đệm trong DCM rất khắt khe. Khi Tester gọi `0
 
 ---
 
+### 3.1 Chu Trình Điều Phối Bộ Đệm Chẩn Đoán (CanTp ──► PduR ──► DCM DSL / DSD / DSP):
+Trong mã nguồn thực tế của dự án, module DCM được phân chia thành các tệp chuyên biệt tại thư mục [`as/com/as.infrastructure/diagnostic/Dcm/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/):
+- [`Dcm_Dsl.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm_Dsl.c): Quản trị phiên chẩn đoán, P2 timer và giao tiếp buffer với PduR.
+- [`Dcm_Dsd.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm_Dsd.c): Giải mã Service Identifier (SID), phân quyền Security/Session.
+- [`Dcm_Dsp.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm_Dsp.c): Hiện thực hóa từng dịch vụ UDS cụ thể (0x22, 0x2E, 0x10, 0x27).
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│              CHU TRÌNH NHẬN YÊU CẦU UDS & ĐIỀU PHỐI BUFFER QUA 3 TẦNG NỘI BỘ DCM                 │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│   [ 1. GÓI TIN ĐẾN TỪ VẬN CHUYỂN CANTP ]                                                         │
+│   CanTp bóc tách First Frame (FF) hoặc Single Frame (SF) -> gọi PduR -> gọi:                     │
+│   Dcm_StartOfReception(RxPduId, &PduInfo, TpSduLength, &BufferSize) trong Dcm_Dsl.c:            │
+│   • DSL cấp phát vùng đệm chẩn đoán RxBuffer khả dụng (kiểm tra rảnh hay đang bận P2 Timer).    │
+│                                                                                                  │
+│   [ 2. SAO CHÉP DỮ LIỆU TỪ CANTP ]                                                               │
+│   CanTp gọi Dcm_CopyRxData() để nạp từng khối Consecutive Frame vào RxBuffer của DSL.             │
+│                                                                                                  │
+│   [ 3. HOÀN TẤT NHẬN GÓI & KÍCH HOẠT ĐIỀU HƯỚNG ]                                                │
+│   CanTp gọi Dcm_RxIndication(RxPduId, NTFRSLT_OK).                                               │
+│   DSL chuyển giao buffer sang DSD: Dcm_DsdProcessRequest() trong Dcm_Dsd.c.                      │
+│   ├── Kiểm tra Session hiện tại (Default / Extended / Programming)                               │
+│   ├── Kiểm tra Security Access level (Locked / Level 1)                                          │
+│   └── Nếu không thỏa mãn -> Tạo khung phản hồi âm NRC (0x7F <SID> <NRC>)                         │
+│                                                                                                  │
+│   [ 4. THỰC THI DỊCH VỤ NGHIỆP VỤ ]                                                              │
+│   DSD điều hướng con trỏ hàm tới handler nghiệp vụ tại Dcm_Dsp.c:                                │
+│   • Nếu SID 0x22 -> Dcm_DspReadDataByIdentifier() -> lấy dữ liệu cảm biến / VIN.                │
+│   • Nếu SID 0x19 -> Dcm_DspReadDTCInformation() -> gọi DEM để quét mã lỗi.                      │
+│   • Sau khi xử lý xong -> DSD đóng gói Positive Response (SID + 0x40) và DSL gọi:                │
+│     PduR_DcmTransmit(TxPduId, &PduInfo) để CanTp phát bản tin ra mạng CAN!                      │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
 ## 4. Module DEM (Diagnostic Event Manager) & Cấu Trúc Mã Lỗi DTC
+
+> 🔧 **Source code đối chiếu tại repo:** [`as/com/as.infrastructure/diagnostic/Dem/Dem.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c)
 
 
 ### 4.1 Cấu Trúc Mã Lỗi DTC 3-Byte & Mã Kiểu Lỗi (Fault Type Byte - FTB)
@@ -364,6 +404,11 @@ DID 0x0103 (Vehicle Speed):   120 km/h
 ---
 
 ## 5. Ngăn Xếp Bộ Nhớ Phi Bốc Hơi (Memory Stack: NvM, MemIf, Fee, Fls)
+
+> 🔧 **Source code đối chiếu tại repo:**  
+> - [`as/com/as.infrastructure/memory/NvM/NvM.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c)  
+> - [`as/com/as.infrastructure/memory/MemIf/MemIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/MemIf/MemIf.c)  
+> - [`as/com/as.infrastructure/memory/Fee/Fee.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c)
 
 
 ### 5.1 Kiến Trúc 4 Tầng Của Memory Stack

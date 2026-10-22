@@ -1,8 +1,28 @@
 # 07. ISO 26262 Functional Safety Awareness
+## Masterclass Kỹ Nghệ An Toàn Chức Năng Ô Tô (ISO 26262:2018 Edition 2), Phân Tích HARA, Cấp Độ ASIL & Cơ Chế Phòng Vệ AUTOSAR Safety BSW
 
-**Tác giả**: Principal Functional Safety Reviewer / AUTOSAR Safety Expert
-**Kinh nghiệm**: 15 năm trong ngành Automotive Software
-**Lưu ý**: Tài liệu này được biên soạn dựa trên kinh nghiệm thực tiễn và tiêu chuẩn ISO 26262. Một số clause numbers cụ thể hoặc reference sâu có thể được đánh dấu `[NEEDS VERIFICATION]` nếu cần đối chiếu chính xác với tài liệu tiêu chuẩn ISO bản quyền.
+> **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
+> **Cấp độ:** Universal Learning Resource (Từ Newbie đến Senior Safety Engineer)  
+> **Tiêu chuẩn tham chiếu:** ISO 26262:2018 Parts 1–12 (Edition 2), AUTOSAR Classic Safety SWS (WdgM, E2E, OS Scalability Class SC3/SC4)  
+> **Vị trí tài liệu:** [`docs/theory/07_ISO26262_Functional_Safety_Awareness.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/07_ISO26262_Functional_Safety_Awareness.md)  
+
+---
+
+## Mục Lục
+1. [Tại Sao Cần Functional Safety? (Với Ví Dụ Thực Tế)](#1-tại-sao-cần-functional-safety-với-ví-dụ-thực-tế)
+2. [Tổng Quan Tiêu Chuẩn ISO 26262:2018 (Parts 1 — 12)](#2-iso-26262-overview)
+3. [HARA — Phân Tích Mối Nguy & Đánh Giá Rủi Ro (Hazard Analysis & Risk Assessment)](#3-hara--hazard-analysis-and-risk-assessment)
+4. [Cấp Độ An Toàn ASIL & Các Ví Dụ ECU Thực Tế](#4-asil-levels-với-real-ecu-examples)
+   - [4.1 Cơ Chế Phân Tách Cấp Độ An Toàn (ASIL Decomposition Theo ISO 26262-9 Clause 5)](#41-cơ-chế-phân-tách-cấp-độ-an-toàn-asil-decomposition-theo-iso-26262-9-clause-5)
+5. [Mục Tiêu An Toàn (Safety Goals) & Yêu Cầu An Toàn Chức Năng (FSR)](#5-safety-goals--functional-safety-requirements-fsr)
+6. [Các Cơ Chế An Toàn (Safety Mechanisms) Trong AUTOSAR Classic](#6-safety-mechanisms-trong-autosar)
+7. [Phát Triển Phần Mềm An Toàn Theo ISO 26262 Part 6](#7-software-development-theo-iso-26262-part-6)
+8. [FMEA — Phân Tích Dạng Thất Bại & Tác Động (Failure Mode and Effects Analysis)](#8-fmea--failure-mode-and-effects-analysis)
+9. [FTA — Phân Tích Cây Lỗi (Fault Tree Analysis)](#9-fta--fault-tree-analysis-top-down)
+10. [Mô Hình Kiến Trúc An Toàn AUTOSAR (Safety Architecture Patterns)](#10-autosar-safety-architecture-pattern)
+11. [Checklist Đánh Giá An Toàn Dành Cho Kỹ Sư BSW (Safety Review Checklist)](#11-typical-safety-review-checklist-cho-bsw-engineer)
+12. [Bộ 30 Câu Hỏi Phỏng Vấn Kỹ Nghệ Functional Safety Thực Chiến (3 Levels)](#12-interview-qa--30-câu-hỏi-3-levels)
+13. [Bài Tập Thực Hành Kỹ Nghệ (Hands-on Exercise)](#13-hands-on-exercise)
 
 ---
 
@@ -70,7 +90,7 @@ Một nguồn gốc tiềm tàng gây ra tổn hại vật lý.
 - **S3:** Thương tích đe dọa tính mạng (tử vong).
 
 **Exposure (Tần suất xuất hiện tình huống lái xe - E):**
-- **E0:** Rất hiếm khi (almost impossible) `[NEEDS VERIFICATION: E0 is sometimes considered outside scope/not assigned]`.
+- **E0:** Cực kỳ hiếm gặp / Không đáng kể (Incredible situation, ví dụ: thiên thạch rơi trúng xe). Theo ISO 26262-3:2018 Clause 6.4.3, mọi tình huống chứa E0, S0 hoặc C0 đều tự động phân loại là **QM** và nằm ngoài phạm vi gán cấp ASIL.
 - **E1:** Ít xảy ra (ví dụ: chạy trên đường băng tuyết ở một số quốc gia).
 - **E2:** Thi thoảng xảy ra.
 - **E3:** Khá thường xuyên (ví dụ: kẹt xe).
@@ -108,6 +128,49 @@ ASIL (Automotive Safety Integrity Level) phân loại rủi ro từ QM (thấp n
 | **ASIL B** | Mức độ an toàn trung bình. | Camera lùi, Instrument Cluster (Hiển thị tốc độ), một phần của ABS/ESP. | HW Watchdog, Memory Protection Unit (MPU) cơ bản. |
 | **ASIL C** | Mức độ an toàn cao. | EPS (Electric Power Steering) - Hệ thống trợ lực lái điện. | Có cơ chế dự phòng H/W, CPU có test chẩn đoán (BIST). |
 | **ASIL D** | Mức độ an toàn khắt khe nhất (rủi ro tử vong cao nhất). | BMS Contactors (cắt điện cao áp), Brake-by-wire, Airbag. | Lockstep CPU (2 cores chạy đồng bộ), ECC RAM (Error-Correcting Code), Dual/Redundant Sensors, rèn luyện quy trình ngặt nghèo (MC/DC coverage). |
+
+### 4.1 Cơ Chế Phân Tách Cấp Độ An Toàn (ASIL Decomposition Theo ISO 26262-9 Clause 5)
+
+> 💡 **Vấn đề kỹ nghệ:**  
+> Đạt chứng chỉ **ASIL D** cho toàn bộ hệ thống phần mềm và phần cứng cực kỳ đắt đỏ, phức tạp và đòi hỏi $100\%$ quy trình kiểm thử ngặt nghèo (MC/DC Coverage, Formal Verification, Diverse Redundancy).  
+> **ASIL Decomposition** là kỹ thuật kiến trúc cho phép **phân tách 1 yêu cầu ASIL cao thành 2 yêu cầu độc lập có cấp ASIL thấp hơn**, giúp tối ưu hóa chi phí phát triển mà vẫn đảm bảo an toàn tuyệt đối.
+
+#### 1. Các Quy Tắc Phân Tách Chuẩn Hóa (Decomposition Rules):
+Theo ISO 26262-9:2018 Clause 5:
+- $\mathbf{ASIL\ D} \longrightarrow \mathbf{ASIL\ B(D)} + \mathbf{ASIL\ B(D)}$ *(Mô hình phổ biến nhất trong ECU ô tô)*
+- $\mathbf{ASIL\ D} \longrightarrow \mathbf{ASIL\ C(D)} + \mathbf{ASIL\ A(D)}$
+- $\mathbf{ASIL\ D} \longrightarrow \mathbf{ASIL\ D(D)} + \mathbf{QM(D)}$
+- $\mathbf{ASIL\ C} \longrightarrow \mathbf{ASIL\ B(C)} + \mathbf{ASIL\ A(C)}$ hoặc $\mathbf{ASIL\ C(C)} + \mathbf{QM(C)}$
+- $\mathbf{ASIL\ B} \longrightarrow \mathbf{ASIL\ A(B)} + \mathbf{ASIL\ A(B)}$ hoặc $\mathbf{ASIL\ B(B)} + \mathbf{QM(B)}$
+
+#### 2. Điều Kiện Tiên Quyết Sống Còn: Freedom From Interference (FFI) & Independence
+Phân tách ASIL chỉ được công nhận hợp lệ nếu và chỉ nếu:
+1. **Độc lập về chức năng & triển khai (Architectural Independence):** Hai phần tử phải độc lập, không dùng chung tài nguyên có thể gây lỗi chung (*Common Cause Failure - CCF*).
+2. **Freedom From Interference (FFI):** Phần tử có cấp an toàn thấp hơn không được phép làm hỏng hoặc ảnh hưởng xấu đến phần tử an toàn cao hơn:
+   - *Bảo vệ bộ nhớ:* Phân vùng MPU ngăn chặn ghi đè RAM/Flash.
+   - *Bảo vệ thời gian:* Watchdog Manager (WdgM) và OS Timing Protection ngăn chặn chiếm dụng CPU.
+   - *Bảo vệ giao tiếp:* Module E2E (End-to-End Protection) với CRC và Counter kiểm soát dữ liệu trên bus CAN/Ethernet.
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                   MÔ HÌNH PHÂN TÁCH ASIL D TRÊN HỘP ĐIỀU KHIỂN BÀN ĐẠP GA (VCU)                  │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│   YÊU CẦU GỐC: "Không được tăng ga ngoài ý muốn (Unintended Acceleration)" [ASIL D]             │
+│                                           │                                                      │
+│                                           ▼ (ASIL Decomposition)                                 │
+│       ┌───────────────────────────────────┴───────────────────────────────────┐                  │
+│       ▼                                                                       ▼                  │
+│  [ NHÁNH 1: TÍNH TOÁN GA CHÍNH ]                        [ NHÁNH 2: GIÁM SÁT AN TOÀN ĐỘC LẬP ]   │
+│  • Kênh cảm biến: ADC Channel 1                         • Kênh cảm biến: ADC Channel 2           │
+│  • Xử lý góc mở bàn đạp ga                              • Giám sát tính hợp lý (Plausibility)   │
+│  • Cấp an toàn gán: ASIL B(D)                           • Cấp an toàn gán: ASIL B(D)             │
+│                                           │                                                      │
+│                                           ▼ (So khớp dữ liệu)                                    │
+│             Nếu sai lệch giữa 2 nhánh > 150mV -> NGẮT MÔ-MEN XOẮN VỀ 0!                          │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
@@ -300,10 +363,10 @@ Khi BSW Engineer submit code, Safety Reviewer (như tôi) sẽ soi các điểm 
 ### Level 3: Advanced (Dành cho Senior / Architect / Safety Manager)
 21. **Q:** Nếu dự án dùng 1 con chip không có Lockstep (chỉ có 1 core), làm sao để đạt ASIL D? -> **A:** Rất khó, phải dùng external HW watchdog, Software Diverse Redundancy, hoặc ASIL Decomposition với 2 vi điều khiển song song.
 22. **Q:** Giải thích "Dependent Failures" (Common Cause Failure & Cascading Failure). -> **A:** Cascading là A hỏng làm B hỏng theo. Common Cause là C hỏng làm cả A và B cùng hỏng (VD: Nguồn cấp bị lỗi làm 2 sensor cùng hỏng). Phân tích bằng DFA (Dependent Failure Analysis).
-23. **Q:** Tool Qualification (Part 8) là gì? Tại sao phải qualify compiler? -> **A:** Chứng minh rằng compiler (ví dụ GCC, Tasking, GreenHills) không tự ý sinh ra code sai lệch (bug compiler). `[NEEDS VERIFICATION: exact sub-clause Part 8]`.
+23. **Q:** Tool Qualification (Part 8) là gì? Tại sao phải qualify compiler? -> **A:** Chứng minh rằng compiler (ví dụ GCC, Tasking, GreenHills) không tự ý sinh ra code sai lệch (bug compiler). Quy định tại **ISO 26262-8:2018 Clause 11 (Confidence in the use of software tools)**: Đánh giá Tool Impact (TI1/TI2) và Tool Error Detection (TD1 đến TD3) để xác định cấp Tool Confidence Level (TCL1 đến TCL3). Với compiler C/C++ bậc cao cho ASIL D, thường là TCL2/TCL3 và bắt buộc phải thực hiện Tool Qualification (chạy bộ kiểm thử Compiler Test Suites như Solid Sands SuperTest hoặc Perennial).
 24. **Q:** Làm thế nào để chứng minh FFI giữa bộ nhớ, thời gian thực thi (timing) và truyền thông (communication)? -> **A:** Bộ nhớ (MPU), Timing (WdgM/OS deadline), Communication (E2E/CRC).
 25. **Q:** SOTIF (ISO 21448) bổ sung gì cho ISO 26262? -> **A:** SOTIF xử lý các tình huống hệ thống hoạt động bình thường (không có lỗi H/W, S/W) nhưng vẫn gây nguy hiểm do giới hạn công nghệ (VD: Camera không thấy xe màu trắng trong tuyết).
-26. **Q:** FIT rate là gì và công thức tính PMHF? -> **A:** FIT = Failures In Time (1 lỗi / 1 tỷ giờ). PMHF (Probabilistic Metric for Random Hardware Failures) là xác suất lỗi H/W dùng để đánh giá phần cứng có đạt ASIL target hay không. `[NEEDS VERIFICATION: exact mathematical formula is complex and varies by part]`.
+26. **Q:** FIT rate là gì và công thức tính PMHF? -> **A:** FIT = Failures In Time ($1\text{ FIT} = 10^{-9}\text{ failures/hour}$, tức 1 lỗi trong 1 tỷ giờ hoạt động). PMHF (*Probabilistic Metric for Random Hardware Failures* - ISO 26262-5:2018 Clause 9) là xác suất trung bình xảy ra lỗi phần cứng ngẫu nhiên trên mỗi giờ hoạt động của xe. Mục tiêu định lượng chuẩn hóa: **ASIL D:** $\text{PMHF} < 10^{-8}\ \text{h}^{-1}\ (10\text{ FIT})$; **ASIL C:** $\text{PMHF} < 10^{-7}\ \text{h}^{-1}\ (100\text{ FIT})$; **ASIL B:** $\text{PMHF} < 10^{-7}\ \text{h}^{-1}\ (100\text{ FIT})$.
 27. **Q:** Hardware metrics (SPFM, LFM) cho ASIL D yêu cầu bao nhiêu %? -> **A:** SPFM (Single Point Fault Metric) >= 99%, LFM (Latent Fault Metric) >= 90%.
 28. **Q:** Khi tích hợp một thư viện 3rd party (ví dụ OpenCV) vào hệ thống ASIL B, bạn làm gì? -> **A:** Sử dụng quy trình SEooC (Safety Element out of Context) hoặc bọc nó vào QM partition, hoặc thực hiện Software Qualification nếu bắt buộc dùng trong ASIL path.
 29. **Q:** Làm sao để test khả năng bắt lỗi của Error Handler (ví dụ MPU exception)? -> **A:** Dùng Fault Injection Testing (Software hoặc Hardware-based). Chủ động ép con trỏ ghi đè bộ nhớ để xem OS Hook có chạy không.

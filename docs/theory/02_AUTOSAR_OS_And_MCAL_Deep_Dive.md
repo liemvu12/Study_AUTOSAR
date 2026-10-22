@@ -34,6 +34,7 @@
    - [1.4 Vòng Đời Bất Tử Của 1 Extended Task: Bản Chất Vòng Lặp while(1) / for(;;) & Cơ Chế Giải Phóng CPU Tại WaitEvent()](#14--vòng-đời-bất-tử-của-1-extended-task-bản-chất-vòng-lặp-while1--for-cơ-chế-giải-phóng-cpu-tại-waitevent)
    - [1.5 ECU Đơn Nhân vs. Đa Nhân & Cơ Chế Thực Thi Đa Tác Vụ](#15-️-ecu-đơn-nhân-vs-đa-nhân--cơ-chế-thực-thi-đa-tác-vụ-single-core-vs-multi-core)
    - [1.6 So Sánh Toàn Diện: AUTOSAR / OSEK Task vs. FreeRTOS / POSIX Thread](#16-️-so-sánh-toàn-diện-autosar--osek-task-vs-freertos--posix-thread)
+   - [1.7 Bảng Ma Trận 4 Lớp Khả Năng Mở Rộng AUTOSAR OS (Scalability Classes SC1 — SC4) & Cơ Chế Timing Protection](#17-️-bảng-ma-trận-4-lớp-khả-năng-mở-rộng-autosar-os-scalability-classes-sc1--sc4--cơ-chế-timing-protection)
 2. [Phân Tích Task Autostart SchM_Startup & Chuỗi Function-Call-Function Khởi Tạo Task Khi Boot ECU](#2-phân-tích-task-autostart-schm_startup--chuỗi-function-call-function-khởi-tạo-task-khi-boot-ecu)
 4. [Bản Chất Resource Trong AUTOSAR/OSEK & Giao Thức Immediate Priority Ceiling Protocol (IPCP)](#4-bản-chất-resource-trong-autosarosek--giao-thức-immediate-priority-ceiling-protocol-ipcp)
    - [4.0 Bản Chất Cốt Tử: "Resource Trong AUTOSAR/OSEK Thực Chất Là Gì?"](#40-bản-chất-cốt-tử-resource-trong-autosarosek-thực-chất-là-gì)
@@ -821,6 +822,82 @@ Task A (Prio 2): [── Chạy A dở dang ─────────┘      
 | **3. Cơ Chế Ngăn Xếp (Stack Memory)** | **Single Shared Stack (Dùng chung Stack)**: Toàn bộ Basic Task có thể dùng chung 1 vùng RAM duy nhất $= \max(	ext{Stack})$. Tiết kiệm RAM khủng khiếp cho MCU nhỏ. | **Dedicated Stack (Mỗi Thread 1 Stack riêng)**: Bắt buộc cấp phát RAM Stack riêng cho từng Thread. 10 Threads tốn gấp 10 lần RAM. |
 | **4. Cơ Chế Đồng Bộ & Tránh Deadlock** | **Giao thức Trần Ưu Tiên Tĩnh (Priority Ceiling Protocol - PCP)**: Mọi quyền truy cập Resource được tính toán sẵn từ file cấu hình. **Triệt tiêu Deadlock 100% từ thiết kế**. | Dùng **Mutex / Semaphore động** với cơ chế Thừa kế ưu tiên (Priority Inheritance). Vẫn có nguy cơ Deadlock nếu lập trình viên lock sai thứ tự. |
 | **5. Tính Tất Định & Chuẩn An Toàn** | **Hard Real-Time Cực Khắt Khe**. Đạt chứng chỉ an toàn chức năng cao nhất của ô tô **ISO 26262 ASIL-D**. | Phù hợp thiết bị IoT / Embedded thông thường. Bản gốc FreeRTOS chỉ là Soft Real-Time (cần bản SafeRTOS thương mại để đạt an toàn). |
+
+---
+
+### 1.7 🛡️ Bảng Ma Trận 4 Lớp Khả Năng Mở Rộng AUTOSAR OS (Scalability Classes SC1 — SC4) & Cơ Chế Timing Protection
+
+Trong kiến trúc AUTOSAR Classic, hệ điều hành **AUTOSAR OS** không phải là một khối phần mềm nguyên khối cố định mà được phân chia thành **4 Lớp Khả Năng Mở Rộng (Scalability Classes: SC1, SC2, SC3, SC4)**. Thiết kế này kế thừa nền tảng OSEK/VDX OS đồng thời bổ sung các cơ chế bảo vệ phần cứng tiên tiến để đáp ứng tiêu chuẩn An toàn chức năng **ISO 26262 ASIL-D**.
+
+#### 1. Bảng Ma Trận Ánh Xạ: Từ Lớp Tuân Thủ OSEK Đến Scalability Classes AUTOSAR OS
+
+| Scalability Class | Nền Tảng OSEK (BCC / ECC) | Bổ Sung Schedule Table & Đồng Bộ | Cơ Chế Timing Protection (Bảo Vệ Thời Gian) | Cơ Chế Memory Protection (Bảo Vệ Bộ Nhớ MPU) | Ứng Dụng Thực Tế & Cấp ASIL Khuyến Nghị |
+| :--- | :--- | :---: | :---: | :---: | :--- |
+| **SC1** *(Standard OSEK)* | Hỗ trợ đầy đủ BCC1/BCC2 & ECC1/ECC2, Counter, Alarm, Event, Resource (IPCP). | ❌ Không | ❌ Không | ❌ Không | ECU thân xe đơn giản, đèn, gạt mưa, rèm cửa (**ASIL-QM / ASIL-A**).<br>*Nhân kernel `askar` / `trampoline` trong dự án `as` cấu hình mặc định tương ứng với SC1.* |
+| **SC2** *(Timing Protected)* | Đầy đủ tính năng SC1. | ✅ **Schedule Tables** (hỗ trợ đồng bộ hóa với mạng ngoài FlexRay/CAN/Time-Triggered). | ✅ **Có đầy đủ Timing Protection** (Giám sát ngân sách thực thi & bão ngắt). | ❌ Không | ECU điều khiển động cơ bước, đo góc quay encoder cần độ chính xác micro-giây nhưng không có phần cứng MPU (**ASIL-B**). |
+| **SC3** *(Memory Protected)* | Đầy đủ tính năng SC1. | ❌ Không | ❌ Không | ✅ **Có đầy đủ Memory Protection** (Dùng khối MPU phần cứng phân vùng OS-Applications). | ECU tích hợp đa chức năng trên vi điều khiển đơn nhân có MPU, chạy lẫn lộn giữa module ASIL-D và mã thư viện QM không an toàn (**ASIL-C / ASIL-D**). |
+| **SC4** *(Full Safety ASIL-D)* | Đầy đủ tính năng SC1. | ✅ **Schedule Tables & Global Synchronization**. | ✅ **Đầy đủ Timing Protection**. | ✅ **Đầy đủ Memory Protection (MPU)**. | Chuẩn mực cao nhất của xe hơi: Quản lý Pin BMS cao áp, Biến tần Inverter động cơ kéo, Điều khiển ổn định thân xe ESP/ESC, Trợ lực lái điện EPS, Radar ADAS (**ASIL-D**). |
+
+> 📌 **Đối chiếu Lớp Tuân Thủ OSEK OS (Conformance Classes):**
+> - **BCC1 (Basic Conformance Class 1):** Chỉ có Basic Task, tối đa 1 kích hoạt đồng thời cho mỗi Task, không có 2 Task cùng chung một mức ưu tiên.
+> - **BCC2:** Như BCC1 nhưng cho phép nhiều Task có cùng mức ưu tiên và hỗ trợ kích hoạt nhiều lần (Multiple Activations per Task).
+> - **ECC1 (Extended Conformance Class 1):** Bổ sung Extended Task với cơ chế Event (`WaitEvent`, `SetEvent`), mỗi mức ưu tiên 1 Task.
+> - **ECC2:** Đầy đủ Extended Task, Event, cho phép nhiều Task cùng ưu tiên và hỗ trợ kích hoạt nhiều lần cho Basic Task.
+
+---
+
+#### 2. Cơ Chế Bảo Vệ Thời Gian Thực (Timing Protection Deep-Dive)
+
+> 💡 **Vấn nạn chí mạng trong hệ thống ô tô:**  
+> Nếu một hàm tính toán mức pin hoặc giải mã bản tin CAN bị kẹt vòng lặp vô hạn `while(1)`, hoặc một ngắt phần cứng bị chập chân dao động liên tục hàng triệu lần mỗi giây (**Interrupt Storm / Babbling Idiot**), CPU sẽ bị tê liệt hoàn toàn, dẫn đến xe mất lái hoặc không thể ngắt rơ-le pin cao áp.  
+> **Timing Protection trong SC2 và SC4 sinh ra để tiêu diệt tận gốc hiểm họa này!**
+
+AUTOSAR OS triển khai Timing Protection dựa trên một **bộ định thời phần cứng chuyên dụng (Hardware Budget Timer)** độc lập với bộ đếm tick của OS, kiểm soát 4 khía cạnh thời gian nghiêm ngặt:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                    4 TRỤ CỘT BẢO VỆ CỦA AUTOSAR OS TIMING PROTECTION (SC2 / SC4)                │
+├─────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                 │
+│  [1. EXECUTION BUDGET]          [2. RESOURCE LOCK TIME]       [3. INTERRUPT LOCK TIME]          │
+│  Giới hạn tổng thời gian        Giới hạn thời gian tối đa     Giới hạn thời gian tối đa         │
+│  CPU tối đa mà một Task/ISR     Task/ISR được phép chiếm      đoạn code được phép gọi hàm       │
+│  được phép chạy trong 1 chu kỳ  giữ một OsResource (IPCP).    DisableAllInterrupts() hoặc       │
+│  (OsTaskExecutionBudget).       (OsResourceLockingTime).      SuspendAllInterrupts().           │
+│                                                                                                 │
+│  [4. INTER-ARRIVAL TIME PROTECTION (CHỐNG BÃO NGẮT / BABBLING IDIOT)]                           │
+│  Bắt buộc khoảng cách thời gian tối thiểu giữa 2 lần kích hoạt liên tiếp của một Task            │
+│  (OsTaskTimeFrame) hoặc giữa 2 lần xảy ra ngắt ISR Cat 2 (OsIsrTimeFrame).                     │
+│  Nếu ngắt nổ dồn dập vượt quá ngưỡng cho phép -> OS chặn đứng và xử lý vi phạm!                │
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+##### 4 Trụ Cột Giám Sát Cụ Thể:
+1. **Execution Time Protection (Bảo vệ thời gian chạy):**
+   - Mỗi Task hoặc ISR Cat 2 được cấu hình thông số `OsTaskExecutionBudget` (ví dụ: $2.5\text{ ms}$).
+   - Khi Task chiếm CPU, OS nạp giá trị này vào Timer đếm lùi phần cứng. Nếu bộ đếm về 0 trước khi Task gọi `TerminateTask()` hay `WaitEvent()`, Timer ngắt lập tức và OS bắt quả tang vi phạm `OS_STATUS_TIMEOUT`.
+2. **Resource Locking Time Protection (Bảo vệ thời gian giữ tài nguyên):**
+   - Khi Task gọi `GetResource(Res_Lock)`, OS kích hoạt bộ đếm `OsResourceLockingTime`.
+   - Nếu Task giữ Resource quá lâu mà quên gọi `ReleaseResource()`, hệ thống phát hiện vi phạm ngay lập tức, ngăn chặn hoàn toàn nguy cơ biến tướng làm chậm các Task ưu tiên thấp hơn.
+3. **Interrupt Locking Time Protection (Bảo vệ thời gian khóa ngắt toàn cục):**
+   - Lập trình viên gọi `DisableAllInterrupts()` để bảo vệ đoạn mã tới hạn. OS giám sát không cho phép đoạn mã này kéo dài quá thông số `OsTaskAllInterruptLockingTime` (ví dụ: tối đa $50\ \mu\text{s}$).
+4. **Inter-Arrival Time Protection (Bảo vệ khoảng cách kích hoạt — Chống bão ngắt):**
+   - Cấu hình thông số `OsTaskTimeFrame` hoặc `OsIsrTimeFrame`.
+   - Nếu cảm biến Hall bánh xe hoặc ngoại vi CAN bị chập kích ngắt liên tục với tần số quá cao, OS so sánh thời điểm ngắt hiện tại với lần kích hoạt trước. Nếu khoảng cách nhỏ hơn `TimeFrame`, ngắt bị phong tỏa ngay lập tức, bảo vệ hệ thống khỏi hiện tượng nghẽn CPU (*CPU Starvation*).
+
+##### Cơ Chế Can Thiệp Khẩn Cấp Qua `ProtectionHook()`:
+Khi bất kỳ một trong 4 quy tắc trên bị vi phạm, Kernel AUTOSAR OS ngay lập tức chặn đứng luồng thực thi bình thường và triệu hồi hàm callback an toàn cấp hệ thống:
+
+```c
+/* Chữ ký hàm Hook an toàn chuẩn AUTOSAR OS SWS */
+ProtectionReturnType ProtectionHook(StatusType Fatalerror);
+```
+
+Hàm `ProtectionHook()` trả về một trong 4 chỉ thị hành động chuẩn hóa để Kernel thi hành:
+- **`PRO_IGNORE`:** Bỏ qua vi phạm (chỉ dùng trong giai đoạn đo kiểm phát triển / ghi log chẩn đoán DEM).
+- **`PRO_TERMINATETASKISR`:** Buộc kết thúc ngay lập tức Task hoặc ISR đang chạy vi phạm (`Force Terminate`), giải phóng các Resource nó đang chiếm giữ để cứu sống các Task khác.
+- **`PRO_TERMINATEAPPL`:** Khai tử toàn bộ phân vùng phần mềm (**OS-Application**) chứa Task vi phạm và đưa phân vùng đó vào chế độ khởi động lại (*Application Restart*).
+- **`PRO_SHUTDOWN`:** Kịch bản phòng thủ cao nhất: Ra lệnh gọi `ShutdownOS()` đưa toàn bộ ECU về trạng thái dừng an toàn (**Safe State**) theo chuẩn ISO 26262 ASIL-D.
 
 ---
 

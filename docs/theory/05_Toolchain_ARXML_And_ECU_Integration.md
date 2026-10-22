@@ -182,8 +182,10 @@ Tác giả dự án `parai/as` đã sử dụng một lối tắt kỹ thuật (
 ### NÂNG CAO
 **Step-by-step hướng dẫn config DaVinci**:
 1. **Khởi tạo Project**: Tạo SIP (Software Integration Package). Import thư mục BSW và Base.
-2. **Import EcuExtract**: Kéo thả `EcuExtract.arxml` vào Configurator.
-   - *![Screenshot_DaVinci_Import](C:\fakepath\davinci_import.png)* (Minh họa giao diện Import)
+2. **Import EcuExtract**: Kéo thả `EcuExtract.arxml` vào Configurator:
+   ```
+   [ EcuExtract.arxml ] ──► (DaVinci Configurator Input) ──► [ Phân giải BSW Modules: Can, CanIf, Com, Os, EcuM ]
+   ```
 3. **Task Mapping**: Map các Runnable Entities từ SWC vào các OS Tasks (ví dụ: `RE_Calculate` map vào `Task_10ms`).
 4. **Validation**: Chạy Validation Engine. Sửa các lỗi màu đỏ ❌.
 5. **Code Generation**: Nhấn nút Generate. Sinh ra thư mục `Appl/GenData`.
@@ -868,7 +870,40 @@ void EngineController_CalculateInjection(void) /* Chu kỳ 10ms */
     DoInjectionCalculation();
 }
 ```
-🔧 **Luồng xử lý WdgM**: Khi `WdgM_MainFunction()` được gọi (ví dụ mỗi 20ms), nó sẽ kiểm tra biến đếm của `CP_ENGINE_START`. Nếu biến đếm nằm ngoài khoảng cho phép (ví dụ expected là 2, nhưng thực tế là 0 do task bị treo, hoặc là 5 do chạy quá nhanh), WdgM sẽ đổi trạng thái ECU thành `WDGM_GLOBAL_STATUS_STOPPED` và kích hoạt ngắt Watchdog để phần cứng tự Reset lại ECU an toàn.
+🔧 **Chuỗi Gọi Hàm & Cơ Chế Giám Sát Runtime Của WdgM (Execution Call Chain)**:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                   CHU TRÌNH GIÁM SÁT 3 CẤP & CƠ CHẾ FAIL-SAFE CỦA AUTOSAR WdgM                    │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│   [ 1. RUNNABLE APPLICATION BÁO CÁO CHECKPOINT ]                                                 │
+│   Hàm nghiệp vụ SWC định kỳ gọi:                                                                 │
+│   WdgM_CheckpointReached(SE_ENGINE_CTRL, CP_ENGINE_START)                                        │
+│   ├── Ghi nhận số lần chạy thực tế (Alive Counter++)                                             │
+│   ├── Đo khoảng thời gian giữa 2 Checkpoint liên tiếp (Deadline Timer Check)                     │
+│   └── So khớp luồng chuyển đổi trạng thái đồ thị thuật toán (Logical Graph Transition)           │
+│                                                                                                  │
+│   [ 2. WdgM_MainFunction() CHU KỲ (DO OS LẬP LỊCH, VÍ DỤ 20ms) ]                                 │
+│   1. Đánh giá trạng thái từng Supervised Entity (SE Local Status):                               │
+│      - Nếu Alive Counter nằm trong ngưỡng [Min, Max] -> SE Local: WDGM_LOCAL_STATUS_OK           │
+│      - Nếu vượt ngoài ngưỡng -> SE Local: WDGM_LOCAL_STATUS_FAILED                               │
+│   2. Tổng hợp trạng thái toàn hệ thống (Global Status Evaluation):                               │
+│      - WDGM_GLOBAL_STATUS_OK      : Toàn bộ SE hoạt động bình thường.                            │
+│      - WDGM_GLOBAL_STATUS_FAILED  : Có ít nhất 1 SE lỗi (chưa vượt quá số chu kỳ Tolerance).     │
+│      - WDGM_GLOBAL_STATUS_EXPIRED : Lỗi kéo dài vượt ngưỡng -> Cắt Watchdog Triggering!          │
+│      - WDGM_GLOBAL_STATUS_STOPPED : Hệ thống bị phong tỏa.                                       │
+│                                                                                                  │
+│   [ 3. HÀNH ĐỘNG CAN THIỆP PHẦN CỨNG (FAIL-SAFE REACTION) ]                                      │
+│   • Trường hợp OK: WdgM gọi WdgIf_SetTriggerCondition(TriggerValue) để nuôi Watchdog phần cứng.  │
+│   • Trường hợp EXPIRED / STOPPED:                                                                │
+│     - WdgM ngừng nuôi Watchdog (TriggerValue = 0) hoặc gọi WdgIf_SetMode(WDGIF_OFF_MODE).        │
+│     - Timer phần cứng của chip Watchdog (nội MCU hoặc chip SBC ngoài) đếm lùi về 0.              │
+│     - Khối Watchdog giương chân Reset kéo chân vi điều khiển xuống LOW -> HARDWARE RESET ECU!    │
+│     - Đưa toàn bộ hệ thống xe về trạng thái an toàn (Safe State) theo chuẩn ISO 26262 ASIL-D.     │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 

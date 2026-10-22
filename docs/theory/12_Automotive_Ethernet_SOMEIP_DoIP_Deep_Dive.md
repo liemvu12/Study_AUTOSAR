@@ -11,8 +11,29 @@
 > • [`as/com/as.infrastructure/communication/SD/SD.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/SD/SD.c) (SOME/IP Service Discovery)  
 > • [`as/com/as.virtual/source/vEcu.cpp`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.virtual/source/vEcu.cpp) & [`xlLoadlib.cpp`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.virtual/source/xlLoadlib.cpp) (vECU Type 3 Simulation & Vector XL Driver API)  
 > 📑 **Tiêu chuẩn tham chiếu:** IEEE 802.3bw (100BASE-T1), ISO 13400-2 (DoIP), AUTOSAR SWS Ethernet/SoAd/SOME/IP/SD R4.2/R4.4  
+> 📍 **Vị trí tài liệu:** [`docs/theory/12_Automotive_Ethernet_SOMEIP_DoIP_Deep_Dive.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/12_Automotive_Ethernet_SOMEIP_DoIP_Deep_Dive.md)  
 
 ---
+
+## Mục Lục
+1. [Tổng Quan Về Automotive Ethernet (Mạng Ethernet Trên Ô Tô Hiện Đại)](#1-tổng-quan-về-automotive-ethernet-mạng-ethernet-trên-ô-tô-hiện-đại)
+   - [1.1 Khác Biệt Giữa Ethernet Tiêu Chuẩn (100BASE-TX) vs Automotive Ethernet (100BASE-T1)](#11-khác-biệt-giữa-ethernet-tiêu-chuẩn-100base-tx-vs-automotive-ethernet-100base-t1)
+2. [Ngăn Xếp AUTOSAR Ethernet Communication Stack (EthStack)](#2-ngăn-xếp-autosar-ethernet-communication-stack-ethstack)
+   - [2.1 Sơ Đồ Toàn Cảnh Phân Tầng BSW Ethernet](#21-sơ-đồ-toàn-cảnh-phân-tầng-bsw-ethernet)
+   - [2.2 Giải Phẫu Từng Module Trong Kho Mã Nguồn as](#22-giải-phẫu-từng-module-trong-kho-mã-nguồn-as)
+   - [2.3 Cấu Hình Định Tuyến SoAd & Quản Lý Socket Buffer (SoAd_IfTransmit vs SoAd_TpTransmit)](#23-cấu-hình-định-tuyến-soad--quản-lý-socket-buffer-soad_iftransmit-vs-soad_tptransmit)
+3. [Chẩn Đoán Qua IP: DoIP (Diagnostic over IP - ISO 13400) Tầng Sâu](#3-chẩn-đoán-qua-ip-doip-diagnostic-over-ip---iso-13400-tầng-sâu)
+   - [3.1 Cấu Trúc Khung Tin DoIP Header Chuẩn Quốc Tế](#31-cấu-trúc-khung-tin-doip-header-chuẩn-quốc-tế)
+   - [3.2 Chuỗi Bắt Tay Thiết Lập Phiên Chẩn Đoán DoIP](#32-chuỗi-bắt-tay-thiết-lập-phiên-chẩn-đoán-doip)
+   - [3.3 Ví Dụ C Code: Xử Lý DoIP Routing Activation](#33-ví-dụ-c-code-xử-lý-doip-routing-activation-trong-doipc)
+4. [Kiến Trúc Hướng Dịch Vụ SOME/IP & Module Service Discovery (SD)](#4-kiến-trúc-hướng-dịch-vụ-someip--module-service-discovery-sd)
+   - [4.1 So Sánh Signal-Based (CAN/LIN) vs Service-Oriented (SOME/IP)](#41-so-sánh-signal-based-canlin-vs-service-oriented-someip)
+   - [4.2 Định Dạng Gói Tin SOME/IP Header Chuẩn](#42-định-dạng-gói-tin-someip-header-chuẩn)
+   - [4.3 Quy Trình Bắt Tay Service Discovery (SD Offer & Subscribe)](#43-quy-trình-bắt-tay-service-discovery-sd-offer--subscribe)
+5. [Mô Phỏng Virtual ECU (vECU Type 3) & Tích Hợp Vector XL Driver API](#5-mô-phỏng-virtual-ecu-vecu-type-3--tích-hợp-vector-xl-driver-api)
+   - [5.1 Khái Niệm vECU Type 3 Trong Phát Triển SDV](#51-khái-niệm-vecu-type-3-trong-phát-triển-sdv)
+   - [5.2 Kết Nối BSW Eth Với Phần Cứng Vector Thông Qua xlLoadlib.cpp](#52-kết-nối-bsw-eth-với-phần-cứng-vector-thông-qua-xlloadlibcpp)
+6. [Đúc Kết & Ma Trận Phỏng Vấn Chuyên Sâu Về Automotive Ethernet](#6-đúc-kết--ma-trận-phỏng-vấn-chuyên-sâu-về-automotive-ethernet)
 
 ## 1. Tổng Quan Về Automotive Ethernet (Mạng Ethernet Trên Ô Tô Hiện Đại)
 
@@ -98,6 +119,46 @@ graph TD
    * Triển khai chuẩn quốc tế ISO 13400-2 phục vụ chẩn đoán UDS và nạp Flash ECU qua mạng IP.
 5. **`SD.c` ([`as/com/as.infrastructure/communication/SD/SD.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/SD/SD.c)):**
    * Quản lý việc công bố dịch vụ (OfferService) và tìm kiếm dịch vụ (FindService) trong kiến trúc hướng dịch vụ SOME/IP.
+
+---
+
+### 2.3 Cấu Hình Định Tuyến SoAd & Quản Lý Socket Buffer (SoAd_IfTransmit vs SoAd_TpTransmit)
+
+Trong ngăn xếp Ethernet AUTOSAR, module **SoAd (Socket Adaptor)** đóng vai trò trung tâm điều phối lưu lượng giữa tầng BSW chuẩn (PduR, DoIP, SD, UdpNm) và tầng TCP/IP Stack.
+
+#### 1. Ánh Xạ Tuyến Đường PDU và Socket Connection (`SoAd_SoConIdType`)
+Mỗi socket logic được định danh bởi một chỉ số kiểu `SoAd_SoConIdType` (ví dụ: `0` cho DoIP TCP Server, `1` cho SOME/IP UDP Event):
+* **`SoAdPduRoute` (Tx Direction):** Ánh xạ từ `TxPduId` của tầng trên (PduR / DoIP) sang Socket đích (`DestinationSocketRef->SocketId`).
+* **`SoAdSocketRoute` (Rx Direction):** Ánh xạ ngược lại: khi gói tin IP cập bến tại một `SoConId`, SoAd tra bảng để kích hoạt đúng callback của tầng trên (`PduR_SoAdRxIndication` hoặc `DoIp_RxIndication`).
+
+#### 2. Phân Biệt Hai Luồng Truyền: `SoAd_IfTransmit` vs `SoAd_TpTransmit`
+
+Trong mã nguồn thực tế tại [`as/com/as.infrastructure/communication/SoAd/SoAd.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/SoAd/SoAd.c), hai cơ chế được phân định rạch ròi theo bản chất dữ liệu:
+
+```mermaid
+flowchart TD
+    subgraph "Interface Mode (SoAd_IfTransmit)"
+        IF_CALL["PduR / UdpNm gọi SoAd_IfTransmit()"] --> IF_CHECK{"Socket Ready?<br>(TCP_READY / UDP_READY)"}
+        IF_CHECK -- YES --> IF_SEND["SoAd_SendIpMessage(socketNr, SduDataPtr, SduLength)<br>Direct Zero-Copy Send"]
+        IF_SEND --> IF_CONF["Gọi PduR_SoAdIfTxConfirmation()<br>hoặc UdpNm_SoAdIfTxConfirmation()"]
+        IF_CHECK -- NO --> IF_ERR["Return E_NOT_OK"]
+    end
+
+    subgraph "Transport Protocol Mode (SoAd_TpTransmit)"
+        TP_CALL["PduR / DoIP gọi SoAdTp_Transmit()"] --> TP_BUF["Xin cấp phát buffer:<br>SoAd_BufferGet(len, &SduDataPtr)"]
+        TP_BUF --> TP_COPY["PduR_SoAdTpCopyTxData()<br>Kéo dữ liệu payload từ PduR Buffer"]
+        TP_COPY --> TP_SEND["SoAd_SendIpMessage(socketNr, SduDataPtr, len)"]
+        TP_SEND --> TP_FREE["Giải phóng buffer:<br>SoAd_BufferFree(SduDataPtr)"]
+        TP_FREE --> TP_CONF["PduR_SoAdTpTxConfirmation(NTFRSLT_OK)"]
+    end
+```
+
+| Tiêu Chí So Sánh | `SoAd_IfTransmit` ([Dòng 730-780](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/SoAd/SoAd.c#L730-L780)) | `SoAdTp_Transmit` ([Dòng 788-855](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/SoAd/SoAd.c#L788-L855)) |
+| :--- | :--- | :--- |
+| **Bản chất truyền** | Không đệm (Direct / Unbuffered Transmission). Dữ liệu có sẵn trọn vẹn trong `SduDataPtr`. | Đệm linh hoạt (Dynamic Buffered Transmission) thông qua cơ chế cấp phát buffer nội bộ. |
+| **Cơ chế sao chép** | Gửi thẳng con trỏ bộ nhớ sang tầng IP (`SoAd_SendIpMessage`). | Gọi callback `PduR_SoAdTpCopyTxData()` để sao chép từng phân đoạn từ PduR vào bộ đệm của SoAd. |
+| **Quản lý bộ nhớ** | Zero-Allocation (Không cần cấp phát thêm bộ nhớ đệm). | Quản lý nghiêm ngặt qua cặp hàm `SoAd_BufferGet()` và `SoAd_BufferFree()`. |
+| **Module sử dụng** | Các bản tin chu kỳ ngắn, tín hiệu COM thông thường, UdpNm. | Các gói tin khối lượng lớn: UDS qua DoIP (ISO 13400), nạp Flash phần mềm, gói SOME/IP lớn. |
 
 ---
 

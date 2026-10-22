@@ -5,12 +5,17 @@
 > **Cấp độ:** Universal Learning Resource (Từ Newbie đến Expert)  
 > **Tiêu chuẩn tham chiếu:** AUTOSAR Classic Platform Release 4.x / R22-11 (`AUTOSAR_EXP_LayeredSoftwareArchitecture`, `AUTOSAR_EXP_VFB`)  
 > **Mã nguồn đối chiếu thực tế:** Kho mã nguồn [Study_AUTOSAR-main/as/](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as) (`com/as.infrastructure/`)  
-> **Vị trí tài liệu:** [Study_AUTOSAR-main/docs/01_AUTOSAR_Layered_Architecture_And_VFB_Masterclass.md](file:///C:/Users/liem.vu/Liem.vuOD/## Mục Lục
+> **Vị trí tài liệu:** [`docs/theory/01_AUTOSAR_Layered_Architecture_And_VFB_Masterclass.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/01_AUTOSAR_Layered_Architecture_And_VFB_Masterclass.md)  
+
+---
+
+## Mục Lục
 1. [Bối Cảnh Lịch Sử & Động Lực Hình Thành Chuẩn AUTOSAR](#1)
 2. [Mô Hình Kiến Trúc Phân Tầng Tổng Quan (Layered Architecture Overview)](#2)
 3. [TẦNG 1: Phần Cứng Vi Điều Khiển & Bo Mạch ECU (Microcontroller & ECU Hardware Anatomy)](#3)
    - [3.0 Phân Biệt Rạch Ròi Bản Chất: ECU (Electronic Control Unit) vs MCU (Microcontroller Unit)](#30-phân-biệt-rạch-ròi-bản-chất-ecu-electronic-control-unit-vs-mcu-microcontroller-unit)
    - [3.1 Phân Rã Phần Cứng Trên Chip Vi Điều Khiển (MCU On-Chip Hardware)](#31-phân-rã-phần-cứng-trên-chip-vi-điều-khiển-mcu-on-chip-hardware)
+     - [3.1.1 Chuyên Đề Sâu: Giải Phẫu Bộ Nhớ Vi Điều Khiển Ô Tô — Bảng Phân Bổ RAM/ROM, Quy Luật Bán Dẫn & Khởi Động < 100ms](#311-chuyên-đề-sâu-giải-phẫu-bộ-nhớ-vi-điều-khiển-ô-tô--bảng-phân-bổ-ramrom-quy-luật-bán-dẫn--khởi-động--100ms)
    - [3.2 Phân Rã Phần Cứng Gắn Ngoài Trên Bo Mạch (Off-Chip Hardware on ECU Board)](#32-phân-rã-phần-cứng-gắn-ngoài-trên-bo-mạch-off-chip-hardware-on-ecu-board)
    - [3.3 Bảng Ánh Xạ Phần Cứng Thực Tế ──► Module Phần Mềm AUTOSAR](#33-bảng-ánh-xạ-phần-cứng-thực-tế--module-phần-mềm-autosar)
    - [3.4 Cơ Chế Khởi Tạo Ngoại Vi: Vi Điều Khiển (MCU) vs Máy Tính (PC) & Bản Chất Của Bootloader](#34-cơ-chế-khởi-tạo-ngoại-vi-vi-điều-khiển-mcu-vs-máy-tính-pc--bản-chất-của-bootloader)
@@ -282,6 +287,7 @@ Trong kỹ nghệ ô tô, **ECU** và **MCU** là hai khái niệm nền tảng 
    * **Program Flash (Flash ROM):** Lưu trữ mã nhị phân thực thi (.text section), bảng vector ngắt (.isr_vector) và hằng số tĩnh (.rodata).
    * **Data Flash (NVM Flash / DFlash):** Vùng Flash chuyên dụng giả lập EEPROM để lưu thông số căn chỉnh (Calibration) và mã lỗi DTC qua tầng `Fee`.
    * **SRAM Nội (Static RAM):** Lưu trữ ngăn xếp (Stack), các biến toàn cục và trạng thái runtime (.data, .bss).
+   * *(Xem bảng phân tích chi tiết VMA/LMA, lý do kỹ thuật và nguy cơ RWW Hazard tại [ECU_STARTUP_AND_SHUTDOWN_DEEP_DIVE.md: L80-L95](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/deep_dive/ECU_STARTUP_AND_SHUTDOWN_DEEP_DIVE.md#L80-L95) và [03_Linker_Script_And_Memory_Mapping_Masterclass.md: L96-L144](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/supplementary_knowledge/03_Linker_Script_And_Memory_Mapping_Masterclass.md#L96-L144)).*
 3. **Khối Truyền Thông & Ngoại Vi Logic (On-Chip Peripherals):**
    * **CAN Controller (FlexCAN / MCAN Controller):** Xử lý khung truyền CAN ở mức logic, quản lý bộ đệm Mailbox, Message RAM, tự động kiểm tra CRC và Bit-stuffing.
    * **SPI / QSPI Master/Slave:** Bus truyền thông nối tiếp đồng bộ tốc độ cao (10–50 Mbps) điều khiển các IC phụ trên bo mạch.
@@ -295,6 +301,147 @@ Trong kỹ nghệ ô tô, **ECU** và **MCU** là hai khái niệm nền tảng 
    * **Lockstep Core Architecture (ISO 26262 ASIL-D):** 2 lõi CPU chạy song song cùng một tập lệnh; mạch so sánh phần cứng (*Hardware Comparator*) phát hiện sai lệch bit do xung nhiễu trong vòng 1 chu kỳ clock.
    * **ECC (Error Correcting Code):** Tự động phát hiện và sửa lỗi 1-bit, phát hiện lỗi 2-bit trên toàn bộ Flash và RAM.
    * **HSM / SHE (Hardware Security Module):** Lõi mã hóa bảo mật phần cứng độc lập xử lý Secure Boot, xác thực khóa đối xứng AES, chống can thiệp Firmware.
+
+---
+
+#### 3.1.1 Chuyên Đề Sâu: Giải Phẫu Bộ Nhớ Vi Điều Khiển Ô Tô — Bảng Phân Bổ RAM/ROM, Quy Luật Bán Dẫn & Khởi Động < 100ms
+
+> 💡 **Câu hỏi kỹ nghệ cốt lõi:**  
+> *"Tại sao trong ECU ô tô, mã nguồn lại chạy trực tiếp trên Flash (ROM) thay vì nạp lên RAM như máy tính (PC)? Các phân vùng nhớ `.text`, `.rodata`, `.data`, `.bss`, `.stack`, `.ramcode`, `.noinit` thực chất chạy ở đâu? Và các quy luật này chỉ dành riêng cho STM32F107 hay là chuẩn mực chung cho tất cả các ECU trên thế giới?"*
+
+Khác với máy tính cá nhân (PC/Laptop) hay điện thoại thông minh (nơi toàn bộ hệ điều hành và ứng dụng từ ổ đĩa SSD/eMMC được hệ điều hành nạp toàn bộ lên thanh RAM rồi mới thực thi), **vi điều khiển (MCU) trong ngành công nghiệp ô tô hoạt động theo triết lý bộ nhớ hoàn toàn khác biệt**.
+
+---
+
+##### A. Bảng Phân Bổ Bộ Nhớ Toàn Diện: Vùng Nào Chạy Trên RAM, Vùng Nào Chạy Trên ROM (Flash)?
+
+Theo chỉ định của Linker Script vi điều khiển Cortex-M ([`as/com/as.application/board.stm32f107vc/script/linker-common.lds: L8-L69`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-common.lds#L8-L69)):
+
+| Phân Vùng (Section) | Nơi Lưu Trữ Khi Tắt Điện (LMA) | Nơi Chạy / Truy Xuất Khi Hoạt Động (VMA) | Dữ Liệu Chứa Bên Trong & Dẫn Chứng Codebase Thật | Lý Do Kỹ Thuật Bản Chất (Hardware & System Rationale) |
+| :--- | :---: | :---: | :--- | :--- |
+| **`.text`** *(Mã máy thực thi)* | **FLASH ROM** | **FLASH ROM** *(XIP)* | Toàn bộ mã nhị phân thực thi của các hàm C (`main`, `Can_Init`, `Com_RxProcess`, `Swc_Gauge_Step`), bảng vector ngắt (`.isr_vector`). | 1. **Bất biến (Non-volatile):** Mã lệnh không bị biến mất khi xe tắt khóa điện (IGN OFF).<br>2. **Bảo vệ mã lệnh (Hardware Write-Protection):** Flash ROM bị khóa ghi ở runtime, ngăn chặn triệt để rủi ro con trỏ hoang (*wild pointer*) ghi đè phá hủy mã lệnh hệ thống.<br>3. **Cơ chế XIP (eXecute-In-Place):** CPU Cortex-M fetch trực tiếp lệnh từ Flash qua bus I-Code, khởi động tức thì trong vài $\mu s$ mà không mất thời gian nạp lên RAM. |
+| **`.rodata`** *(Read-Only Data)* | **FLASH ROM** | **FLASH ROM** | Hằng số `const`, chuỗi ký tự, các bảng struct cấu hình sinh từ file ARXML: [`CanIf_Config`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c#L509), [`ComConfiguration`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Com_PbCfg.c#L517). | 1. **Dữ liệu chỉ đọc:** Không bao giờ thay đổi giá trị trong suốt vòng đời xe.<br>2. **Tiết kiệm dung lượng RAM:** Bảng cấu hình BSW từ ARXML rất lớn (hàng chục đến hàng trăm KB), nếu copy lên RAM sẽ làm cạn kiệt tài nguyên RAM đắt đỏ của MCU ngay lập tức. |
+| **`.data`** *(Biến toàn cục có khởi tạo)* | **FLASH ROM** (`AT(__etext)`) | **RAM** (`0x20000000`) | Các biến toàn cục / static **có khởi tạo giá trị ban đầu khác 0** (ví dụ: `Can_Global.initRun = CAN_UNINIT;`, timer ban đầu). | 1. **Lưu trữ gốc ở Flash:** Giữ nguyên giá trị khởi tạo khi xe tắt máy.<br>2. **Bắt buộc thực thi ở RAM:** Khi xe vận hành, giá trị biến thay đổi hàng triệu lần mỗi giây. Bộ nhớ RAM cho phép đọc/ghi chu kỳ đơn (Single-cycle R/W), trong khi Flash ROM không thể ghi đè từng byte đơn lẻ.<br>3. [`startup.S: L325-L337`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S#L325-L337) thực hiện copy từ Flash sang RAM trước khi gọi `main()`. |
+| **`.bss`** *(Biến toàn cục không khởi tạo)* | **Không chiếm Flash** | **RAM** | Toàn bộ biến toàn cục / static **không khởi tạo hoặc khởi tạo = 0** (ví dụ: bộ đệm I-PDU [`TxMsgBmsStatus_IPduBuffer[8]`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Com_PbCfg.c#L139), mảng RingBuffer [`rbBuf_canifRx`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L142)). | 1. **Tiết kiệm dung lượng Flash:** Không cần ghi hàng ngàn byte `0x00` vào file Hex nạp chip.<br>2. **Dữ liệu runtime biến động:** Chứa toàn bộ trạng thái xe thay đổi liên tục khi chạy $\rightarrow$ bắt buộc nằm ở RAM.<br>3. [`startup.S: L342-L352`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/portable/cortex-m/startup.S#L342-L352) quét sạch (zero-fill) vùng này về `0` khi reset. |
+| **`.stack`** *(Ngăn xếp hàm & ngắt)* | **Không chiếm Flash** | **RAM** | Biến cục bộ trong hàm, địa chỉ quay về (`LR`), khung thanh ghi ngắt ISR (`R0-R3, R12, LR, PC, xPSR`). | 1. **Tốc độ đẩy/rút (Push/Pop) cực nhanh:** Yêu cầu đáp ứng trong đúng 1 chu kỳ xung nhịp CPU.<br>2. Kích thước biến động liên tục theo độ sâu lời gọi hàm $\rightarrow$ 100% nằm trên RAM. |
+| **`.ramcode`** *(Trường hợp ngoại lệ 1)* | **FLASH ROM** | **RAM** | Các hàm Flash Driver xóa/ghi chip Flash (`Fls_Write`, `Fls_Erase`) hoặc hàm nạp Firmware của Bootloader. | **Nguy cơ Read-While-Write (RWW) Hazard:** Phần cứng vi điều khiển KHÔNG THỂ vừa nạp lệnh từ Flash vừa thực thi lệnh xóa/ghi sector trên chính chip Flash đó. Bắt buộc phải copy mã máy của hàm lên RAM để CPU chạy trên RAM khi thao tác với Flash! |
+| **`.noinit`** *(Trường hợp ngoại lệ 2)* | **Không chiếm Flash** | **RAM** | Cờ nhảy Bootloader (`FBL_REPROGRAMMING_FLAG`), Crash Dump khi xe gặp tai nạn hoặc mã lỗi Reset. | Startup `Reset_Handler` **bỏ qua không xóa về 0** khi Reset ấm (Warm Reset), giúp phần mềm giữ nguyên dấu vết lỗi sau cú crash hoặc nhảy từ App sang Bootloader. |
+
+---
+
+##### B. 3 Trụ Cột Kỹ Thuật & Quy Luật Vật Lý Bán Dẫn Cốt Lõi
+
+###### 1. Quy Luật Bán Dẫn Vật Lý & Kinh Tế Học Silicon (Universal Semiconductor Physics)
+Dù là chip giá vài USD hay chip siêu an toàn ASIL-D của Infineon giá hàng chục USD, công nghệ chế tạo ô nhớ silicon trên thế giới đều chịu chung các định luật vật lý:
+
+* **SRAM (Static RAM):** 
+  * Cần **4 đến 6 transistor (6T)** để lưu giữ 1 bit dữ liệu $\rightarrow$ Tốn diện tích đế silicon (*Die Area*) khổng lồ, giá thành cực đắt đỏ và tiêu hao dòng rò (*Leakage Current*) lớn. 
+  * Ví dụ: Chip STM32F107VC chỉ có **64 KB RAM** so với **256 KB Flash** (tỉ lệ 1:4); chip Infineon TriCore TC397 có **4 MB RAM** so với **16 MB Flash** (tỉ lệ 1:4). Vì vậy, không một hãng xe nào thiết kế MCU có 16MB hay 32MB SRAM chỉ để chứa toàn bộ mã chương trình.
+* **NOR Flash / eFlash (Embedded Flash):**
+  * Chỉ cần **1 transistor** cho 1 bit nhớ $\rightarrow$ Mật độ lưu trữ cực cao, giá rẻ, dung lượng lớn (1MB đến 16MB).
+  * **Nhược điểm vật lý:** Flash sử dụng hiện tượng đường hầm lượng tử (*Fowler-Nordheim Tunneling / Hot Electron Injection*) với điện áp cao để lập trình. Do đó, **Flash không thể ghi đè từng byte đơn lẻ** mà phải xóa theo từng Khối/Sector (Block Erase tốn 20ms - 100ms) và bị giới hạn tuổi thọ số lần ghi (Endurance limit 10.000 - 100.000 chu kỳ).
+  * $\rightarrow$ **Hệ quả tất yếu:** Các biến thay đổi giá trị liên tục trong khi xe chạy (`.data`, `.bss`, `.stack`) **bắt buộc 100% phải nằm trên RAM**. Dữ liệu chỉ đọc (`.text`, `.rodata`) **bắt buộc phải nằm trên Flash**.
+
+###### 2. Tiêu Chuẩn Thời Gian Khởi Động Ô Tô (Automotive Fast Startup < 100ms) & Cơ Chế XIP
+* **Trong máy tính (PC, Linux, Android):** Toàn bộ hệ điều hành và app từ ổ cứng/SSD được nạp (load) toàn bộ lên RAM rồi mới chạy. Quá trình này mất từ 5 giây đến 30 giây.
+* **Trong ECU Ô tô:** Tiêu chuẩn của các hãng xe toàn cầu (OEMs: VW, Toyota, GM, VinFast...) quy định:
+  > 🚨 **Time-to-CAN / Fast-Boot Requirement:** Ngay khi tài xế bấm nút khởi động (IGN ON) hoặc khi cắm sạc/mở cửa, các ECU liên quan đến an toàn (BMS, Inverter, Body Controller, Phanh điện tử) phải thức dậy và phát gói tin CAN đầu tiên trong vòng **dưới 50ms – 100ms**!
+* Nếu MCU phải copy vài Megabyte mã BSW từ Flash sang RAM rồi mới chạy, hệ thống sẽ trễ hàng trăm mili-giây và vi phạm nghiêm trọng tiêu chuẩn an toàn ISO 26262.
+* Cơ chế **XIP (eXecute-In-Place)** — đọc mã trực tiếp từ Flash qua bus I-Code để chạy tức thì trong vài micro-giây — là cơ chế bắt buộc trên **mọi MCU ô tô**.
+
+###### 3. Nguy Cơ Read-While-Write (RWW) Hazard & Nguồn Gốc Phân Vùng `.ramcode`
+* Khi ECU cần nạp phần mềm Bootloader (FOTA Update) hoặc ghi dữ liệu chẩn đoán DTC qua module `Fee`, chip Flash bị đưa vào chế độ lập trình điện áp cao (*High Voltage Programming/Erase*).
+* Tại thời điểm này, mạch bơm áp (*Charge Pump*) nội bộ làm **bus dữ liệu của Flash Bank đó bị cô lập hoàn toàn**.
+* Nếu CPU cố gắng fetch lệnh tiếp theo từ Flash, hệ thống sẽ rơi vào trạng thái bế tắc (*Bus Stall*) hoặc phát sinh ngắt ngoại lệ chết chip: **HardFault / BusFault (Cortex-M)** hoặc **Trap Class 4 (Infineon TriCore)**.
+* **Giải pháp chuẩn mực:** Toàn bộ các hàm thực thi việc xóa/ghi Flash driver (`Fls_Write`, `Fls_Erase`) bắt buộc phải được đặt thuộc tính gán vào phân vùng **`.ramcode`** (hoặc `__ramfunc`) để CPU thực thi hoàn toàn từ RAM.
+* **Minh chứng codebase dự án:** File cấu hình Linker Script [`as/com/as.application/board.stm32f107vc/script/linker-flsdrv.lds: L8-L23`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-flsdrv.lds#L8-L23) quy định rõ ràng vùng nhớ chạy của Flash Driver được ép chạy ở địa chỉ `ORIGIN = 0x20000000` (địa chỉ RAM vật lý của chip):
+  ```lds
+  /* Trích từ: as/com/as.application/board.stm32f107vc/script/linker-flsdrv.lds */
+  MEMORY
+  {
+      FLASH (rx) : ORIGIN = 0x20000000, LENGTH = 4K   /* Bản chất là vùng nhớ RAM! */
+  }
+  ENTRY(FlashHeader)
+  SECTIONS
+  {
+      .text : { *(.rodata.FlashHeader) *(.text*) *(.rodata*) } > FLASH
+  }
+  ```
+
+###### 4. Bí Mật Tốc Độ Thực Thi XIP: Giải Mã Nghịch Lý Flash Chậm Hơn CPU — NOR Flash vs NAND Flash, Wait States, Prefetch Buffer & Instruction Cache
+
+> 💡 **Nghịch lý kỹ nghệ:**  
+> *"Nếu Flash ROM chậm hơn SRAM gấp nhiều lần (thời gian truy xuất Flash ~15ns - 30ns trong khi CPU chạy tới hàng trăm MHz), tại sao chạy code trực tiếp trên Flash (XIP) lại không làm ECU bị nghẽn cổ chai? Và việc Flash phải đọc theo khối liệu có làm ảnh hưởng hay xáo trộn các dữ liệu khác nằm trên Flash không?"*
+
+Để trả lời trọn vẹn, cần phân định rạch ròi 3 tầng công nghệ phần cứng được các nhà sản xuất bán dẫn ô tô (ST, Infineon, NXP, Renesas) tích hợp:
+
+* **Đính chính bản chất: NOR Flash (MCU Ô tô) vs NAND Flash (SSD / Thẻ nhớ):**
+  * Trong ổ cứng SSD hay thẻ nhớ USB, bộ nhớ là **NAND Flash** có cấu trúc cell nhớ nối tiếp. Cả thao tác Đọc và Ghi **bắt buộc phải theo từng Khối/Trang (Page 4KB - 16KB, Block vài MB)** qua bus tuần tự, không hỗ trợ truy xuất ngẫu nhiên.
+  * Trong vi điều khiển ECU ô tô, bộ nhớ ROM tích hợp là **NOR Flash (eFlash - Embedded Flash)** có cấu trúc cell nhớ song song:
+    * **Thao tác GHI/XÓA (Erase/Write):** Bị ép buộc phải xóa theo Sector/Block (2KB - 128KB) do cơ chế phóng điện áp cao.
+    * **Thao tác ĐỌC (Read):** **Cho phép truy xuất ngẫu nhiên (Random Access) theo từng từ nhớ (Word 32-bit / 64-bit) hệt như RAM!** CPU chỉ định địa chỉ nào (ví dụ `0x08001234`), Flash Controller trả về đúng 4 byte mã lệnh tại địa chỉ đó.
+    * **Vì sao không ảnh hưởng dữ liệu khác?** Khi xe đang vận hành, toàn bộ mã máy (`.text`) và cấu hình (`.rodata`) trên Flash là **DỮ LIỆU CHỈ ĐỌC (Read-Only)**. Không có thao tác ghi xóa diễn ra trên các vùng này, nên các biến/hàm nằm liền kề hoàn toàn độc lập, không thể bị xáo trộn hay ảnh hưởng lẫn nhau.
+
+* **Nghịch lý tốc độ: Vấn đề "Wait States" (Flash Latency):**
+  * SRAM có thời gian truy xuất cực nhanh (< 2ns - 3ns), đáp ứng ngay trong 1 chu kỳ clock ở tần số 200 - 400 MHz.
+  * NOR Flash có thời gian trễ vật lý (*Access Time*) khoảng **15ns – 30ns**. Khi MCU chạy ở xung nhịp cao:
+    * Chip **STM32F107VC** chạy ở **72 MHz** (1 chu kỳ clock = 13.8ns) $\rightarrow$ Flash mất ~30ns để đọc xong 1 từ nhớ $\rightarrow$ CPU bắt buộc phải chờ thêm **2 chu kỳ xung nhịp rỗng (2 Wait States / Latency = 2)**.
+    * Chip **Infineon AURIX TC397** chạy ở **300 MHz** (1 chu kỳ clock = 3.3ns) $\rightarrow$ Cần tới **4 đến 6 Wait States**!
+  * Nếu CPU cứ đọc từng lệnh mà phải dừng lại chờ 2 - 5 chu kỳ clock, hiệu năng của ECU sẽ bị sụt giảm từ **50% đến 70%**!
+
+* **Bộ 3 giải pháp "Cứu cánh" phần cứng: Wide Bus + Prefetch Buffer + Instruction Cache:**
+  1. **Đường truyền Flash siêu rộng (Wide Flash Access: 64-bit / 128-bit / 256-bit):**
+     * Dù tập lệnh CPU chỉ rộng 16-bit hoặc 32-bit (ARM Thumb-2), nhưng bus vật lý nối từ mảng cell nhớ Flash vào bộ điều khiển rộng tới **64-bit** (trên STM32F1), **128-bit** (trên STM32F4/F7), thậm chí **256-bit / 512-bit** (trên Infineon AURIX TC3xx).
+     * Mặc dù tốn 2 - 3 chu kỳ Wait State để đọc Flash một lần, nhưng **mỗi lần đọc nó bốc ra một khối chứa từ 2 đến 8 lệnh CPU cùng một lúc!**
+  2. **Bộ đệm đọc trước (Prefetch Buffer):**
+     * Trong khi CPU đang bận giải mã và tính toán lệnh số 1 và số 2 trong bộ ALU, bộ điều khiển Flash đã âm thầm nạp trước (Prefetch) khối lệnh tiếp theo vào thanh ghi đệm Prefetch Buffer tốc độ cao.
+     * Khi CPU cần lệnh tiếp theo, lệnh đã nằm sẵn trong bộ đệm $\rightarrow$ CPU bốc ra chạy ngay lập tức với **0 chu kỳ chờ (0 wait state)**!
+  3. **Bộ nhớ đệm Lệnh & Nhánh Rẽ (Instruction Cache / Branch Target Cache / ART Accelerator™):**
+     * Khi gặp rẽ nhánh (`if/else`, vòng lặp `for/while`, gọi hàm `call`), CPU nhảy đến địa chỉ mới $\rightarrow$ Prefetch Buffer bị huỷ (*Pipeline Flush*), CPU lại phải chờ Flash nạp lại.
+     * Để giải quyết triệt để, các dòng MCU trang bị thêm **Cache Lệnh (I-Cache)** và **Bộ đệm dự đoán rẽ nhánh (Branch Target Buffer - BTB)**:
+       * **STMicroelectronics** tích hợp bộ tăng tốc độc quyền **ART Accelerator™ (Adaptive Real-Time Accelerator)**.
+       * **Infineon AURIX** tích hợp **Program Cache (P-Cache) 32 KB riêng cho từng Core** kết hợp BTB.
+     * Trong phần mềm ECU ô tô, **90% thời gian thực thi là các vòng lặp định kỳ lặp đi lặp lại** (vòng lặp 10ms của ComStack, vòng lặp điều khiển PID motor, thuật toán lọc số Kalman). Lần đầu tiên chạy có thể tốn wait state, nhưng từ lần thứ hai trở đi, **toàn bộ khối mã vòng lặp đã nằm trọn vẹn trong Cache** $\rightarrow$ CPU chạy ở tốc độ tối đa của xung nhịp mà không bị suy giảm hiệu năng!
+
+* **Minh chứng mã nguồn thực tế trong tầng MCAL của dự án (`as`):**
+  Trong file cấu hình xung nhịp MCU [`as/com/as.infrastructure/arch/stm32f1/mcal/Mcu.c: L137-L143`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Mcu.c#L137-L143), trước khi kích hoạt bộ nhân tần PLL đẩy xung nhịp lên 72MHz, code MCAL bắt buộc phải bật Prefetch Buffer và cài đặt 2 Wait States:
+  ```c
+  /* Trích từ: as/com/as.infrastructure/arch/stm32f1/mcal/Mcu.c (Dòng 137 - 143) */
+  if (HSEStatus == (uint32_t)0x01)
+  {
+      /* 1. Bật bộ đệm đọc trước Prefetch Buffer để triệt tiêu thời gian chờ của CPU */
+      FLASH->ACR |= FLASH_ACR_PRFTBE;
+
+      /* 2. Cài đặt 2 chu kỳ trễ (2 Wait States) cho Flash vì CPU sắp chạy ở tần số max 72 MHz */
+      FLASH->ACR &= (uint32_t)((uint32_t)~FLASH_ACR_LATENCY);
+      FLASH->ACR |= (uint32_t)FLASH_ACR_LATENCY_2;
+
+      /* Sau đó mới kích hoạt PLL và chuyển clock nguồn SYSCLK sang PLL */
+      ...
+  }
+  ```
+
+---
+
+##### C. Tính Phổ Quát Toàn Ngành Ô Tô: Áp Dụng Cho Mọi Dòng Chip & Mọi ECU
+
+Mô hình và các quy luật cốt lõi trên **áp dụng cho 100% ECU vi điều khiển trong ngành công nghiệp ô tô (AUTOSAR Classic Platform)**:
+
+1. **Chuẩn Hóa Qua AUTOSAR `MemMap`:**
+   Mọi module BSW tiêu chuẩn từ MCAL, CanIf, PduR, Com đến DCM, DEM đều sử dụng các macro chuẩn hóa `#include "MemMap.h"` (`*_START_SEC_CODE`, `*_START_SEC_CONST`, `*_START_SEC_VAR_INIT`, `*_START_SEC_VAR_CLEARED`, `*_START_SEC_CODE_RAM`, `*_START_SEC_VAR_NOINIT`). Nhờ đó, cùng một source code BSW có thể biên dịch mà không cần đổi dòng code nào giữa chip Infineon, NXP, Renesas hay ST.
+
+2. **Bảng Đối Chiếu Trên Các Dòng Vi Điều Khiển Ô Tô "Đầu Bảng" Thế Giới:**
+
+| Hãng Chip & Dòng Chip Ô Tô | Phân Vùng Flash (Chạy XIP) | Phân Vùng RAM (.data, .bss, .stack) | Cách Xử Lý Hàm Flash Driver (.ramcode để tránh RWW Hazard) |
+| :--- | :--- | :--- | :--- |
+| **Infineon AURIX TriCore**<br>*(TC2xx, TC3xx, TC4xx - Chiếm lĩnh Inverter EV, BMS, ADAS, Powertrain)* | **PFlash (Program Flash):** Lưu `.text`, `.rodata`.<br>**DFlash (Data Flash):** Giả lập EEPROM (Fee). | **DSPR (Data Scratchpad RAM):** RAM gắn trực tiếp vào lõi CPU chứa Stack và biến toàn cục. | Các hàm xóa/ghi Flash driver bắt buộc phải nạp và chạy từ **PSPR (Program Scratchpad RAM)** — vùng RAM chuyên dụng để chạy mã máy! |
+| **NXP S32K / MPC5xxx**<br>*(Cortex-M4/M7 & PowerPC e200 - Chiếm lĩnh Body, Gateway, Motor Control)* | **Internal Flash:** Chạy XIP qua bus nhớ nội bộ. | **SRAM nội & DTCM (Data Tightly Coupled Memory):** Đọc/ghi 0-wait state. | Sử dụng từ khóa `__ramfunc` để Linker ánh xạ hàm xóa/ghi Flash vào **ITCM (Instruction TCM)** hoặc SRAM. |
+| **Renesas RH850**<br>*(G3M, G4MH - Chiếm lĩnh xe Nhật: Toyota, Honda, Nissan, Mazda)* | **Code Flash:** Lưu mã nhị phân và hằng số tĩnh. | **PE-RAM (Local RAM) & Global RAM:** Chứa toàn bộ stack và biến runtime. | Các thư viện Flash T01/FCL của Renesas bắt buộc người dùng copy code vào RAM trước khi gọi lệnh ghi Flash. |
+| **STM32F107VC (Dự án `as`)**<br>*(ARM Cortex-M3)* | [`linker-app.lds`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-app.lds): `.text` và `.rodata` nằm ở `FLASH`. | [`linker-common.lds`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-common.lds): `.data` và `.bss` nằm ở `RAM`. | [`linker-flsdrv.lds`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/board.stm32f107vc/script/linker-flsdrv.lds): Cấu hình chạy trực tiếp tại RAM `0x20000000`. |
+
+3. **Mở Rộng: Máy Tính Hiệu Năng Cao (HPC / Domain Controller Chạy AUTOSAR Adaptive):**
+   * Các ECU buồng lái (Cockpit) hay xe tự hành (ADAS) dùng SoC (NVIDIA DRIVE Orin, Qualcomm Snapdragon Ride) chạy Linux/QNX với bộ nhớ **LPDDR4/5 (8 GB – 32 GB)**. Nhóm này nạp OS lên RAM để chạy giống như PC.
+   * **Tuy nhiên:** Trên bo mạch của mọi chiếc máy tính HPC đó, **luôn luôn có một chip Safety MCU (như Infineon AURIX TC397 hoặc NXP S32G)** chạy độc lập làm "người gác cổng" an toàn. Chip Safety MCU này thức dậy trước trong 50ms, kiểm tra điện áp, giám sát mạng CAN, rồi mới cấp nguồn cho chip SoC hoạt động. Và chip Safety MCU này **100% tuân thủ mô hình Flash XIP + SRAM** nêu trên!
 
 #### 3.2 Phân Rã Phần Cứng Gắn Ngoài Trên Bo Mạch (Off-Chip Hardware on ECU Board)
 Đây là các linh kiện điện tử nằm trên mạch in PCB bên ngoài MCU, chịu sự quản lý của tầng **ECU Abstraction Layer**:
@@ -322,7 +469,7 @@ Trong kỹ nghệ ô tô, **ECU** và **MCU** là hai khái niệm nền tảng 
 | :--- | :--- | :--- | :--- | :--- |
 | **Lõi CPU / Clock / Power Management** | On-Chip MCU | `Mcu` | — | `EcuM` (Quản lý chu trình khởi động/tắt máy) |
 | **Khối CAN Controller** | On-Chip MCU | `Can` | `CanIf` | `PduR`, `Com`, `Dcm` |
-| **Chip CAN Transceiver (TJA1043)** | Off-Chip PCB | `Dio` / `Spi` | `CanTrcv` | `CanSM`, `ComM` (Quản lý trạng thái mạng) |
+| **Chip CAN Transceiver (TJA1043)** | Off-Chip PCB | `Dio` / `Spi` | `CanTrcv` | `CanSM` (Quản lý trạng thái bus CAN), `ComM` (Điều phối chế độ truyền thông cấp cao) |
 | **Chân GPIO điều khiển Rơ-le** | On-Chip MCU | `Dio`, `Port` | `IoHwAb` | `SWC_ActuatorControl` |
 | **Khối ADC đo cảm biến** | On-Chip MCU | `Adc` | `IoHwAb` | `SWC_SensorProcessing` |
 | **Chip AFE đo Cell Pin (BMS)** | Off-Chip PCB | `Spi` | `CDD_AFE` | `SWC_BMS_CellMonitor` |
@@ -330,6 +477,18 @@ Trong kỹ nghệ ô tô, **ECU** và **MCU** là hai khái niệm nền tảng 
 | **Chip EEPROM ngoài qua SPI** | Off-Chip PCB | `Spi` | `Eep`, `MemIf` | `NvM` (Lưu trữ cấu hình / SoC Pin) |
 | **Watchdog nội MCU** | On-Chip MCU | `Wdg` | `WdgIf` | `WdgM` (Giám sát an toàn Alive/Deadline) |
 | **Chip SBC / Watchdog ngoài** | Off-Chip PCB | `Dio` / `Spi` | `Wdg_Ext` | `WdgM` (Giám sát an toàn toàn hệ thống) |
+
+> 🔍 **Làm Rõ Kiến Trúc Chuẩn AUTOSAR — Phân Định Trách Nhiệm `CanTrcv` vs `CanSM` vs `ComM`:**
+> 1. **`CanTrcv` (CAN Transceiver Driver — Tầng 2.2 ECU Abstraction):**
+>    - Điều khiển trực tiếp chân vật lý phần cứng của chip thu phát (như chân `STB`, `EN`, `WAKE`) qua MCAL `Dio` hoặc `Spi`.
+>    - Chuyển đổi trạng thái vật lý của chip: `CANTRCV_TRCVMODE_NORMAL`, `CANTRCV_TRCVMODE_STANDBY`, `CANTRCV_TRCVMODE_SLEEP`.
+> 2. **`CanSM` (CAN State Manager — Tầng 2.3 Service Layer):**
+>    - Quản lý máy trạng thái cụ thể của **riêng bus CAN** (`CANSM_BSM_S_NOT_INITIALIZED`, `CANSM_BSM_S_NOCOM`, `CANSM_BSM_S_FULLCOM`, `CANSM_BSM_S_SILENTCOM`).
+>    - Thực thi quy trình phục hồi lỗi mất đồng bộ mạng (**Bus-Off Recovery Algorithm** theo chuẩn ISO 11898): điều phối nhịp nhàng giữa `Can` driver, `CanIf` và `CanTrcv` để khởi động lại bộ điều khiển sau khi bị cô lập khỏi mạng.
+> 3. **`ComM` (Communication Manager — Tầng 2.3 Service Layer):**
+>    - Là module **hoàn toàn độc lập với công nghệ bus vật lý** (Bus-Agnostic).
+>    - Tiếp nhận yêu cầu sử dụng kênh truyền thông từ các User cấp cao (SWC hoặc BswM) như `COMM_FULL_COMMUNICATION` hay `COMM_NO_COMMUNICATION`.
+>    - Tổng hợp (Arbitrate) các yêu cầu truyền thông và ủy quyền lệnh xuống các State Manager phụ trách từng loại bus tương ứng (`CanSM`, `LinSM`, `FrSM`, `EthSM`) mà không cần biết chi tiết cơ cấu vật lý bên dưới.
 
 ---
 
@@ -909,10 +1068,21 @@ Khảo sát trực tiếp tệp [`as/com/as.infrastructure/include/IoHwAb.h`](fi
 3. **Ngăn Xếp Chẩn Đoán (Diagnostic Stack — `DCM`, `DEM`):**
    * *`DCM` (Diagnostic Communication Manager):* Máy trạng thái ISO 14229 UDS: Quản lý phiên chẩn đoán (Diagnostic Session 0x10), kiểm soát bảo mật Seed & Key (SecurityAccess 0x27), đọc/ghi thông số xe DID (0x22 / 0x2E).
    * *`DEM` (Diagnostic Event Manager):* Quản lý bộ đếm lọc nhiễu lỗi (**Debounce Counter**: phải xuất hiện lỗi liên tiếp 10 lần mới xác nhận), chụp ảnh đóng băng trạng thái vận hành lúc xảy ra lỗi (**Freeze Frame Snapshot**: lưu vận tốc xe, điện áp ắc-quy, nhiệt độ dầu tại thời điểm lỗi), và điều khiển bật đèn báo lỗi Check Engine (MIL).
-4. **Quản Lý Hệ Thống & Hệ Điều Hành (System Management — `AUTOSAR OS`, `EcuM`, `BswM`, `WdgM`):**
+4. **Quản Lý Hệ Thống & Chế Độ Hoạt Động (System & Mode Management — `AUTOSAR OS`, `EcuM`, `BswM`, `WdgM`):**
    * *`AUTOSAR OS`:* Bộ lập lịch đa nhiệm thời gian thực OSEK định trước (Preemptive RTOS).
-   * *`EcuM / BswM`:* Quản lý chu trình sống 5 pha của xe: Khởi động (Start-up) $\rightarrow$ Vận hành (Run) $\rightarrow$ Hậu vận hành (Post-Run) $\rightarrow$ Ngủ sâu tiết kiệm điện (Go-Sleep / Low Power) $\rightarrow$ Đánh thức (Wake-up).
    * *`WdgM`:* Giám sát an toàn 3 cấp (Alive: kiểm tra tần suất chạy của Task; Deadline: kiểm tra thời gian hoàn thành tác vụ; Logical: kiểm tra luồng thực thi tuần tự của thuật toán).
+   * *Động Cơ Quản Lý Chế Độ Kép (Dual-Engine Mode Management — `EcuM` vs `BswM`):*
+     - **`EcuM` (ECU State Manager — Bộ Quản Trị Vòng Đời Cốt Lõi):**
+       Có 2 biến thể chuẩn hóa: *EcuM Fixed* (máy trạng thái cố định cho ECU đơn giản) và *EcuM Flexible* (hỗ trợ chuyển trạng thái linh hoạt theo sự kiện). `EcuM` nắm quyền kiểm soát tại 4 giai đoạn sống còn của ECU:
+       1. *Start-up Phase (Trước OS):* Khởi tạo phần cứng cơ sở theo danh sách Driver List 0 (`Mcu`, `Port`, `Wdg`), nạp cấu hình bộ nhớ, khởi chạy hệ điều hành qua `StartOS()`.
+       2. *Post-Start Phase (Sau OS):* Chạy `EcuM_StartupTwo()` trong Task Autostart để nạp Driver List 1 (`Can`, `CanIf`, `Com`, `NvM`) rồi **chính thức bàn giao quyền điều phối trạng thái runtime cho `BswM`**.
+       3. *Shutdown / Sleep Phase:* Điều phối lưu dữ liệu NVRAM xuống Flash qua `NvM_WriteAll()`, gọi `ShutdownOS()`, tắt nguồn ngoại vi và chuyển MCU vào chế độ tiết kiệm năng lượng (Low Power / Stop / Standby Mode).
+       4. *Wakeup Validation Phase:* Khi có xung ngắt đánh thức (từ CAN bus, chân chìa khóa Ignition), `EcuM` phối hợp với driver để xác thực (Validation) xem đây là xung thức hợp lệ hay xung nhiễu giật; chỉ đánh thức toàn bộ ECU nếu tín hiệu hợp lệ.
+     - **`BswM` (Basic Software Mode Manager — Bộ Não Phán Đoán Trạng Thái Runtime):**
+       Khác với `EcuM` có chu trình đóng khung, `BswM` hoạt động như một **công cụ trọng tài dựa trên tập luật (Rule-based Arbitration Engine)** xuyên suốt thời gian xe vận hành:
+       1. *Mode Arbitration (Trọng tài điều kiện):* Lắng nghe các yêu cầu/chỉ báo chế độ (*Mode Requests / Indications*) từ khắp các tầng: điện áp bình ắc-quy từ `IoHwAb`, trạng thái khóa điện Ignition, tín hiệu va chạm túi khí Crash từ `Com`, phiên chẩn đoán từ `Dcm`.
+       2. *Logic Evaluation:* Đánh giá các biểu thức logic Boolean (ví dụ: `(Ignition == ON) && (BatteryVoltage >= 10.5V) && (CrashDetected == FALSE)`).
+       3. *Action Lists (Thực thi chuỗi hành động):* Khi biểu thức thỏa mãn, `BswM` kích hoạt danh sách hành động quy chuẩn: ra lệnh cho `ComM` chuyển sang `COMM_FULL_COMMUNICATION`, ra lệnh `CanSM` bật mạng, ra lệnh cho RTE chuyển Partition/Mode Switch sang chế độ `RUN`, hoặc kích hoạt `EcuM_GoSleep()` khi người lái tắt chìa khóa xe.
 
 ##### 4. Dẫn Chứng Thực Tế Từ Mã Nguồn Dự Án `as`:
 Khảo sát trực tiếp module COM trong file [`as/com/as.infrastructure/communication/Com/Com_Com.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Com.c#L39-L70):

@@ -3,8 +3,24 @@
 
 > 📚 **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
 > 🎯 **Định vị:** Dành cho BSW Integration Engineer & Body/Chassis ECU Developer  
-> 🔧 **Source Code đối chiếu:** [`as/com/as.infrastructure/communication/Lin/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Lin/)  
-> 📑 **Tài liệu tham chiếu:** AUTOSAR SWS LIN Driver, LIN Interface, LIN State Manager, LIN Transport Protocol (ISO 17987)
+> 🔧 **Source Code đối chiếu:** Kho mã nguồn [`as/com/as.infrastructure/communication/Lin/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Lin/)  
+> 📑 **Tài liệu tham chiếu:** AUTOSAR SWS LIN Driver, LIN Interface, LIN State Manager, LIN Transport Protocol (ISO 17987)  
+> 📍 **Vị trí tài liệu:** [`docs/theory/11_LIN_Protocol_And_LinStack_Deep_Dive.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/11_LIN_Protocol_And_LinStack_Deep_Dive.md)  
+
+---
+
+## Mục Lục
+1. [Tổng Quan Về Giao Thức LIN (Local Interconnect Network)](#1-tổng-quan-về-giao-thức-lin-local-interconnect-network)
+   - [1.1 So Sánh Bản Chất Kỹ Thuật: CAN vs LIN vs Ethernet](#11-so-sánh-bản-chất-kỹ-thuật-can-vs-lin-vs-ethernet)
+   - [1.2 Cấu Trúc Khung Truyền LIN (LIN Frame Structure)](#12-cấu-trúc-khung-truyền-lin-lin-frame-structure)
+   - [1.3 Cơ Chế Bảng Lập Lịch & Chuyển Đổi Schedule Table](#13-cơ-chế-bảng-lập-lịch-lin-schedule-table)
+2. [Ngăn Xếp AUTOSAR LIN Communication Stack (LinStack)](#2-ngăn-xếp-autosar-lin-communication-stack-linstack)
+   - [2.1 Sơ Đồ Phân Tầng Chi Tiết (Layered Architecture)](#21-sơ-đồ-phân-tầng-chi-tiết-layered-architecture)
+   - [2.2 Chi Tiết Các Module BSW LIN Trong Dự Án as (Lin, LinIf, LinSM, LinTp)](#22-chi-tiết-các-module-bsw-lin-trong-dự-án-as)
+   - [2.3 Cơ Chế Chẩn Đoán LIN Diagnostic (LinTp & ISO 17987-2)](#23-cơ-chế-chẩn-đoán-lin-diagnostic-lintp--iso-17987-2)
+3. [Ví Dụ C Code Thực Tế: Điều Khiển Gạt Mưa Qua LIN Bus](#3-ví-dụ-c-code-thực-tế-điều-khiển-gạt-mưa-qua-lin-bus)
+4. [File LDF (LIN Description File) Là Gì?](#4-file-ldf-lin-description-file-là-gì)
+5. [Bộ Câu Hỏi Phỏng Vấn Kỹ Sư Về Giao Thức LIN (Top Interview Q&A)](#5-câu-hỏi-phỏng-vấn-kỹ-sư-về-giao-thức-lin-top-interview-qa)
 
 ---
 
@@ -58,7 +74,7 @@ eg (ID_1 \oplus ID_3 \oplus ID_4 \oplus ID_5)$
 
 ---
 
-### 1.3 Cơ Chế Bảng Lập Lịch (LIN Schedule Table)
+### 1.3 Cơ Chế Bảng Lập Lịch & Chuyển Đổi Schedule Table (Schedule Table Switching)
 
 Trong mạng LIN, **Slave hoàn toàn thụ động**, không bao giờ được tự ý phát dữ liệu nếu Master chưa gửi Header gọi tên.  
 Master duy trì một bảng lịch trình thời gian cố định (**Schedule Table**):
@@ -71,6 +87,18 @@ Master   | Header (PID 0x20)   | Header (PID 0x21)   | Header (PID 0x30)   | ...
 Bus Tx   | Door_ECU trả lời    | Window_ECU trả lời  | Master gửi Lệnh Gạt | ...
          | Data: [Lock/Unlock] | Data: [Window_Pos]  | Data: [Wiper_Speed] |
 ```
+
+#### Quy Tắc Chuyển Bảng Lập Lịch (Schedule Table Switch Flow)
+Trong thực tế xe hơi, Master cần chuyển đổi linh hoạt giữa các bảng:
+- **`INIT_SCHEDULE_TABLE`**: Chạy 1 lần khi khởi động để cấu hình NAD hoặc đọc Serial Number của Slave.
+- **`NORMAL_RUN_SCHEDULE_TABLE`**: Vòng lặp truyền thông tín hiệu điều khiển thường trực (Body/Door/Wiper).
+- **`DIAG_REQUEST_SCHEDULE_TABLE`**: Kích hoạt khi có Tester cắm vào yêu cầu chẩn đoán UDS (dành riêng các khe truyền cho frame chẩn đoán `0x3C / 0x3D`).
+
+**Trình tự chuyển đổi trong LinStack:**
+1. SWC hoặc BswM gọi `LinSM_ScheduleRequest(Network, NewScheduleId)`.
+2. LinSM kiểm tra kênh ở trạng thái `LINSM_RUN_SCHEDULE` và forward xuống `LinIf_ScheduleRequest(Network, NewScheduleId)`.
+3. Trong [`as/com/as.infrastructure/communication/Lin/LinIf.c` (Dòng 139-140)](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Lin/LinIf.c#L139-L140): LinIf không cắt ngang slot hiện tại mà đánh dấu `newScheduleRequest[Channel] = TRUE; newSchedule[Channel] = Schedule;`.
+4. Khi khe thời gian hiện tại hết hạn (`slot_timer >= slot_delay`), `LinIf_MainFunction()` thực thi chuyển sang bảng mới tại vị trí entry 0 và gọi callback `LinSM_ScheduleRequest_Confirmation()` để báo cho state manager biết bảng mới đã chính thức hoạt động.
 
 ---
 
@@ -135,6 +163,61 @@ graph TD
 * **API Cốt Lõi:**
   * `LinSM_ScheduleRequest(Network, ScheduleTableId)`: Yêu cầu LinIf chuyển bảng lập lịch.
   * `LinSM_RequestComMode(Network, COMM_FULL_COMMUNICATION / COMM_NO_COMMUNICATION)`: Đánh thức hoặc đưa mạng LIN vào chế độ Sleep (gửi lệnh Go-to-Sleep Frame `0x3C 0x00 0xFF...`).
+
+#### 4. Transport Protocol: `LinTp.c` ([`as/com/as.infrastructure/communication/Lin/LinTp.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Lin/LinTp.c))
+* **Nhiệm vụ:** Đóng gói / phân mảnh (Segmentation & Reassembly) các gói tin chẩn đoán UDS vượt quá 8 bytes chạy trên đường truyền LIN (ISO 17987-2 / ISO 15765-2).
+* **API Cốt Lõi:**
+  * `LinTp_Transmit(TxPduId, &PduInfo)`: Nhận request chẩn đoán từ PduR/Dcm, tự động yêu cầu LinIf kích hoạt bảng lập lịch chẩn đoán `LinIf_ScheduleRequest(network, schTbl)`.
+  * `LinTp_RxIndication(RxPduId, &PduInfo)`: Tiếp nhận frame từ LinIf, giải mã PCI (SF/FF/CF), ghép đủ gói tin UDS và bàn giao cho Dcm qua `PduR_LinTpRxIndication()`.
+
+---
+
+### 2.3 Cơ Chế Chẩn Đoán LIN Diagnostic (LinTp & ISO 17987-2)
+
+Trong mạng LIN, dịch vụ chẩn đoán (Diagnostic Services) và cấu hình node (Node Configuration) được chuẩn hóa theo **ISO 17987-2** và **LIN 2.1/2.2**:
+
+#### 1. Cặp Frame Chẩn Đoán Chuyên Dụng
+Mọi giao tiếp chẩn đoán đều sử dụng 2 Frame ID cố định (luôn dùng **Classic Checksum**):
+* **Master Request Frame (`PID = 0x3C`):** Master gửi yêu cầu chẩn đoán hoặc lệnh phân bổ cấu hình đến Slave.
+* **Slave Response Frame (`PID = 0x3D`):** Master phát Header `0x3D` để cấp quyền cho Slave truyền dữ liệu phản hồi chẩn đoán lên Bus.
+
+#### 2. Cấu Trúc Địa Chỉ Node (NAD - Node Address for Diagnostic)
+* Trường **NAD (1 byte)** định danh duy nhất Slave node trên cùng một đường dây LIN:
+  * `0x00`: Go-to-sleep command.
+  * `0x01 - 0x7D`: Địa chỉ Slave cụ thể (ví dụ: `0x01` = Cụm gạt mưa, `0x02` = Cụm gương chiếu hậu).
+  * `0x7E`: Functional Request (Broadcast gửi toàn bộ Slaves).
+  * `0x7F`: Broadcast ID.
+
+#### 3. Phân Mảnh Gói Tin LinTp (Protocol Control Information - N_PCI)
+Trong file nguồn [`as/com/as.infrastructure/communication/Lin/LinTp.c` (Dòng 26-32)](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Lin/LinTp.c#L26-L32), cơ chế N_PCI được triển khai:
+* **Single Frame (SF):** PCI có tiền tố `0x00` (`Data[0] & 0x30 == 0x00`), mang chiều dài gói tin từ 1 đến 6 bytes payload.
+* **First Frame (FF):** PCI có tiền tố `0x10` (`Data[0] & 0x30 == 0x10`), byte kế tiếp mang chiều dài tổng `((Data[0] & 0x0F) << 8) + Data[1]`, bắt đầu phiên nhận đa khung.
+* **Consecutive Frame (CF):** PCI có tiền tố `0x20` (`Data[0] & 0x30 == 0x20`), mang chỉ số tuần tự `SN = Data[0] & 0x0F` (tăng từ 1 đến 15 rồi quay vòng về 0) để kiểm tra mất gói.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Tester as Diagnostic Tester
+    participant Dcm as BSW Dcm
+    participant PduR as BSW PduR
+    participant LinTp as BSW LinTp
+    participant LinIf as BSW LinIf
+    participant Bus as LIN Physical Bus (Slave)
+
+    Tester->>Dcm: UDS ReadDTC (0x19 0x02 0xFF)
+    Dcm->>PduR: PduR_DcmTransmit()
+    PduR->>LinTp: LinTp_Transmit()
+    LinTp->>LinIf: LinIf_ScheduleRequest(DIAG_SCHEDULE_TABLE)
+    Note over LinIf,Bus: LinIf chuyển sang khe phát Master Request (0x3C)
+    LinIf->>Bus: Master Request PID 0x3C [NAD | SF(3) | 0x19 0x02 0xFF]
+    Note over Bus: Slave xử lý và chuẩn bị gói Response
+    LinIf->>Bus: Master phát Header Slave Response (PID 0x3D)
+    Bus-->>LinIf: Slave phát Response Data [NAD | SF | 0x59 0x02 ...]
+    LinIf->>LinTp: LinIf_RxIndication()
+    LinTp->>PduR: PduR_LinTpRxIndication()
+    PduR->>Dcm: Dcm_TpRxIndication()
+    Dcm-->>Tester: Phản hồi UDS Positive Response (0x59)
+```
 
 ---
 

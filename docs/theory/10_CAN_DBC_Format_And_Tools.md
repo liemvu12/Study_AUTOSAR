@@ -1,4 +1,28 @@
-# CAN DBC Format & Python Tools
+# 10. CAN DBC Format & Python Tools Masterclass
+## Masterclass Kỹ Nghệ: Định Dạng File DBC (Vector CANdb++), Giải Mã Endianness (Intel vs Motorola), Lập Trình Python cantools/python-can & Ma Trận Bản Tin CAN Dự Án `as`
+
+> **Ngôn ngữ:** Tiếng Việt Kỹ Nghệ Chuẩn Mực  
+> **Cấp độ:** Universal Learning Resource (Từ Newbie đến Senior Automotive Network Engineer)  
+> **Tiêu chuẩn tham chiếu:** Vector DBC Specification, AUTOSAR System Template (SystemExtract / Communication Matrix)  
+> **Mã nguồn đối chiếu thực tế:** Kho mã nguồn [Study_AUTOSAR-main/as/](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as)  
+> **Vị trí tài liệu:** [`docs/theory/10_CAN_DBC_Format_And_Tools.md`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/10_CAN_DBC_Format_And_Tools.md)  
+
+---
+
+## Mục Lục
+1. [DBC Là Gì Và Tại Sao Cần?](#1-dbc-là-gì-và-tại-sao-cần)
+2. [Cấu Trúc File DBC — Giải Thích Từng Section Chi Tiết](#2-dbc-file-structure--giải-thích-từng-section)
+3. [Mã Hóa & Giải Mã Tín Hiệu: Signal Encoding/Decoding (Intel vs Motorola)](#3-signal-encodingdecoding-intel-vs-motorola)
+4. [Các Thuộc Tính Mở Rộng Của DBC (DBC Keywords)](#4-other-dbc-keywords-thuộc-tính-nâng-cao)
+5. [Lập Trình Python cantools — Parse & Encode/Decode DBC](#5-python-cantools--parse-dbc-mạnh-mẽ-nhất)
+6. [Thư Viện python-can — Gửi Nhận Frame Trên Bus Thực / Bus Ảo](#6-python-can--sendreceive-trên-bus-thựcảo)
+7. [So Sánh Toàn Diện: DBC vs ARXML](#7-dbc-vs-arxml)
+   - [7.1 Quy Trình Tự Động Hóa Chuyển Đổi DBC Sang AUTOSAR ARXML (DBC to SystemExtract Workflow)](#71-quy-trình-tự-động-hóa-chuyển-đổi-dbc-sang-autosar-arxml-dbc-to-systemextract-workflow)
+8. [Tạo Mock DBC File Cho Hệ Thống BMS — VCU](#8-tạo-mock-dbc-file-cho-bms-vcu-system)
+9. [Bộ 15 Câu Hỏi Phỏng Vấn Thực Chiến Về CAN & DBC](#9-interview-qa--15-câu-hỏi-về-can--dbc)
+10. [Phân Tích Ma Trận Gói Tin CAN Trong Dự Án Mã Nguồn Gốc as (Case Study Thực Tế)](#10-phân-tích-ma-trận-gói-tin-can-trong-dự-án-mã-nguồn-gốc-as-case-study-thực-tế)
+
+---
 
 ## 1. DBC là gì và tại sao cần?
 
@@ -229,6 +253,55 @@ Trong Automotive hiện đại, chuẩn AUTOSAR sử dụng định dạng ARXML
 **Workflow convert:** 
 Trong nhiều dự án, OEM vẫn gửi DBC cho Tier-1 do dễ thảo luận. Tier-1 sẽ dùng tool (như Vector CANoe hoặc DaVinci) import DBC vào, tool sẽ tự động convert sang định nghĩa ARXML trong dự án.
 
+### 7.1 Quy Trình Tự Động Hóa Chuyển Đổi DBC Sang AUTOSAR ARXML (DBC to SystemExtract Workflow)
+
+Trong chuỗi cung ứng kỹ nghệ ô tô tiêu chuẩn, quy trình bàn giao và chuyển đổi dữ liệu mạng CAN diễn ra qua 4 bước khép kín:
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│             QUY TRÌNH CHUYỂN ĐỔI: TỪ FILE DBC CỦA OEM ĐẾN MÃ NGUỒN C SINH TỰ ĐỘNG CỦA BSW        │
+├──────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                  │
+│   [ 1. OEM OEM NETWORK DESIGN ]                                                                  │
+│   Hãng xe thiết kế ma trận truyền thông toàn xe bằng Vector CANdb++ -> Xuất file OEM_CAN.dbc     │
+│                 │                                                                                │
+│                 ▼                                                                                │
+│   [ 2. TIER-1 IMPORT & SYSTEM EXTRACTION ]                                                       │
+│   Nhà cung cấp ECU (Bosch, LG, Mobis) nạp OEM_CAN.dbc vào Vector DaVinci Developer / EB tresos.  │
+│   Công cụ phân giải các Node, Frame, Signal thành cây phần tử AUTOSAR:                           │
+│   • DBC Message (BO_)  ──► I-SIGNAL-I-PDU & CAN-FRAME-TRIGGERING                                 │
+│   • DBC Signal (SG_)   ──► I-SIGNAL & SYSTEM-SIGNAL                                              │
+│   • DBC Node (BU_)     ──► ECU-INSTANCE                                                          │
+│                 │                                                                                │
+│                 ▼                                                                                │
+│   [ 3. SYSTEM EXTRACT ARXML EXPORT ]                                                             │
+│   Xuất file SystemExtract.arxml (hoặc Communication_Matrix.arxml) đại diện cho riêng ECU này.    │
+│                 │                                                                                │
+│                 ▼                                                                                │
+│   [ 4. BSW CODE GENERATION ]                                                                     │
+│   Trình sinh mã BSW ComStack Generator nạp SystemExtract.arxml để tự động sinh mã C:             │
+│   • CanIf_Cfg.c / CanIf_Cfg.h   (Bảng tra cứu CanIf_RxPduConfigData, HOH, Hardware Mailbox)      │
+│   • PduR_PbCfg.c / PduR_PbCfg.h (Bảng định tuyến RoutingPath từ CanIf sang Com)                 │
+│   • Com_PbCfg.c / Com_PbCfg.h   (Bảng bóc tách bit ComSignal, UpdateBit, IPduBuffer)             │
+│                                                                                                  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+> 🛠️ **Đoạn mã Python mẫu tự động hóa DBC sang System Signal Mapping (dùng thư viện `cantools`):**
+> ```python
+> import cantools
+> 
+> # Nạp file DBC
+> db = cantools.database.load_file('BMS_System.dbc')
+> 
+> # Tự động duyệt qua toàn bộ Messages và Signals để xuất sang định dạng AUTOSAR mapping
+> for message in db.messages:
+>     print(f"I-PDU: {message.name} (CAN ID: {hex(message.frame_id)}, Length: {message.length}B)")
+>     for signal in message.signals:
+>         endian = "MOTOROLA" if signal.is_float or signal.byte_order == 'big_endian' else "INTEL"
+>         print(f"  └── Signal: {signal.name:<20} StartBit: {signal.start:<3} Length: {signal.length:<2} Order: {endian}")
+> ```
+
 ---
 
 ## 8. Tạo mock DBC file cho BMS-VCU system
@@ -316,7 +389,7 @@ VAL_ 513 Contactor_State 0 "Open" 1 "Precharge" 2 "Closed" 3 "Error";
 
 ## 10. Phân Tích Ma Trận Gói Tin CAN Trong Dự Án Mã Nguồn Gốc `as` (Case Study Thực Tế)
 
-Trong dự án mã nguồn AUTOSAR mở `as` (target `ascore` chạy trên vi điều khiển `lm3s6965evb`), toàn bộ mạng truyền thông CAN được định nghĩa trong file cấu hình [`as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c#L125-L310), [`Com_PbCfg.c`](../../as/build/nt/lm3s6965evb/ascore/config/Com_PbCfg.c#L335-L395) và [`autosar.arxml`](../../as/build/nt/lm3s6965evb/ascore/config/autosar.arxml).
+Trong dự án mã nguồn AUTOSAR mở `as` (target `ascore` chạy trên vi điều khiển `lm3s6965evb`), toàn bộ mạng truyền thông CAN được định nghĩa trong file cấu hình [`CanIf_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c#L125-L310), [`Com_PbCfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Com_PbCfg.c#L335-L395) và [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml).
 
 Dưới đây là ma trận phân tích các gói tin CAN gốc có mặt trong hệ thống và lý do kỹ thuật vì sao có gói tự động phát ra bus, có gói lại ở trạng thái chờ kích hoạt:
 
@@ -354,10 +427,10 @@ Dưới đây là ma trận phân tích các gói tin CAN gốc có mặt trong 
 #### 🅱️ Nhóm 2: Quản Trị Mạng Xe Tự Động (`0x401` & `0x502` — TX NATIVE)
 1. **`OSEK_NM_TX` (CAN ID `0x401` — TX):**
    * **Nội dung:** Token quản trị mạng dạng vòng Ring của tiêu chuẩn OSEK NM (Node ID = 1).
-   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L455` gọi `StartNM(0)`, nhân OSEK NM trong [`OsekNm_Cfg.c: L71`](../../as/com/as.application/common/config/OsekNm_Cfg.c#L71) tự động khởi động máy trạng thái và định kỳ phát chu kỳ `0x401` (`t40180101...`) qua `CanIf_Transmit()` $\rightarrow$ `Can_Write()` để duy trì mạng thức.
+   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L455` gọi `StartNM(0)`, nhân OSEK NM trong [`OsekNm_Cfg.c: L71`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/config/OsekNm_Cfg.c#L71) tự động khởi động máy trạng thái và định kỳ phát chu kỳ `0x401` (`t40180101...`) qua `CanIf_Transmit()` $\rightarrow$ `Can_Write()` để duy trì mạng thức.
 2. **`LS_NM_TX` (CAN ID `0x502` — TX):**
    * **Nội dung:** Gói tin quản trị mạng theo tiêu chuẩn AUTOSAR CAN NM.
-   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L448` gọi `Nm_NetworkRequest(i)`, module `CanNm` trong [`CanNm.c: L524`](../../as/com/as.infrastructure/communication/CanNm/CanNm.c#L524) tự động phát chu kỳ `0x502` (`t50280050...`).
+   * **Lý do tự động phát trong mã nguồn gốc:** Khi `SchM.c: L448` gọi `Nm_NetworkRequest(i)`, module `CanNm` trong [`CanNm.c: L524`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanNm/CanNm.c#L524) tự động phát chu kỳ `0x502` (`t50280050...`).
 
 ---
 
