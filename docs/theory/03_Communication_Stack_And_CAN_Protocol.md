@@ -14,6 +14,12 @@
 3. [Kiến Trúc Ngăn Xếp ComStack Chi Tiết Từng Module](#3-kiến-trúc-ngăn-xếp-comstack-chi-tiết-từng-module)
    - [3.0 Nền Tảng ComStack: Định Nghĩa, Đặc Tính & Vị Trí Kiến Trúc](#30-nền-tảng-comstack-định-nghĩa-đặc-tính--vị-trí-kiến-trúc)
    - [3.1 Quy Chuẩn & Đặc Tính Kỹ Thuật Chi Tiết Từng Module Trong ComStack](#31-quy-chuẩn--đặc-tính-kỹ-thuật-chi-tiết-từng-module-trong-comstack)
+     - [3.1.1 Module COM (AUTOSAR Communication) [Tầng 2.3 — BSW Services]](#1-module-com-autosar-communication)
+     - [3.1.2 Module DCM Dưới Góc Nhìn ComStack (Diagnostic Communication Manager) [Tầng 2.3 — BSW Services]](#2-module-dcm-diagnostic-communication-manager-dưới-góc-nhìn-comstack)
+     - [3.1.3 Module PDU Router (PduR) [Tầng 2.3 — BSW Services]](#3-module-pdu-router-pdur)
+     - [3.1.4 Module CAN Transport Protocol (CanTp - ISO 15765-2) [Tầng 2.2 — Transport]](#4-module-can-transport-protocol-cantp---iso-15765-2)
+     - [3.1.5 Module CAN Interface (CanIf) [Tầng 2.2 — ECU Abstraction]](#5-module-can-interface-canif)
+     - [3.1.6 Module MCAL CAN Driver (Can Driver) [Tầng 2.1 — Microcontroller Abstraction]](#6-module-mcal-can-driver-can-driver)
 4. [Luồng Truyền Nhận Dữ Liệu End-to-End Toàn Diện (Sequence Traces)](#4-luồng-truyền-nhận-dữ-liệu-end-to-end-toàn-diện-sequence-traces)
    - [4.0 Cơ Sở Hạ Tầng Khởi Tạo: 4 Nhiệm Vụ Sống Còn Của Các Hàm _Init() Trong ComStack](#40-cơ-sở-hạ-tầng-khởi-tạo-4-nhiệm-vụ-sống-còn-của-các-hàm-_init-trong-comstack)
    - [4.1 Luồng Phát Tín Hiệu (Transmission Path: SWC ──► CAN Bus)](#41-luồng-phát-tín-hiệu-transmission-path-swc--can-bus)
@@ -21,7 +27,17 @@
    - [4.3 Case Study Chuyên Sâu: Bóc Tách Chuỗi Gọi Hàm Thực Tế & Mô Hình Cấu Hình Chuẩn AUTOSAR](#43-case-study-chuyên-sâu-bóc-tách-chuỗi-gọi-hàm-thực-tế--mô-hình-cấu-hình-chuẩn-autosar-end-to-end-traces)
    - [4.4 Thuật Toán Lọc Tín Hiệu (ComFilter) & Cơ Chế Chuyển Chế Độ Truyền (Transmission Mode Selection - TMS)](#44-thuật-toán-lọc-tín-hiệu-comfilter--cơ-chế-chuyển-chế-độ-truyền-transmission-mode-selection---tms)
 5. [Hiện Thực Hóa Trong Dự Án Study_AUTOSAR (Source Code & Toolchain Walkthrough)](#5-hiện-thực-hóa-trong-dự-án-study_autosar-source-code--toolchain-walkthrough)
-6. [Phụ Lục Kỹ Thuật: Giải Mã Vòng Lặp for(;;) Trong StartOS(), Vòng Đời Task OSEK Và Mô Hình Polling vs Preemptive RTOS](#6-phụ-lục-kỹ-thuật-giải-mã-vòng-lặp-for-trong-startos-vòng-đời-task-osek-và-mô-hình-polling-vs-preemptive-rtos)  
+   - [5.1 Cấu Hình Tầng Com [Tầng 2.3 — Service Layer: Communication Services]](#51-cấu-hình-tầng-com-tầng-23--service-layer-communication-services)
+   - [5.2 Cấu Hình Tầng Dcm Dưới Góc Nhìn ComStack [Tầng 2.3 — Service Layer: Diagnostic Communication Services]](#52-cấu-hình-tầng-dcm-dưới-góc-nhìn-comstack-tầng-23--service-layer-diagnostic-communication-services)
+   - [5.3 Cấu Hình Tầng PduR [Tầng 2.3 — Service Layer: Communication Services]](#53-cấu-hình-tầng-pdur-tầng-23--service-layer-communication-services)
+   - [5.4 Cấu Hình Tầng CanTp [Tầng 2.2 / Transport — ISO 15765-2 Protocol Layer]](#54-cấu-hình-tầng-cantp-tầng-22--transport--iso-15765-2-protocol-layer)
+   - [5.5 Cấu Hình Tầng CanIf [Tầng 2.2 — ECU Abstraction Layer]](#55-cấu-hình-tầng-canif-tầng-22--ecu-abstraction-layer)
+   - [5.6 Cấu Hình Tầng MCAL Can [Tầng 2.1 — Microcontroller Abstraction Layer]](#56-cấu-hình-tầng-mcal-can-tầng-21--microcontroller-abstraction-layer)
+   - [5.7 Tóm Lược: So Sánh Quy Trình Cấu Hình Công Nghiệp vs Dự Án Study_AUTOSAR](#57-tóm-lược-so-sánh-quy-trình-cấu-hình-công-nghiệp-vs-dự-án-study_autosar)
+6. [Phụ Lục Kỹ Thuật: Bảng Giải Mã Các Quy Ước Viết Tắt (Shorthand DSL) Trong File Cấu Hình ARXML & Trình Sinh Mã argen](#6-phụ-lục-kỹ-thuật-bảng-giải-mã-các-quy-ước-viết-tắt-shorthand-dsl-trong-file-cấu-hình-arxml--trình-sinh-mã-argen)
+   - [6.1 Tổng Hợp 8 Quy Ước Viết Tắt & Cơ Chế Suy Diễn Mã C Của ComStack](#61-tổng-hợp-8-quy-ước-viết-tắt--cơ-chế-suy-diễn-mã-c-của-comstack)
+   - [6.2 Chi Tiết Các Case Study Điển Hình Về Viết Tắt Kỹ Thuật](#62-chi-tiết-các-case-study-điển-hình-về-viết-tắt-kỹ-thuật)
+   - [6.3 Hiện Tượng "Dư Thừa Cấu Hình ARXML": Đặc Sản Kinh Điển Trong Công Nghiệp Ô Tô Thực Tế](#63-hiện-tượng-dư-thừa-cấu-hình-arxml-đặc-sản-kinh-điển-trong-công-nghiệp-ô-tô-thực-tế)
 
 ---
 
@@ -1160,8 +1176,8 @@ KIẾN TRÚC 4 TẦNG AUTOSAR              DÒNG CHẢY DỮ LIỆU & ĐƠN VỊ
                  │ Com_SendSignal() / Com_SendSignalGroup()
 ┌────────────────▼────────────────┐
 │ 3. BASIC SOFTWARE (BSW)         │ ──► [I-PDU, N-PDU, L-PDU] Quá trình biến đổi cốt lõi:
-│    ┌─────────────────────────┐  │     • Services Layer (COM): Pack Signal thành I-PDU
-│    │ Services Layer (COM)    │  │     • Routing (PduR): Điều hướng I-PDU nguyên khối
+│    ┌─────────────────────────┐  │     • Services Layer (COM/DCM): Pack Signal thành I-PDU (COM) / SDU chẩn đoán (DCM)
+│    │ Services Layer (COM/DCM)│  │     • Routing (PduR): Điều hướng I-PDU / SDU nguyên khối
 │    ├─────────────────────────┤  │     • Transport (CanTp): Phân mảnh thành N-PDU (nếu > 8B)
 │    │ ECU Abstraction (CanIf) │  │     • ECU Abstraction (CanIf): Đóng thành L-PDU (gán CAN ID)
 │    ├─────────────────────────┤  │     • MCAL (Can Driver): Ghi L-PDU vào Mailbox thanh ghi
@@ -1241,7 +1257,7 @@ ComStack là một pipeline xử lý 2 chiều đối xứng:
 
 ##### B. Ngăn Xếp Dùng Chung Cho Mọi Loại Bus (Com = Communication)
 Chữ **Com** đại diện cho **Communication** tổng quát, không phải viết tắt của CAN. 
-Trong kiến trúc AUTOSAR, các module tầng trên (`COM`, `PduR`) được dùng chung cho toàn bộ xe. Xuống tầng dưới, dữ liệu mới rẽ nhánh sang giao thức vật lý tương ứng:
+Trong kiến trúc AUTOSAR, các module tầng trên (`COM`, `DCM`, `PduR`) được dùng chung cho toàn bộ xe. Xuống tầng dưới, dữ liệu mới rẽ nhánh sang giao thức vật lý tương ứng:
 
 ```text
                      [ TẦNG APPLICATION (SWCs) ]
@@ -1249,9 +1265,10 @@ Trong kiến trúc AUTOSAR, các module tầng trên (`COM`, `PduR`) được d�
                        [ TẦNG RTE (API VFB) ]
                                   │
      ┌────────────────────────────────────────────────────────┐
-     │ TẦNG DÙNG CHUNG (BSW Services):                         │
-     │   • COM   (Đóng/bóc tách Signal của toàn xe)           │
-     │   • PduR  (Định tuyến PDU sang các bus đích)           │
+     │ TẦNG DÙNG CHUNG (BSW Services - Layer 2.3):            │
+     │   • COM   (Đóng/bóc tách Signal vận hành của toàn xe)   │
+     │   • DCM   (Quản lý dịch vụ chẩn đoán UDS/OBD toàn xe)  │
+     │   • PduR  (Định tuyến PDU/SDU sang các bus đích)       │
      └───────────┬────────────────────┬───────────────────────┘
                  │ (Nhánh CAN)        │ (Nhánh LIN)          │ (Nhánh Ethernet)
                  ▼                    ▼                      ▼
@@ -1309,7 +1326,7 @@ ComStack được tổ chức theo cấu trúc phân tầng nghiêm ngặt với
 
 * **Cú pháp tiền tố API:** `Com_*` (Ví dụ: `Com_Init`, `Com_SendSignal`, `Com_ReceiveSignal`, `Com_MainFunction_Tx`).
 * **Định nghĩa:**  
-  Module COM là thành phần dịch vụ truyền thông cao nhất trong tầng BSW (BSW Services Layer), nằm ngay dưới tầng RTE (Runtime Environment). COM là người quản lý toàn bộ các đối tượng dữ liệu mức tín hiệu (Signal) của ứng dụng ô tô và chịu trách nhiệm cầu nối giữa các biến logic của phần mềm ứng dụng với các khối dữ liệu truyền thông mạng (I-PDU).
+  Module COM là một trong hai thành phần dịch vụ truyền thông cao nhất trong tầng BSW (BSW Services Layer — Layer 2.3, song hành đồng tầng cùng Module DCM), nằm ngay dưới tầng RTE (Runtime Environment). COM là người quản lý toàn bộ các đối tượng dữ liệu mức tín hiệu (Signal) của ứng dụng ô tô và chịu trách nhiệm cầu nối giữa các biến logic của phần mềm ứng dụng với các khối dữ liệu truyền thông mạng (I-PDU).
 * **Chi tiết tác dụng & Cơ chế hoạt động:**
   1. **Đóng gói & Bóc tách tín hiệu (Signal Packing & Unpacking):** Chuyển đổi giữa kiểu dữ liệu ứng dụng (boolean, uint8, uint16, float...) và vị trí bit cụ thể trong khung truyền I-PDU. Module COM tự động xử lý độ lệch bit (`BitPosition`), độ dài bit (`BitSize`), quy tắc bù dấu (Sign Extension) và thứ tự byte (Endianness: Big-Endian / Motorola vs Little-Endian / Intel).
   2. **Quản lý chế độ truyền phát (Transmission Modes):**
@@ -1332,7 +1349,83 @@ ComStack được tổ chức theo cấu trúc phân tầng nghiêm ngặt với
 
 ---
 
-#### 2. Module PDU Router (PduR)
+#### 2. Module DCM (Diagnostic Communication Manager) Dưới Góc Nhìn ComStack
+
+* **Cú pháp tiền tố API:** `Dcm_*` (Ví dụ: `Dcm_Init`, `Dcm_ProvideRxBuffer`, `Dcm_RxIndication`, `Dcm_ProvideTxBuffer`, `Dcm_TxConfirmation`, `Dcm_MainFunction`).
+* **Định nghĩa kiến trúc:**  
+  Module DCM là thành phần quản trị dịch vụ chẩn đoán trong tầng BSW Services (Layer 2.3). Dưới góc nhìn kiến trúc truyền thông ComStack, **DCM là "đối tác song sinh" của COM ở tầng trên (The Twin Upper-Layer Consumer)**:
+  * **COM:** Quản trị toàn bộ các luồng dữ liệu tín hiệu điều khiển vận hành xe (Signal-based Periodic/Event Application Streams).
+  * **DCM:** Quản trị toàn bộ các luồng giao thức chẩn đoán yêu cầu/đáp ứng (Protocol-based Diagnostic Request/Response) theo tiêu chuẩn **UDS (ISO 14229)** và **OBD (ISO 15031)** thông qua mạng CAN (ISO 15765-2 DoCAN).
+
+* **Bản chất Giao thức chẩn đoán Yêu Cầu / Đáp Ứng (Diagnostic Request / Response Protocol):**  
+  Khác với COM liên tục phát tín hiệu chu kỳ ra bus, giao thức chẩn đoán (theo tiêu chuẩn quốc tế **UDS ISO 14229** và **OBD ISO 15031**) là tập hợp toàn bộ các **luồng thông tin hỏi - đáp** giữa thiết bị chẩn đoán (Tester) và ECU nhằm truy xuất thông tin nhận dạng xe (số khung VIN, số máy, phiên bản phần mềm), đọc/xóa mã lỗi hệ thống (DTC), đọc dữ liệu cảm biến và kiểm tra cơ cấu chấp hành phục vụ trực tiếp cho mục đích **an toàn chức năng (Functional Safety), kiểm định và bảo dưỡng kỹ thuật**.
+
+* **Giải Mã Kiến Trúc: Vì Sao DCM Phải Cấp Bộ Đệm (Provide Buffer)? CanTp Không Tự Cấp Được À?**
+  Nhiều kỹ sư khi mới học AUTOSAR thường đặt câu hỏi: *"DCM có chức năng chẩn đoán, tại sao CanTp phân mảnh ghép gói lại bắt DCM phải cấp bộ đệm? CanTp tự tạo một mảng bộ nhớ RAM để ghép gói có phải đơn giản hơn không?"*
+  
+  Đây là một quyết định thiết kế kiến trúc kinh điển của AUTOSAR xuất phát từ 3 lý do sống còn:
+  1. **Triết Lý "Zero-Copy" — Bảo Vệ Bộ Nhớ RAM Hạn Hẹp Của Vi Điều Khiển Ô Tô:**
+     * Vi điều khiển nhúng trên ô tô (như ARM Cortex-M3 STM32F107) có tài nguyên RAM cực kỳ đắt đỏ (toàn bộ chip chỉ có **64 Kilobytes RAM** dùng chung cho RTOS, biến ứng dụng, và các ngăn xếp giao tiếp).
+     * Một bản tin chẩn đoán UDS (ví dụ nạp Flash Firmware hoặc đọc dữ liệu snapshot) có thể dài tới **$4095$ Bytes ($4\text{ KB}$)**.
+     * **Kịch bản sai lầm (Nếu CanTp tự cấp bộ đệm):**
+       - CanTp phải khai báo sẵn một mảng tĩnh `uint8 CanTp_RxBuffer[4096]`.
+       - CanTp nhận từng khung tin CAN 8 bytes và lắp ráp đủ 4096 bytes vào `CanTp_RxBuffer`.
+       - Sau khi ghép xong, CanTp gọi `Dcm_RxIndication()`. Lúc này, để giải mã dịch vụ UDS, DCM lại bắt buộc phải khai báo thêm một mảng `uint8 Dcm_RxBuffer[4096]` và thực hiện sao chép bộ nhớ `memcpy(Dcm_RxBuffer, CanTp_RxBuffer, 4096)`.
+       $\longrightarrow$ **Hậu quả:** Hệ thống lãng phí mất **8 KB RAM** (chiếm tới 1/8 tổng RAM của cả vi điều khiển!) chỉ để lưu trữ hai bản sao y hệt nhau của cùng một gói tin! Chưa kể CPU bị nghẽn trong thời gian dài chỉ để sao chép 4096 bytes bộ nhớ.
+     * **Giải pháp Zero-Copy của AUTOSAR:**
+       - DCM là người cuối cùng tiêu thụ và xử lý gói tin, do đó **DCM sở hữu sẵn vùng nhớ đích trong RAM** (`Buffer1[512]` hoặc `4096`).
+       - Khi CanTp vừa bắt được khung đầu tiên (First Frame) và biết tổng độ dài gói tin, CanTp lập tức hỏi DCM qua PduR: *"Này DCM, tôi sắp nhận một bản tin dài 512 bytes, anh đưa con trỏ RAM đích của anh cho tôi!"* (`Dcm_ProvideRxBuffer`).
+       - CanTp nhận từng khung tin tiếp theo (Consecutive Frames) từ bus CAN và **ghi thẳng trực tiếp vào vùng RAM `Buffer1` của DCM**!
+       - Khi byte cuối cùng được nạp xong, CanTp chỉ việc thông báo `Dcm_RxIndication()`. Toàn bộ dữ liệu đã nằm sẵn trên bàn cho DCM giải mã mà **không tốn thêm dù chỉ 1 byte RAM thừa và không tốn 1 chu kỳ CPU nào để sao chép**!
+  2. **Quyền Kiểm Soát Phiên & Trạng Thái Bận (Session & Resource Control):**
+     * CanTp là một giao thức tầng giao vận (Transport Layer), hoàn toàn "mù" về mặt ngữ nghĩa nghiệp vụ (Protocol-Agnostic). CanTp không biết gói tin tới là ai gửi, ECU lúc này có đang bận xử lý tác vụ khác hay không.
+     * DCM là người duy nhất nắm quyền sinh sát về phiên chẩn đoán. DCM biết bộ đệm RAM lúc này có đang bị khóa bởi một request trước đó chưa kịp trả lời hay không.
+     * Nhờ cơ chế CanTp hỏi trước (`Dcm_ProvideRxBuffer`), nếu DCM đang bận hoặc không đủ RAM, DCM trả về ngay mã lỗi `BUFREQ_E_BUSY` hoặc `BUFREQ_E_NOT_OK`.
+     * CanTp nhận tín hiệu từ chối sẽ phát ngay khung điều khiển dòng chảy `FC(Wait)` hoặc `FC(Overflow/Abort)` ra mạng để yêu cầu Tester tạm hoãn. Nếu CanTp tự cấp buffer mù quáng, nó sẽ nhận xong hết 4KB dữ liệu rồi mới phát hiện DCM từ chối, gây lãng phí băng thông bus CAN của toàn xe!
+  3. **Kho Đệm Tập Trung Dùng Chung Cho Đa Giao Thức (Multi-Bus Shared Pool):**
+     * Trong xe hiện đại, gói tin UDS có thể đi vào ECU từ **CAN** (qua `CanTp`), từ **Ethernet** (qua `DoIP`), hoặc từ **LIN** (qua `LinTp`).
+     * Nếu mỗi module TP (`CanTp`, `DoIP`, `LinTp`) tự cấp một bộ đệm 4KB riêng, vi điều khiển sẽ cạn kiệt RAM ngay lập tức.
+     * AUTOSAR quy định toàn bộ các tầng giao vận bên dưới đều dùng chung một kho đệm chẩn đoán tập trung duy nhất đặt tại DCM (`DslBufferList`). Dù bản tin đến từ bus nào thì PduR cũng đều dẫn về xin vùng nhớ tại kho đệm trung tâm này.
+
+* **Chi Tiết 4 Cơ Chế Tương Tác Cốt Lõi Của Phân Hệ DCM DSL Với ComStack:**
+  1. **Quản lý bộ đệm truyền nhận đa khung (TP Dynamic Buffer Management):** 
+     Thực thi cơ chế Zero-Copy thông qua các API phối hợp: `Dcm_ProvideRxBuffer()` (hoặc `Dcm_StartOfReception` & `Dcm_CopyRxData` trên AUTOSAR 4.x) và báo hoàn tất nhận bằng `Dcm_RxIndication()`.
+  2. **Tách biệt kênh truyền vật lý (Physical) và kênh chức năng (Functional):**
+     * **Physical Addressing (P2P - Point-to-Point):** Bản tin gửi đích danh tới một ECU cụ thể (ví dụ ID `0x731` cho STM32 Gateway). DCM cấp bộ đệm lớn và hỗ trợ đầy đủ cả Single Frame lẫn Multi-Frame.
+     * **Functional Addressing (Broadcast):** Bản tin gửi đồng loạt tới mọi ECU trên xe (ví dụ ID `0x7DF` để quét mã lỗi toàn xe). Theo quy chuẩn AUTOSAR, Functional Addressing chỉ được phép dùng Single Frame ($\le 7$ bytes dữ liệu) để tránh xung đột bus.
+  3. **Quản trị trạng thái phiên & Bộ đếm thời gian ComStack (Diagnostic Timing & Session Management):**
+     DCM chịu trách nhiệm duy trì và giám sát các tham số thời gian đáp ứng của giao thức:
+     * **$P2_{Server}$ Timeout (ví dụ 50ms):** Thời gian tối đa từ khi DCM nhận trọn vẹn request từ ComStack đến khi phải bắt đầu truyền response.
+     * **$P2^*_{Server}$ Timeout (ví dụ 5000ms):** Nếu thuật toán chẩn đoán cần thêm thời gian xử lý (ví dụ xóa Flash bộ nhớ), DCM tự động kích hoạt gửi gói tin phản hồi chờ pending: `NRC 0x78 (ResponsePending)` thông qua ComStack để tester không bị ngắt kết nối.
+     * **$S3_{Server}$ Timeout (ví dụ 5000ms):** Giám sát bản tin `TesterPresent (0x3E)` từ ComStack; nếu quá thời gian mà tester không gửi tín hiệu giữ phiên, DCM tự động reset về phiên chuẩn (Default Session) và đóng quyền bảo mật.
+  4. **Cơ chế phát bản tin phản hồi (Diagnostic Response Transmission):**
+     Khi dịch vụ chẩn đoán hoàn tất xử lý, DCM chủ động gọi `PduR_DcmTransmit()` để yêu cầu tầng PduR và CanTp phân mảnh phát bản tin ra bus. CanTp sau đó gọi ngược `Dcm_ProvideTxBuffer()` để bốc dữ liệu từ RAM của DCM, và cuối cùng báo xác nhận hoàn tất truyền qua callback `Dcm_TxConfirmation()`.
+
+* **Mục Đích Thiết Kế Kiến Trúc:**
+  * **Phân định ranh giới rạch ròi giữa Ứng dụng & Chẩn đoán:** Giữ cho module COM hoàn toàn tinh gọn, chỉ tập trung vào tín hiệu xe, không bị phình to bởi hàng trăm quy tắc phức tạp của tiêu chuẩn chẩn đoán UDS (ISO 14229).
+  * **Bảo vệ an toàn an ninh mạng xe hơi (Cybersecurity & Safety):** Phân hệ chẩn đoán DCM kiểm soát quyền can thiệp vào bộ nhớ ECU (SecurityAccess Seed & Key, RoutineControl). Việc cách ly luồng DCM qua CanTp/PduR giúp ngăn chặn các truy cập trái phép làm gián đoạn luồng truyền thông tín hiệu điều khiển vận hành của COM.
+
+* **Bảng So Sánh: COM vs DCM — Hai Gương Mặt Đại Diện Của Tầng BSW Services:**
+
+  | Tiêu chí | Module COM (AUTOSAR COM) | Module DCM (Diagnostic Communication Manager) |
+  | :--- | :--- | :--- |
+  | **Vị trí tầng kiến trúc** | Tầng BSW Services (Layer 2.3) | Tầng BSW Services (Layer 2.3) |
+  | **Đối tượng phục vụ** | Tầng Ứng dụng điều khiển xe (Application SWCs qua RTE). | Thiết bị chẩn đoán / Kỹ thuật viên (Diagnostic Tester qua cổng OBD). |
+  | **Đơn vị dữ liệu** | Tín hiệu logic (Signal, Signal Group) đóng trong I-PDU. | Bản tin giao thức UDS nguyên khối (Request/Response Diagnostic SDU). |
+  | **Độ dài bản tin** | Cố định ngắn ($\le 8$ Bytes trên CAN, $\le 64$ Bytes trên CAN-FD). | Chiều dài biến thiên, hỗ trợ bản tin cực dài (lên tới 4095 Bytes nhờ CanTp). |
+  | **Cơ chế truyền tầng dưới** | Đi trực tiếp xuống `CanIf` thông qua `PduR` (Direct Fast-path). | Bắt buộc đi qua tầng vận chuyển `CanTp` thông qua `PduR` (TP Segmented Path). |
+  | **Cơ chế cấp phát bộ đệm** | Bộ đệm I-PDU tĩnh cố định cấu hình sẵn trong RAM. | Cấp phát động theo phiên từ danh sách vùng đệm RAM chẩn đoán (`BufferList`). |
+  | **Chế độ phát** | Chu kỳ (Periodic), Tức thì (Direct/Event), Hỗn hợp (Mixed). | Yêu cầu - Đáp ứng (Request - Response Client/Server Model). |
+
+* **Danh mục API chuẩn quy định:**
+  * *Khởi tạo & Quản trị:* `Dcm_Init()`, `Dcm_GetVersionInfo()`, `Dcm_MainFunction()`.
+  * *Giao tiếp tiếp nhận ComStack (Rx Path):* `Dcm_ProvideRxBuffer()` (chuẩn cổ điển / ArcCore) hoặc `Dcm_StartOfReception()` & `Dcm_CopyRxData()` (chuẩn AUTOSAR 4.x), `Dcm_RxIndication()`.
+  * *Giao tiếp truyền phát ComStack (Tx Path):* `Dcm_ProvideTxBuffer()` hoặc `Dcm_CopyTxData()`, `Dcm_TxConfirmation()`.
+  * *Tương tác với tầng ứng dụng SWC / Quản lý lỗi DEM:* `Dcm_GetSesCtrlType()`, `Dcm_GetSecurityLevel()`, `Dcm_ResetToDefaultSession()`.
+
+---
+
+#### 3. Module PDU Router (PduR)
 
 * **Cú pháp tiền tố API:** `PduR_*` (Ví dụ: `PduR_Init`, `PduR_ComTransmit`, `PduR_CanIfRxIndication`, `PduR_CanTpRxIndication`).
 * **Định nghĩa:**  
@@ -1345,46 +1438,63 @@ ComStack được tổ chức theo cấu trúc phân tầng nghiêm ngặt với
   3. **Hỗ trợ Đa kênh truyền (Multicast 1:N):** Cho phép một PDU từ tầng trên (ví dụ từ COM) được sao chép và phát đồng thời ra nhiều bus vật lý khác nhau (ví dụ: vừa gọi `CanIf_Transmit`, vừa gọi `LinIf_Transmit`).
   4. **Cầu nối mạng mức PDU (Gateway Routing):** PduR có khả năng nhận dữ liệu từ một bus (ví dụ: CAN Interface của mạng Body) và chuyển tiếp ngay lập tức sang một bus khác (ví dụ: CAN Interface của mạng Powertrain) mà không cần bóc tách dữ liệu lên tầng COM hay Ứng dụng.
 
-##### Sơ Đồ Phân Nhánh Định Tuyến PduR (PduR Routing Fork Architecture):
+##### Sơ Đồ Phân Nhánh Định Tuyến PduR & Ranh Giới Hội Tụ Tầng Ứng Dụng (PduR Routing Fork Architecture):
 
 ```
-                                  [ MẠNG CAN BUS ]
-                                         │
-                                         ▼
-                               [ MCAL Can Driver ]
-                                         │
-                                         ▼
-                            [ CAN Interface (CanIf) ]
-                                         │
-                                         ▼
-                      ┌──────────────────────────────────────┐
-                      │    PDU ROUTER (PduR) ROUTING FORK    │
-                      └──────────────────┬───────────────────┘
-                                         │
-             ┌───────────────────────────┴───────────────────────────┐
-             │ [NHÁNH 1: PDU DỮ LIỆU TÍN HIỆU]                       │ [NHÁNH 2: PDU CHẨN ĐOÁN & GÓI DÀI]
-             │ Chiều dài payload: <= 8B (CAN) / <= 64B (CAN-FD)      │ Chiều dài payload: > 8B (lên tới 4095B / MBs)
-             │ Gói tin kích thước cố định, phát chu kỳ / sự kiện     │ Bản tin UDS ISO 14229, nạp Bootloader, DID lớn
-             │ Tuyến định tuyến: Zero-Copy trực tiếp sang COM        │ Bắt buộc phải qua Transport Protocol (CanTp)
-             │                                                       │
-             ▼                                                       ▼
-      [ Module COM ]                                          [ Module CanTp ]
-   (Signal Packing / Unpacking,                            (ISO 15765-2 DoCAN State Machine:
-    Deadlines, Filtering, TMS)                             SF, FF, FC, CF Segmentation & Reassembly)
-             │                                                       │
-             ▼                                                       ▼
-    [ Tầng RTE (VFB) ]                                        [ PDU ROUTER (PduR) ]
-  (Rte_Read / Rte_Write)                                   (Chuyển tiếp buffer ghép hoàn chỉnh)
-             │                                                       │
-             ▼                                                       ▼
- [ APPLICATION SWC ]                                          [ Module DCM ]
-(BMS, VCU, BCM, Cluster)                                  (Diagnostic Communication Manager:
-                                                           UDS Services 0x22, 0x2E, 0x34, 0x36)
+========================================================================================================================
+[ TẦNG ỨNG DỤNG ]                                            [ APPLICATION SWCs ]
+(Application Layer)                           (BMS, VCU, BCM, Đồng Hồ Táp-lô Cluster/Gauge...)
+========================================================================================================================
+                                                    ▲ (Tín hiệu vận hành xe)          ▲ (Dịch vụ DID / Routine / IO Control)
+                                                    │ (Sender / Receiver Interface)   │ (Client / Server Interface)
+====================================================┼=================================┼=================================
+[ TẦNG RUNTIME ENVIRONMENT ]                        │      TẦNG RTE (VFB RUNTIME)     │
+(RTE Layer)                                         │                                 │
+====================================================┼=================================┼=================================
+                                                    │                                 │ 
+[ TẦNG DỊCH VỤ BSW ]                                ▼                                 ▼            ┌───────────────────┐
+(Service Layer)                              ┌──────────────┐                 ┌──────────────┐     │  Module DEM / NvM │
+* COM & DCM NẰM ĐỒNG TẦNG NGANG HÀNG!        │  Module COM  │                 │  Module DCM  │────►│ (Quản trị & Lưu   │
+                                             └──────┬───────┘                 └──────┬───────┘     │  Mã Lỗi DTC Flash)│
+====================================================┼================================┼=============└───────────────────┘
+                                                    │ (I-PDU Tín hiệu <= 8B / <= 64B)│ (SDU Chẩn đoán UDS > 8B)
+[ TẦNG ĐỊNH TUYẾN ]                                 │                                │
+(PduR Layer)                                        ▼                                ▼
+                       ┌─────────────────────────────────────────────────────────────────────────────┐
+                       │                        PDU ROUTER (PduR) DISPATCHER                         │
+                       └────────────────────────────┬────────────────────────────────┬───────────────┘
+                                                    │ [TUYẾN 1: Fast-Path Trực Tiếp] │ [TUYẾN 2: Transport Protocol]
+====================================================┼================================┼==================================
+[ TẦNG GIAO VẬN & TRỪU TƯỢNG ECU ]                  │                                ▼
+(Transport & ECU Abstraction Layer)                 │                     ┌──────────────────────┐
+                                                    │                     │    Module CanTp      │
+                                                    │                     │ (ISO 15765-2 DoCAN:  │
+                                                    │                     │  Phân mảnh/Ghép gói) │
+                                                    │                     └──────────┬───────────┘
+                                                    │                                │ (CanTp N-PDU SF/FF/CF/FC)
+                                                    ▼                                ▼
+                       ┌─────────────────────────────────────────────────────────────────────────────┐
+                       │                            CAN INTERFACE (CanIf)                            │
+                       │             (Lọc phần mềm, gán HOH/HRH/HTH, điều phối I-PDU/N-PDU)          │
+                       └─────────────────────────────────────────────┬───────────────────────────────┘
+=====================================================================┼==================================================
+[ TẦNG VI ĐIỀU KHIỂN & PHẦN CỨNG ]                                   ▼
+(MCAL Driver & Hardware Bus)                               [ MCAL Can Driver ]
+                                                                     │
+                                                                     ▼
+                                                        [ CAN CONTROLLER & PHYSICAL BUS ]
+========================================================================================================================
 ```
 
-> 💡 **Bản chất kỹ nghệ của nhánh rẽ PduR (Routing Fork Rationale):**
-> - **Nhánh 1 (Tín hiệu thời gian thực $\to$ `COM`):** Vì các tín hiệu điều khiển xe hơi (mô-men xoắn, góc lái, dung lượng pin) có tần số gửi rất cao (10ms – 100ms) và kích thước nhỏ ($\le 8$ Bytes), chúng được PduR định tuyến thẳng lên `COM` với độ trễ gần như bằng 0 (Zero-Copy), hoàn toàn không đi qua tầng vận chuyển phân mảnh để tiết kiệm tài nguyên vi điều khiển.
-> - **Nhánh 2 (Chẩn đoán & Dữ liệu lớn $\to$ `CanTp`):** Ngược lại, các bản tin chẩn đoán UDS (ví dụ dịch vụ đọc dữ liệu $0x22$ đọc chuỗi số VIN 17 ký tự, hoặc $0x36$ nạp gói phần mềm Flash Driver vài kilobyte) vượt quá dung lượng 8 bytes của khung CAN. PduR bắt buộc phải định tuyến sang `CanTp` để thực thi chia nhỏ và ghép gói theo chuẩn **ISO 15765-2** trước khi bàn giao khối nhớ hoàn chỉnh cho `DCM`.
+> 💡 **Bản chất kỹ nghệ của nhánh rẽ PduR & Ranh giới hội tụ tầng trên:**
+> - **Vị trí đồng tầng của COM và DCM (Service Layer Peers):** Cả `COM` và `DCM` đều thuộc **Tầng Dịch vụ (Service Layer)** của kiến trúc BSW AUTOSAR. PduR đóng vai trò là xương sống định tuyến dọc kết nối hai module này với tầng truyền thông bên dưới.
+> - **Tuyến 1 (Tín hiệu thời gian thực: `SWC` $\longleftrightarrow$ `RTE` $\longleftrightarrow$ `COM` $\longleftrightarrow$ `PduR` $\longleftrightarrow$ `CanIf`):** Các tín hiệu điều khiển vận hành xe (mô-men xoắn, góc lái, dung lượng pin) có tần số gửi rất cao (10ms – 100ms) và kích thước nhỏ gọn ($\le 8$ Bytes trên Classic CAN hoặc $\le 64$ Bytes trên CAN FD), được PduR định tuyến thẳng trực tiếp sang `CanIf` với độ trễ tối thiểu (Fast-path Zero-Copy), sau đó giải nén thành Signal đưa lên `RTE` để các runnable của `Application SWC` đọc/ghi.
+> - **Tuyến 2 (Chẩn đoán & Gói tin đa khung: `SWC / DEM` $\longleftrightarrow$ `DCM` $\longleftrightarrow$ `PduR` $\longleftrightarrow$ `CanTp` $\longleftrightarrow$ `CanIf`):**
+>   - Gói tin chẩn đoán UDS (dài tới 4095 Bytes) bắt buộc phải qua `CanTp` để lắp ghép/phân mảnh đa khung (ISO 15765-2: Single Frame, First Frame, Flow Control, Consecutive Frame). PduR đóng vai trò trung chuyển bộ đệm và điều phối giữa CanTp và `DCM`.
+>   - **Ranh giới tương tác sau DCM:** Luồng chẩn đoán **KHÔNG DỪNG LẠI Ở DCM**!
+>     - **Nếu là Dịch Vụ Nghiệp Vụ Ứng Dụng (DID 0x22/0x2E, IO Control 0x2F, Routine 0x31):** DCM gọi qua **Tầng RTE (Client-Server Interface)** để kích hoạt trực tiếp các Port/Runnable trong **Application SWC** (ví dụ đọc góc kim đồng hồ từ SWC Cluster/Gauge, kiểm tra áp suất lốp từ SWC TPMS).
+>     - **Nếu là Dịch Vụ Mã Lỗi Hệ Thống (DTC 0x19/0x14):** DCM chuyển giao tiếp sang module **DEM (Diagnostic Event Manager)** để truy xuất bộ nhớ lỗi lưu trong Flash/EEPROM qua MemStack (`NvM`).
+>     - **Nếu là Dịch Vụ Quản Trị Phiên/Bảo Mật (Session 0x10, SecurityAccess 0x27, TesterPresent 0x3E):** DCM xử lý nội bộ ngay trong tầng BSW.
 * **Mục đích thiết kế kiến trúc:**
   * **Tách rời tầng dịch vụ khỏi công nghệ bus vật lý:** Đảm bảo module COM hay DCM không cần biết dữ liệu của chúng sẽ được chuyển tải qua mạng CAN, LIN, FlexRay hay Ethernet.
   * **Linh hoạt thay đổi cấu trúc liên kết mạng (Network Topology):** Khi xe nâng cấp kiến trúc mạng (ví dụ chuyển một cụm cảm biến từ LIN sang CAN), kỹ sư chỉ cần cấu hình lại bảng định tuyến tại PduR mà không phải sửa đổi bất kỳ dòng code nào ở tầng ứng dụng và module COM.
@@ -1396,7 +1506,7 @@ ComStack được tổ chức theo cấu trúc phân tầng nghiêm ngặt với
 
 ---
 
-#### 3. Module CAN Transport Protocol (CanTp - ISO 15765-2)
+#### 4. Module CAN Transport Protocol (CanTp - ISO 15765-2)
 
 * **Cú pháp tiền tố API:** `CanTp_*` (Ví dụ: `CanTp_Init`, `CanTp_Transmit`, `CanTp_RxIndication`, `CanTp_MainFunction`).
 * **Định nghĩa:**  
@@ -1421,7 +1531,7 @@ ComStack được tổ chức theo cấu trúc phân tầng nghiêm ngặt với
 
 ---
 
-#### 4. Module CAN Interface (CanIf)
+#### 5. Module CAN Interface (CanIf)
 
 * **Cú pháp tiền tố API:** `CanIf_*` (Ví dụ: `CanIf_Init`, `CanIf_Transmit`, `CanIf_RxIndication`, `CanIf_TxConfirmation`, `CanIf_SetControllerMode`).
 * **Định nghĩa:**  
@@ -1506,7 +1616,7 @@ ComStack được tổ chức theo cấu trúc phân tầng nghiêm ngặt với
 
 ---
 
-#### 5. Module MCAL CAN Driver (Can Driver)
+#### 6. Module MCAL CAN Driver (Can Driver)
 
 * **Cú pháp tiền tố API:** `Can_*` (Ví dụ: `Can_Init`, `Can_Write`, `Can_SetControllerMode`, `Can_MainFunction_Write`, `Can_RxIsr`).
 * **Định nghĩa:**  
@@ -1750,7 +1860,7 @@ Mục này trình bày hai case study chuyên sâu chuẩn mực dành cho kỹ 
 
 ---
 
-#### 4.3.1 Luồng Nhận Tín Hiệu Thực Tế Trong Codebase (Hardware ──► MCAL ──► CanIf ──► PduR ──► Com ──► SWC Gauge)
+#### 4.3.1 Luồng Nhận Tín Hiệu & Chẩn Đoán Thực Tế Trong Codebase (Phân Nhánh Song Song: Nhánh COM ──► SWC Gauge & Nhánh CanTp ──► DCM ──► RTE/SWC)
 
 > 🎯 **ĐẶC TẢ TARGET BUILD XÁC THỰC (TARGET BUILD SPECIFICATION):**  
 > • **Target Build Áp Dụng:** `BOARD="stm32f107vc"`, `RELEASE="ascore"` (Vi điều khiển STM32F107VC ARM Cortex-M3 Physical Target).  
@@ -1783,7 +1893,7 @@ Mục này trình bày hai case study chuyên sâu chuẩn mực dành cho kỹ 
 
 ```
 ┌────────────────────────────────────────────────────────────────────────────────────────────────┐
-│  🌐 CHUỖI GỌI HÀM COMSTACK TRUYỀN THỐNG: TỪ CHÂN PHẦN CỨNG ĐẾN APPLICATION SWC GAUGE / OSEKNM  │
+│  🌐 CHUỖI GỌI HÀM COMSTACK TRUYỀN THỐNG: TỪ PHẦN CỨNG ĐẾN COM/SWC GAUGE & CANTP/DCM/RTE        │
 │  [TARGET XÁC THỰC: BOARD="stm32f107vc", RELEASE="ascore" (Silicon bxCAN FIFO0 IRQ 20)]         │
 └────────────────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -1882,6 +1992,7 @@ Mục này trình bày hai case study chuyên sâu chuẩn mực dành cho kỹ 
           │
           ▼
 6. [TẦNG 5: ĐỊNH TUYẾN PDU ROUTER (PduR) & TẦNG TRUYỀN THÔNG COM / DCM (ĐA NHÁNH DIRECT & CANTP)]
+   > 📌 **Ghi chú kiến trúc:** Cả **COM** và **DCM** đều thuộc **Tầng 2.3: Service Layer** (Upper Modules của PduR). CanIf phân luồng: khung đơn thông thường đi qua PduR lên COM, khung tin đa khung chuyển sang CanTp lắp ghép rồi qua PduR chuyển tiếp lên DCM.
 
    ┌────────────────────────────────────────────────────────────────────────────────────────┐
    │ 🚗 NHÁNH 1: ĐỊNH TUYẾN TÍN HIỆU COM TIÊU CHUẨN (CANIF ──► PDUR ──► COM <= 8 BYTES)      │
@@ -1957,7 +2068,20 @@ Mục này trình bày hai case study chuyên sâu chuẩn mực dành cho kỹ 
      4. Kích hoạt module chẩn đoán DCM ([as/com/as.infrastructure/communication/PduR/PduR_Routing.c: L116-L120](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR_Routing.c#L116-L120)):
         Dcm_RxIndication(destination->DestPduId, *PduInfo->SduDataPtr);
         ──► Gói tin chẩn đoán UDS nguyên vẹn chính thức trao tay cho Diagnostic Communication Manager (DCM) thực thi!
-   • 🏁 **Đích đến của Nhánh Chẩn đoán (Diagnostic Data Path):** Khác với Nhánh 1 tiếp tục chuyển dữ liệu lên Application SWC, **Nhánh 2 hoàn tất ngay tại tầng BSW Chẩn đoán (DCM / DEM)** để thực thi logic dịch vụ UDS (trả lời phản hồi chẩn đoán UDS Response qua CanTp Tx) và **không chảy xuống Tầng 6 (SWC Gauge)**.
+   • 🏁 **Đích Đến Thực Tế Của Nhánh Chẩn Đoán (Diagnostic Data Path Destination):**
+     * **Tại sao Nhánh 2 không chảy xuống Tầng 6 (SWC Gauge) trong ví dụ này?**
+       Bởi vì trong kịch bản xe chạy bình thường này, linh kiện táp-lô (`Swc_Gauge`) tiêu thụ tín hiệu vận tốc chu kỳ thời gian thực ($10\text{ms}$) do module `COM` giải nén từ Nhánh 1. Khung tin Nhánh 2 là bản tin chẩn đoán UDS riêng biệt từ máy Tester (CAN ID `0x731`).
+     * **Luồng chẩn đoán Nhánh 2 sau khi vào DCM sẽ đi đâu tiếp? Có dừng lại ở DCM không?**
+       Luồng chẩn đoán **KHÔNG DỪNG LẠI Ở DCM**, mà được DCM phân luồng theo 3 hướng nghiệp vụ kiến trúc:
+       1. **Hướng 1 — Gọi lên Tầng Ứng Dụng (APPLICATION SWC qua RTE):**
+          Nếu bản tin chẩn đoán là các dịch vụ dữ liệu ứng dụng:
+          - `0x22 ReadDataByIdentifier (DID)` / `0x2E WriteDataByIdentifier`: Ví dụ Tester yêu cầu đọc góc quay kim đồng hồ táp-lô, đọc trạng thái pin BMS, đọc vị trí bàn đạp ga $\longrightarrow$ DCM thông qua **Tầng RTE (Client-Server Interface)** gọi thẳng vào runnable của **Application SWC** tương ứng để lấy dữ liệu thực tế!
+          - `0x2F InputOutputControlByIdentifier`: Tester cưỡng bức điều khiển cơ cấu chấp hành (bật còi, nháy đèn táp-lô, test kim đồng hồ quay $180^\circ$) $\longrightarrow$ DCM gọi qua RTE để SWC thực thi.
+          - `0x31 RoutineControl`: Kích hoạt routine tự kiểm tra cảm biến hoặc cân chỉnh hệ thống trong Application SWC.
+       2. **Hướng 2 — Chuyển giao sang Tầng Quản Lý Lỗi (DEM & NvM):**
+          Nếu là dịch vụ mã lỗi `0x19 ReadDTCInformation` hoặc `0x14 ClearDiagnosticInformation`, DCM chuyển tiếp sang module **DEM (Diagnostic Event Manager)** để truy xuất bộ nhớ lỗi lưu trong Flash/EEPROM qua MemStack (`NvM`).
+       3. **Hướng 3 — Xử lý nội bộ trong BSW (Internal BSW Handling):**
+          Các dịch vụ quản trị phiên (`0x10 DiagnosticSessionControl`), kiểm tra bảo mật (`0x27 SecurityAccess Seed & Key`), hoặc giữ phiên (`0x3E TesterPresent`) được DCM xử lý trực tiếp ngay trong BSW, sau đó gọi `PduR_DcmTransmit()` để phát phản hồi UDS Response ngược lại ra mạng CAN cho Tester.
           │ (Luồng dữ liệu tín hiệu từ Nhánh 1 của COM)
           ▼
 7. [TẦNG 6: TẦNG ỨNG DỤNG CẤP CAO NHẤT (APPLICATION SWC GAUGE)]
@@ -2512,81 +2636,436 @@ Mỗi chế độ phát xác định:
 
 ---
 
-### 5.1 Cấu Hình Tầng MCAL Can [Tầng 2.1 — Microcontroller Abstraction Layer]
+### 5.1 Cấu Hình Tầng Com [Tầng 2.3 — Service Layer: Communication Services]
 
-#### 1. Định nghĩa trong file cấu hình [autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L115-L125):
+> 📌 **Vị trí kiến trúc:** Module **`Com` (AUTOSAR COM)** nằm ở đỉnh của ComStack tại **Tầng 2.3: Service Layer** (ngay dưới tầng RTE / VFB, song hành đồng tầng cùng Module `Dcm`).  
+> **Nhiệm vụ cốt lõi:** Quản lý vòng đời dữ liệu mức tín hiệu (Signal-level). Com chịu trách nhiệm đóng gói (packing) nhiều tín hiệu `ComSignal` (từ RTE/SWC) thành các khung bản tin `ComIPdu` trước khi gửi xuống `PduR`, và bóc tách (unpacking) các I-PDU nhận được từ `PduR` thành từng tín hiệu cụ thể để RTE chuyển giao tới Application SWC. Ngoài ra, Com chịu trách nhiệm lọc tín hiệu (Filter), quản lý chế độ truyền (TMS: Periodic / Mixed / Direct), và giám sát mất tín hiệu (Deadline Monitoring / Timeout).
+
+#### 1. Định nghĩa trong file cấu hình ARXML chuẩn ([STM32F107 Target: Dòng 171-208](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml#L171-L208) / [QEMU Target: Dòng 139-176](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L139-L176)) *(Template nguồn: [common/autosar.arxml: Dòng 352-387](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L352-L387))*:
 ```xml
-<Can>
-    <General DevelopmentErrorDetection="ON" VersionInfoApi="ON" />
-    <ControllerList Max="TBD">
-        <!-- Cấu hình bộ điều khiển CAN 0: Baudrate 250kbps, Seg1 = 12 Tq, Seg2 = 1 Tq -->
-        <Controller Baudrate="250" Comment="*" Name="CAN_CTRL_0" Seg1="12" Seg2="1">
-            <HohList Max="TBD">
-                <!-- Mailbox nhận phần cứng (HRH): Standard ID 11-bit, kiểu Basic CAN -->
-                <Hoh Comment="*" HohType="BASIC" IdentifierType="STANDARD" Name="Can0Hrh" ObjectType="RECEIVE" />
-                <!-- Mailbox truyền phần cứng (HTH): Standard ID 11-bit, kiểu Basic CAN -->
-                <Hoh Comment="*" HohType="BASIC" IdentifierType="STANDARD" Name="Can0Hth" ObjectType="TRANSMIT" />
-            </HohList>
-        </Controller>
-    </ControllerList>
-</Can>
+<Com>
+    <General DevelopmentErrorDetection="ON" VersionInfoApi="OFF" />
+    <PduGroupList Max="TBD">
+        <PduGroup Name="PduGroup1" />
+    </PduGroupList>
+    <IPduList Max="TBD">
+        <!-- I-PDU TRUYỀN: TxMsgTime phát chu kỳ 1000ms (TimePeriodFactor=100 x 10ms task) -->
+        <IPdu Callout="NULL" DefaultValueForUnusedArea="0x5A" Direction="SEND" 
+              Name="MsgTime" NumberOfRepetions="0" PduGroupRef="PduGroup1" 
+              PduRef="TxMsgTime" PduSize="8" RxSignalProcessing="DEFERRED" 
+              TimePeriodFactor="100" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+            <GroupSignalList Max="TBD">
+                <!-- GroupSignal SystemTime gồm 6 tín hiệu thành phần: year, month, day, hour, min, sec -->
+                <GroupSignal Endianess="OPAQUE" Name="SystemTime" Size="56" StartBit="0">
+                    <SignalList Max="TBD">
+                        <Signal Endianess="BIG_ENDIAN" InitialValue="2013" Name="year" Size="16" StartBit="7" Type="uint16" />
+                        <Signal Endianess="BIG_ENDIAN" InitialValue="12" Name="month" Size="8" StartBit="23" Type="uint8" />
+                        <Signal Endianess="BIG_ENDIAN" InitialValue="15" Name="day" Size="8" StartBit="31" Type="uint8" />
+                        <Signal Endianess="BIG_ENDIAN" InitialValue="19" Name="hour" Size="8" StartBit="39" Type="uint8" />
+                        <Signal Endianess="BIG_ENDIAN" InitialValue="49" Name="minute" Size="8" StartBit="47" Type="uint8" />
+                        <Signal Endianess="BIG_ENDIAN" InitialValue="0" Name="second" Size="8" StartBit="55" Type="uint8" />
+                    </SignalList>
+                </GroupSignal>
+            </GroupSignalList>
+        </IPdu>
+        
+        <!-- I-PDU NHẬN: RxMsgAbsInfo nhận từ bus chứa các tín hiệu tốc độ xe và đèn LED -->
+        <IPdu Direction="RECEIVE" Name="AbsInfo" PduGroupRef="PduGroup1" 
+              PduRef="RxMsgAbsInfo" PduSize="8" RxSignalProcessing="DEFERRED" 
+              TimePeriodFactor="10" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+            <SignalList Max="TBD">
+                <Signal Endianess="BIG_ENDIAN" FirstTimeoutFactor="100" InitialValue="0" 
+                        Name="VehicleSpeed" Size="16" StartBit="7" TimeoutFactor="100" Type="uint16" />
+                <Signal Endianess="BIG_ENDIAN" FirstTimeoutFactor="100" InitialValue="0" 
+                        Name="TachoSpeed" Size="16" StartBit="23" TimeoutFactor="100" Type="uint16" />
+            </SignalList>
+        </IPdu>
+    </IPduList>
+</Com>
 ```
 
-#### 2. Mã C sinh ra trong [Can_PBCfg.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Can_PBCfg.c#L24-L67):
-Bộ tạo mã [`GenCan.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCan.py) đọc file XML trên và tự động sinh mảng cấu hình cấu trúc phần cứng:
+#### 2. Mã C sinh ra trong cấu hình thực tế trên đĩa ([Com_PbCfg.c: Dòng 41-527](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Com_PbCfg.c#L41-L527)):
+
 ```c
-/* Cấu hình các đối tượng Mailbox phần cứng (Hardware Object Handles) */
-static const Can_HardwareObjectType CAN_CTRL_0_HOHCfgData[] = {
-    {   /* Can0Hrh - Mailbox Nhận */
-        .CanHandleType    = CAN_ARC_HANDLE_TYPE_BASIC,
-        .CanIdType        = CAN_ID_TYPE_STANDARD,
-        .CanObjectId      = Can0Hrh,
-        .CanObjectType    = CAN_OBJECT_TYPE_RECEIVE,
-        .CanFilterMaskRef = &vCanFilterMask0,
-        .Can_Arc_EOL      = FALSE
+/* Bảng mô tả chi tiết từng tín hiệu (ComSignal) */
+static const ComSignal_type ComSignal[] = {
+    {
+        .ComBitPosition       = 7,
+        .ComBitSize           = 16,
+        .ComHandleId          = COM_SID_VehicleSpeed,
+        .ComSignalEndianess   = COM_BIG_ENDIAN,
+        .ComSignalInitValue   = &VehicleSpeed_InitValue,
+        .ComSignalType        = COM_SIGNAL_TYPE_UINT16,
+        .ComTimeoutFactor     = 100,
+        .ComFirstTimeoutFactor = 100,
+        .Com_Arc_EOL          = FALSE
     },
-    {   /* Can0Hth - Mailbox Truyền */
-        .CanHandleType    = CAN_ARC_HANDLE_TYPE_BASIC,
-        .CanIdType        = CAN_ID_TYPE_STANDARD,
-        .CanObjectId      = Can0Hth,
-        .CanObjectType    = CAN_OBJECT_TYPE_TRANSMIT,
-        .CanFilterMaskRef = &vCanFilterMask0,
-        .Can_Arc_EOL      = TRUE
-    }
+    ...
 };
 
-/* Cấu hình bộ điều khiển phần cứng (CAN Controller Configuration) */
-const Can_ControllerConfigType Can_ControllerCfgData[] = {
-    {
-        .CanControllerId       = CAN_CTRL_0,
-        .CanRxProcessing       = CAN_ARC_PROCESS_TYPE_INTERRUPT,
-        .CanTxProcessing       = CAN_ARC_PROCESS_TYPE_INTERRUPT,
-        .CanBusOffProcessing   = CAN_ARC_PROCESS_TYPE_INTERRUPT,
-        .CanControllerBaudRate = 250, /* 250 kbps */
-        .CanControllerPropSeg  = 0,   /* SJW */
-        .CanControllerSeg1     = 12,  /* Phase Segment 1: 12 Time Quanta */
-        .CanControllerSeg2     = 1,   /* Phase Segment 2: 1 Time Quanta */
-        .Can_Arc_Hoh           = CAN_CTRL_0_HOHCfgData,
-        .Can_Arc_Loopback      = FALSE
-    }
+/* Bảng mô tả các I-PDU (ComIPdu) */
+static const ComIPdu_type ComIPdu[] = {
+    {   /* RxMsgAbsInfo: I-PDU Nhận */
+        .ComIPduCallout         = NULL,
+        .ComIPduDirection       = COM_RECEIVE,
+        .ComIPduHandleId        = PDUR_ID_RxMsgAbsInfo,
+        .ComIPduSignalProcessing = COM_DEFERRED,
+        .ComIPduSize            = 8,
+        .ComIPduDataPtr         = Com_IPduBuffer_RxMsgAbsInfo,
+        .ComIPduSignalRef       = ComIPdu_AbsInfo_ComSignalList,
+        ...
+    },
+    ...
+};
+
+/* Struct gom toàn bộ cấu hình tầng Com */
+const Com_ConfigType ComConfiguration = {
+    .ComConfigurationId = 1,
+    .ComIPdu            = ComIPdu,
+    .ComIPduGroup       = ComIPduGroup,
+    .ComSignal          = ComSignal,
+#if(COM_N_GROUP_SIGNALS > 0)
+    .ComGroupSignal     = ComGroupSignal
+#else
+    .ComGroupSignal     = NULL
+#endif
 };
 ```
 
-#### 3. Cách Driver MCAL ([lm3s/mcal/Can.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/lm3s/mcal/Can.c)) sử dụng để nạp vào thanh ghi chip:
-Khi hàm `Can_Init(&Can_ConfigData)` được hệ điều hành kích hoạt:
-- Driver đọc `CanControllerSeg1 = 12`, `CanControllerSeg2 = 1`, tính toán giá trị `Prescaler` theo tần số xung nhịp hệ thống (ví dụ $16\text{MHz}$ hoặc $50\text{MHz}$) để ghi trực tiếp vào thanh ghi điều khiển thời gian bit của chip CAN (như thanh ghi `CANBIT` trên ARM Cortex-M3 hoặc `CAN_BTR` trên STM32).
-- Khởi tạo ngắt tiếp nhận ngắt truyền (Interrupt driven) qua NVIC.
+#### 3. Các hàm BSW Runtime & Service sử dụng cấu hình `ComConfiguration`:
+
+Struct **`ComConfiguration`** ([`Com_PbCfg.c: Dòng 517-527`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Com_PbCfg.c#L517-L527)) được các hàm dịch vụ giao tiếp cốt lõi sau tiêu thụ tại runtime:
+
+1. **`Com_Init(const Com_ConfigType *config)` ([`Com.c: Dòng 226-270`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com.c#L226-L270)):**
+   * *Nơi gọi:* Được gọi trong chu trình khởi động ECU bởi **`EcuM_AL_DriverInitOne()`** sau khi PduR và CanIf đã sẵn sàng.
+   * *Cơ chế tiêu thụ:* Lưu con trỏ cấu hình toàn cục `ComConfig = config;`, duyệt mảng `ComSignal[]` để nạp các giá trị khởi tạo `ComSignalInitValue` vào các bộ đệm I-PDU `Com_IPduBuffer`, thiết lập các bộ đếm chu kỳ `Com_Arc_TxIPduTimers`, và chuyển trạng thái của module sang `COM_INIT`.
+2. **`Com_SendSignal(Com_SignalIdType SignalId, const void *SignalDataPtr)` ([`Com_Com.c: Dòng 39-70`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Com.c#L39-L70)):**
+   * *Nơi gọi:* Được gọi bởi tầng RTE (thông qua macro/hàm `Rte_Write_<Port>_<Signal>()`) khi Application SWC xuất dữ liệu mới (ví dụ: `BatterySoc`, `year`).
+   * *Cơ chế tiêu thụ:* Tra cứu cấu hình `ComConfig->ComSignal[SignalId]`, gọi `Com_WriteSignalDataToPdu()` để thực hiện bit-packing (dịch bit, áp mặt nạ theo `ComBitPosition`, `ComBitSize`, và Endianess) vào vùng đệm `ComIPduDataPtr` của I-PDU chứa tín hiệu đó. Nếu I-PDU có tín hiệu mang thuộc tính truyền `COM_TRIGGERED`, hàm lập tức nạp số lần lặp và kích hoạt cờ phát xuống PduR.
+3. **`Com_ReceiveSignal(Com_SignalIdType SignalId, void *SignalDataPtr)` ([`Com_Com.c: Dòng 72-96`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Com.c#L72-L96)):**
+   * *Nơi gọi:* Được gọi bởi tầng RTE (thông qua `Rte_Read_<Port>_<Signal>()`) khi Application SWC cần lấy dữ liệu mới nhất (ví dụ: `VehicleSpeed`).
+   * *Cơ chế tiêu thụ:* Tra cứu cấu hình `ComConfig->ComSignal[SignalId]`, đọc dữ liệu từ bộ đệm `Com_IPduBuffer`, đảo byte nếu khác Endianess hệ thống MCU, và sao chép giá trị nguyên bản vào biến con trỏ do SWC cung cấp.
+4. **`Com_RxIndication(PduIdType ComRxPduId, const PduInfoType *PduInfoPtr)` ([`Com_Com.c: Dòng 263-295`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Com.c#L263-L295)):**
+   * *Nơi gọi:* Được kích hoạt bởi `PduR_CanIfRxIndication()` khi một I-PDU vừa được nhận từ mạng CAN và chuyển tiếp qua PDU Router.
+   * *Cơ chế tiêu thụ:* Tra cứu `ComConfig->ComIPdu[ComRxPduId]`, sao chép payload từ `PduInfoPtr->SduDataPtr` vào bộ đệm `ComIPduDataPtr` thông qua `memcpy`, sau đó gọi `Com_RxProcessSignals()` để bóc tách các tín hiệu thành phần và kích hoạt callback báo nhận tín hiệu mới.
+5. **`Com_MainFunctionTx()` & `Com_MainFunctionRx()` ([`Com_Sched.c: Dòng 35-150`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Sched.c#L35-L150)):**
+   * *Nơi gọi:* Được kích hoạt định kỳ bởi Task hệ điều hành OSEK OS (ví dụ `OsPeriodicTask_10ms`).
+   * *Cơ chế tiêu thụ:*
+     * **`Com_MainFunctionTx`:** Duyệt mảng `ComIPdu[]`, đếm ngược bộ đếm chu kỳ `ComTxModeTimePeriodTimer`. Khi timer chạm 0 và thỏa mãn khoảng cách truyền tối thiểu (`ComTxIPduMinimumDelayTimer == 0`), hàm kích hoạt `Com_Internal_TriggerIPduSend()` để gọi `PduR_ComTransmit()` chuyển khung I-PDU sang tầng PduR phát ra bus.
+     * **`Com_MainFunctionRx`:** Duyệt các I-PDU và Signal để đếm ngược bộ đếm thời gian giám sát mất tín hiệu mạng (`ComTimeoutFactor`). Nếu quá hạn không nhận được gói tin mới, hàm kích hoạt hành động xử lý mất tín hiệu theo cấu hình.
 
 ---
 
-### 5.2 Cấu Hình Tầng CanIf [Tầng 2.2 — ECU Abstraction Layer]
+### 5.2 Cấu Hình Tầng Dcm Dưới Góc Nhìn ComStack [Tầng 2.3 — Service Layer: Diagnostic Communication Services]
+
+> 📌 **Vị trí kiến trúc:** Module **`Dcm` (Diagnostic Communication Manager)** nằm đồng tầng cùng Module **`Com`** tại **Tầng 2.3: Service Layer** (ngay dưới tầng RTE / VFB). Trong khi Com quản lý dữ liệu tín hiệu điều khiển vận hành xe, Dcm quản lý toàn bộ các luồng giao thức chẩn đoán dịch vụ (ISO 14229 UDS / ISO 15031 OBD). Cả hai module đều là Upper Modules của tầng PduR.
+
+> [!NOTE]
+> **Ranh Giới Kiến Trúc:** Module DCM gồm 3 phân hệ: **DSL** (Diagnostic Session Layer), **DSD** (Diagnostic Service Dispatcher) và **DSP** (Diagnostic Service Processing). Trong phạm vi của Chuyên Đề 03 (ComStack), mục này chỉ bóc tách cấu hình phân hệ **DSL** — nơi phụ trách toàn bộ giao diện truyền thông kết nối với PduR và CanTp. Toàn bộ logic giải mã dịch vụ UDS chuyên sâu (0x10, 0x22, 0x27, 0x19, v.v.) và quản lý bộ nhớ lỗi DEM được trình bày chi tiết tại [Chuyên Đề 04: Diagnostic UDS & Memory Stack Masterclass](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/04_Diagnostic_UDS_And_Memory_Stack.md).
+
+#### 1. File Cấu Hình Nguồn ARXML (`autosar.arxml`)
+
+Trong file cấu hình trung tâm [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml), cấu hình truyền thông ComStack của module DCM được khai báo trong container `<Dcm>` thông qua `<BufferList>` và `<ProtocolList>`:
+
+```xml
+<Dcm>
+    <!-- Khai báo danh sách các vùng đệm RAM chẩn đoán (Diagnostic Buffers) -->
+    <BufferList Max="TBD">
+        <Buffer Comment="*" Name="Buffer1" Size="512" /> <!-- Bộ đệm nhận Rx -->
+        <Buffer Comment="*" Name="Buffer2" Size="512" /> <!-- Bộ đệm phát Tx -->
+    </BufferList>
+
+    <!-- Khai báo giao thức chẩn đoán & ánh xạ kênh truyền ComStack -->
+    <ProtocolList Max="TBD">
+        <Protocol Comment="*" Name="P2P" ProtocolID="UDS_ON_CAN" 
+                  RxBufferRef="Buffer1" TxBufferRef="Buffer2" 
+                  ServiceTableRef="ServiceTableP2P" TimingLimitRef="Timing1" TransmissionType="TYPE_1">
+            <ConnectionList Max="TBD">
+                <Connection Comment="*" Name="Connection1">
+                    <RxChannelList Max="TBD">
+                        <!-- Kênh tiếp nhận: Ánh xạ tới PDU 'RxDiagP2P' đã khai báo trong PduR & CanTp -->
+                        <RxChannel AddressingType="PHYSICAL" Comment="*" Name="RxChannel1" PduRef="RxDiagP2P" />
+                    </RxChannelList>
+                    <!-- Kênh truyền phát: Ánh xạ tới PDU 'TxDiagP2P' đã khai báo trong PduR & CanTp -->
+                    <TxChannel Comment="*" Name="TxChannel2" PduRef="TxDiagP2P" />
+                </Connection>
+            </ConnectionList>
+        </Protocol>
+    </ProtocolList>
+</Dcm>
+```
+
+##### Phân Tích Mắt Xích Định Tuyến Giữa Các Module:
+Hãy chú ý tính liên kết xuyên suốt (Cross-Module Chaining) của hai PDU chẩn đoán `RxDiagP2P` và `TxDiagP2P` trên toàn bộ ngăn xếp:
+* **MCAL Can & CanIf:** Bộ lọc ID `0x731` (Rx) và HTH ID `0x732` (Tx).
+* **CanTp:** Khai báo kênh vận chuyển `RxNSdu` (`RxDiagP2P`) và `TxNSdu` (`TxDiagP2P`) với bộ định thời `Nas`, `Nar`, `Nbs`, `Ncr`.
+* **PduR:** Định tuyến trung chuyển 2 chiều:
+  * Chiều Rx: Nguồn `CanTp` (`RxDiagP2P`) $\longrightarrow$ Đích `Dcm` (`RxDiagP2P`).
+  * Chiều Tx: Nguồn `Dcm` (`TxDiagP2P`) $\longrightarrow$ Đích `CanTp` (`TxDiagP2P`).
+* **Dcm:** Gán `RxChannel` gắn với `RxBufferRef="Buffer1"` (512B) và `TxChannel` gắn với `TxBufferRef="Buffer2"` (512B).
+
+---
+
+#### 2. Mã C Sinh Ra Trong Cấu Hình Thực Tế Trên Đĩa (`Dcm_LCfg.c` & `Dcm_Cfg.h`)
+
+Sau khi chạy lệnh tiền xử lý cấu hình `scons -h`, trình tạo mã [`argen/GenDcm.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenDcm.py) sẽ biên dịch các thẻ XML trên thành các mảng bộ nhớ RAM tĩnh và cấu trúc C trong [`as/build/nt/stm32f107vc/ascore/config/Dcm_LCfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Dcm_LCfg.c):
+
+```c
+/* Trích Dcm_LCfg.c */
+#include "PduR.h"
+
+/* 1. Cấp phát vùng nhớ RAM thực tế cho các Buffer chẩn đoán */
+static uint8 Buffer1[512];
+Dcm_DslBufferRuntimeType rxBufferParams_Buffer1 = { ... };
+
+static uint8 Buffer2[512];
+Dcm_DslBufferRuntimeType rxBufferParams_Buffer2 = { ... };
+
+/* 2. Danh sách Buffer của tầng DSL */
+static const Dcm_DslBufferType DcmDslBufferList[DCM_DSL_BUFFER_LIST_LENGTH] = {
+    {
+        /*.DslBufferID =*/  0,
+        /*.DslBufferSize =*/ 512,
+        /*.SduDataPtr =*/    Buffer1,
+        /*.externalBufferRuntimeData =*/ &rxBufferParams_Buffer1
+    },
+    {
+        /*.DslBufferID =*/  1,
+        /*.DslBufferSize =*/ 512,
+        /*.SduDataPtr =*/    Buffer2,
+        /*.externalBufferRuntimeData =*/ &rxBufferParams_Buffer2
+    }
+};
+
+/* 3. Danh sách kênh nhận (Rx Channels) kết nối với PduR */
+static const Dcm_DslProtocolRxType DcmDslProtocolRxList[] = {
+    { // P2P -> Connection1 -> RxChannel1
+        /*.DslMainConnectionParent =*/  &DslMainConnectionList[0],
+        /*.DslProtocolAddrType =*/      DCM_PROTOCOL_PHYSICAL_ADDR_TYPE,
+        /*.DcmDslProtocolRxPduId =*/    PDUR_ID_RxDiagP2P, /* ID định tuyến từ PduR */
+        ...
+    }
+};
+
+/* 4. Danh sách kênh phát (Tx Channels) kết nối với PduR */
+static const Dcm_DslProtocolTxType DcmDslProtocolTxList[] = {
+    { // P2P -> Connection1 -> TxChannel2
+        /*.DslMainConnectionParent =*/  &DslMainConnectionList[0],
+        /*.DcmDslProtocolTxPduId =*/    PDUR_ID_TxDiagP2P,  /* ID chuyển giao xuống PduR */
+        /*.DcmDslProtocolDcmTxPduId =*/  DCM_ID_TxDiagP2P,
+        ...
+    }
+};
+
+/* 5. Khởi tạo cấu trúc Protocol Row kết nối Buffer với Kênh truyền */
+const Dcm_DslProtocolRowType DslProtocolRowList[] = {
+    {
+        /*.DslProtocolID =*/             DCM_UDS_ON_CAN,
+        /*.DslProtocolTransType =*/      DCM_PROTOCOL_TRANS_TYPE_1,
+        /*.DslProtocolRxBufferID =*/     &DcmDslBufferList[INDEX_OF_BUF_Buffer1],
+        /*.DslProtocolTxBufferID =*/     &DcmDslBufferList[INDEX_OF_BUF_Buffer2],
+        /*.DslProtocolSIDTable =*/       &DsdServiceTable[INDEX_OF_ST_ServiceTableP2P],
+        /*.DslConnection =*/             DslConnectionList,
+        ...
+    }
+};
+```
+
+---
+
+#### 3. Các Hàm BSW Runtime Tiêu Thụ Cấu Hình Trên Đĩa
+
+Khi hệ thống vận hành, các cấu trúc dữ liệu cấu hình trong `Dcm_LCfg.c` được tiêu thụ trực tiếp bởi các hàm xử lý runtime của DCM và PduR:
+
+1. **`Dcm_ProvideRxBuffer(PduIdType dcmRxPduId, PduLengthType tpSduLength, PduInfoType **pduInfoPtr)` ([`Dcm.c: Dòng 110-124`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm.c#L110-L124)):**
+   * *Nơi gọi:* Được gọi bởi `PduR_CanTpProvideRxBuffer()` khi CanTp bắt đầu nhận một bản tin UDS (Single Frame hoặc First Frame).
+   * *Cơ chế tiêu thụ:* Tra cứu kênh nhận `DcmDslProtocolRxList` tương ứng với `dcmRxPduId`. Kiểm tra xem độ dài `tpSduLength` có vượt quá kích thước buffer hay không ($tpSduLength \le 512$). Nếu thỏa mãn, hàm gán con trỏ `*pduInfoPtr` trỏ trực tiếp tới vùng nhớ RAM `Buffer1` và trả về mã thành công `BUFREQ_OK`.
+2. **`Dcm_RxIndication(PduIdType dcmRxPduId, NotifResultType result)` ([`Dcm.c: Dòng 125-135`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm.c#L125-L135)):**
+   * *Nơi gọi:* Được kích hoạt bởi `PduR_CanTpRxIndication()` khi CanTp đã hoàn tất lắp ráp toàn bộ bản tin đa khung vào `Buffer1`.
+   * *Cơ chế tiêu thụ:* Đánh dấu trạng thái nhận thành công cho Protocol tương ứng, kích hoạt bộ phân luồng dịch vụ DSD (`DsdHandleRxSignal()`) để bóc tách mã dịch vụ Service ID (SID) và bắt đầu xử lý nghiệp vụ UDS.
+3. **`PduR_DcmTransmit(PduIdType DcmTxPduId, const PduInfoType *PduInfoPtr)` ([`PduR_Dcm.c: Dòng 21-24`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR_Dcm.c#L21-L24)):**
+   * *Nơi gọi:* Được gọi bởi phân hệ DSL của DCM khi chuẩn bị xong dữ liệu phản hồi UDS (Positive hoặc Negative Response) trong `Buffer2`.
+   * *Cơ chế tiêu thụ:* Chuyển giao yêu cầu truyền sang PduR với mã ID `DcmTxPduId` (`PDUR_ID_TxDiagP2P`). PduR tra bảng định tuyến và chuyển tiếp sang hàm `CanTp_Transmit()` để bắt đầu chu trình phân mảnh phát ra mạng CAN.
+4. **`Dcm_ProvideTxBuffer(PduIdType dcmTxPduId, PduInfoType **pduInfoPtr, PduLengthType length)` ([`Dcm.c: Dòng 175-188`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm.c#L175-L188)):**
+   * *Nơi gọi:* Được CanTp kích hoạt ngược thông qua `PduR_CanTpProvideTxBuffer()` trong quá trình phân đoạn gói tin phát.
+   * *Cơ chế tiêu thụ:* Cung cấp con trỏ dữ liệu từ vùng nhớ `Buffer2` cho CanTp để sao chép từng mẩu dữ liệu nhỏ (tối đa 7 bytes trên CAN chuẩn) vào từng Consecutive Frame phát đi.
+5. **`Dcm_TxConfirmation(PduIdType dcmTxPduId, NotifResultType result)` ([`Dcm.c: Dòng 189-198`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm.c#L189-L198)):**
+   * *Nơi gọi:* Được CanTp thông báo ngược lên qua `PduR_CanTpTxConfirmation()` khi toàn bộ các khung tin phản hồi chẩn đoán đã được CAN Controller phát thành công lên bus.
+   * *Cơ chế tiêu thụ:* Giải phóng trạng thái bận của `Buffer2`, thiết lập lại bộ đếm thời gian giám sát phiên $S3_{Server}$, và sẵn sàng tiếp nhận yêu cầu chẩn đoán tiếp theo từ Tester.
+
+---
+
+### 5.3 Cấu Hình Tầng PduR [Tầng 2.3 — Service Layer: Communication Services]
+
+> 📌 **Vị trí kiến trúc:** Module **`PduR` (PDU Router)** nằm chính xác tại **Tầng 2.3: Service Layer** (phân nhóm *Communication Services*).  
+> **Nhiệm vụ cốt lõi:** Hoạt động như một "tổng đài chuyển mạch router tĩnh nội bộ" ở tầng dịch vụ. Nó hoàn toàn độc lập với phần cứng bo mạch (Hardware-Independent), chịu trách nhiệm định tuyến các gói tin PDU giữa các module Service (`Com`, `Dcm`) và tầng dưới (`CanIf`, `CanTp`).
+
+#### 1. Định nghĩa trong file cấu hình ARXML chuẩn ([STM32F107 Target: Dòng 121-170](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml#L121-L170) / [QEMU Target: Dòng 99-138](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L99-L138)) *(Template nguồn: [common/autosar.arxml: Dòng 231-293](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L231-L293))*:
+```xml
+<PduR>
+    <!-- Bật tính năng Zero-Cost Optimization cho CanIf và CanTp để gọi hàm trực tiếp -->
+    <General CanIfUsed="True" CanTpUsed="True" ComUsed="True" DcmUsed="True" 
+             ZeroCostIf="CanIf" ZeroCostTp="CanTp" ZeroCostOperationMode="OFF" />
+    <RoutineList Max="TBD">
+        <!-- Tuyến 1: Gói UDS từ DCM chuyển giao xuống CanTp để phân mảnh -->
+        <Source Module="Dcm" Name="DcmP2P" PduRef="TxDiagP2P">
+            <DestinationList Max="TBD">
+                <Destination Module="CanTp" Name="CanTpP2P" PduRef="TxDiagP2P" />
+            </DestinationList>
+        </Source>
+        
+        <!-- Tuyến 2: Gói UDS sau khi CanTp ghép xong chuyển giao lên DCM để giải mã service -->
+        <Source Module="CanTp" Name="CanTpP2P" PduRef="RxDiagP2P">
+            <DestinationList Max="TBD">
+                <Destination Module="Dcm" Name="DcmP2P" PduRef="RxDiagP2P" />
+            </DestinationList>
+        </Source>
+        
+        <!-- Tuyến 3: Gói tín hiệu ứng dụng từ COM gửi xuống CanIf để phát ra bus -->
+        <Source Module="Com" Name="ComMsgTime" PduRef="TxMsgTime">
+            <DestinationList Max="TBD">
+                <Destination Module="CanIf" Name="CanIfMsgTime" PduRef="TxMsgTime" />
+            </DestinationList>
+        </Source>
+        
+        <!-- Tuyến 4: Gói tín hiệu từ CanIf chuyển giao lên COM để unpack thành Signals cho SWC -->
+        <Source Module="CanIf" Name="CanIfMsgAbs" PduRef="RxMsgAbsInfo">
+            <DestinationList Max="TBD">
+                <Destination Module="Com" Name="ComMsgAbs" PduRef="RxMsgAbsInfo" />
+            </DestinationList>
+        </Source>
+    </RoutineList>
+</PduR>
+```
+
+#### 2. Mã C sinh ra trong cấu hình thực tế trên đĩa ([PduR_PbCfg.c: Dòng 235-255](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/PduR_PbCfg.c#L235-L255)):
+
+```c
+/* Danh sách các tuyến định tuyến PDU toàn xe */
+const PduRRoutingPath_type * const PduRRoutingPaths[] = { 
+    &TxDiagP2P_PduRRoutingPath,
+    &RxDiagP2P_PduRRoutingPath,
+    &TxMsgTime_PduRRoutingPath,
+    &TxMsgBmsStatus_PduRRoutingPath,
+    &RxMsgAbsInfo_PduRRoutingPath,
+    ...
+    NULL
+};
+
+/* Struct gom toàn bộ bảng định tuyến PduR */
+const PduR_PBConfigType PduR_Config = {
+    .PduRConfigurationId = 0,
+    .NRoutingPaths       = 9,
+    .RoutingPaths        = PduRRoutingPaths,
+    .TpBuffers           = NULL,
+    .TpRouteBuffers      = NULL
+};
+```
+
+#### 3. Các hàm BSW Router sử dụng cấu hình `PduR_Config`:
+
+Struct **`PduR_Config`** được các hàm BSW Router cốt lõi sau tiêu thụ tại runtime:
+
+1. **`PduR_Init(const PduR_PBConfigType *ConfigPtr)` ([`PduR.c: Dòng 52-70`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR.c#L52-L70)):**
+   * *Nơi gọi:* Được gọi bởi `EcuM` trong chu trình khởi động BSW.
+   * *Cơ chế tiêu thụ:* Lưu con trỏ cấu hình toàn cục `PduRConfig = ConfigPtr;`, kiểm tra tính toàn vẹn của bảng `RoutingPaths`, và chuyển trạng thái Router từ `PDUR_UNINIT` sang `PDUR_ONLINE`.
+2. **`PduR_ComTransmit(PduIdType ComTxPduId, const PduInfoType *PduInfoPtr)` ([`PduR_Com.c: Dòng 22-25`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR_Com.c#L22-L25)):**
+   * *Nơi gọi:* Được gọi bởi module `COM` khi một I-PDU sẵn sàng phát (`Com_SendSignal()` hoặc task chu kỳ `Com_MainFunctionTx()`).
+   * *Cơ chế tiêu thụ:* Tra cứu bảng `PduRRoutingPaths`, tìm tuyến có `.SrcPduId == ComTxPduId` và `.SrcModule == ARC_PDUR_COM`, trích xuất module đích (`ARC_PDUR_CANIF`) và `DestPduId` tương ứng (`CanIfTxPduId`), sau đó kích hoạt hàm truyền `CanIf_Transmit(DestPduId, PduInfoPtr)`.
+3. **`PduR_CanIfRxIndication(PduIdType CanRxPduId, const PduInfoType *PduInfoPtr)` ([`PduR_CanIf.c: Dòng 21-24`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR_CanIf.c#L21-L24)):**
+   * *Nơi gọi:* Được gọi bởi `CanIf_RxIndication()` khi nhận được khung tín hiệu hợp lệ từ mạng bus.
+   * *Cơ chế tiêu thụ:* Tra cứu bảng định tuyến, ánh xạ từ `CanRxPduId` $\to$ `ComRxPduId`, và chuyển giao toàn bộ gói tin dữ liệu lên `Com_RxIndication(ComRxPduId, PduInfoPtr)` để bóc tách thành các tín hiệu Signal cụ thể cho Application SWC.
+4. **`PduR_DcmTransmit(PduIdType DcmTxPduId, const PduInfoType *PduInfoPtr)` ([`PduR_Dcm.c: Dòng 22-25`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR_Dcm.c#L22-L25)):**
+   * *Nơi gọi:* Được gọi bởi module `DCM` khi cần truyền bản tin phản hồi chẩn đoán UDS (Response).
+   * *Cơ chế tiêu thụ:* Tra bảng định tuyến chẩn đoán, chuyển tiếp yêu cầu sang tầng vận chuyển `CanTp_Transmit(CanTpTxPduId, PduInfoPtr)`.
+5. **`PduR_CanTpRxIndication(PduIdType CanTpRxPduId, NotifResultType Result)` ([`PduR_CanTp.c: Dòng 21-24`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/PduR/PduR_CanTp.c#L21-L24)):**
+   * *Nơi gọi:* Được gọi bởi `CanTp_RxIndication()` khi CanTp đã lắp ráp hoàn chỉnh toàn bộ các gói tin phân mảnh UDS đa khung.
+   * *Cơ chế tiêu thụ:* Tra bảng định tuyến và chuyển giao kết quả lắp ráp lên tầng dịch vụ chẩn đoán `Dcm_TpRxIndication(DcmRxPduId, Result)` để DCM tiến hành giải mã Service ID.
+
+---
+
+### 5.4 Cấu Hình Tầng CanTp [Tầng 2.2 / Transport — ISO 15765-2 Protocol Layer]
+
+> 📌 **Vị trí kiến trúc:** Module **`CanTp` (CAN Transport Protocol)** nằm ở tầng vận chuyển giao thức mạng (thường được xếp vào **Tầng 2.2: ECU Abstraction / Transport Layer**).  
+> **Nhiệm vụ cốt lõi:** Vận chuyển các gói tin dữ liệu lớn (> 8 bytes) cho giao thức chẩn đoán UDS (ISO 14229) bằng cách phân mảnh thành các Single Frame (SF), First Frame (FF), Consecutive Frame (CF) và quản lý điều khiển luồng Flow Control (FC).
+
+Tầng CanTp chịu trách nhiệm cắt nhỏ và ghép lại các gói tin UDS lớn (lên tới $4095$ bytes).
+
+#### 1. Định nghĩa trong file cấu hình ARXML chuẩn ([STM32F107 Target: Dòng 110-120](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml#L110-L120) / [QEMU Target: Dòng 98-108](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L98-L108)) *(Template nguồn: [common/autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L210-L230))*:
+```xml
+<CanTp>
+    <General DevelopmentErrorDetection="ON" VersionInfoApi="OFF" />
+    <RxSduList Max="TBD">
+        <!-- Cấu hình nhận chẩn đoán P2P: Block Size = 8, STmin = 1ms -->
+        <Sdu AddressingMode="STANDARD" BS="8" CommunicationType="PHYSICAL" 
+             MaxBusyTransmission="10" Name="SduP2P" 
+             Nar="100" Nbr="100" Ncr="100" Padding="ON" 
+             RxPduRef="RxDiagP2P" STmin="1" TxFcPduRef="TxDiagP2P" ll_dl="64" />
+    </RxSduList>
+    <TxSduList Max="TBD">
+        <!-- Cấu hình truyền chẩn đoán P2P -->
+        <Sdu AddressingMode="STANDARD" CommunicationType="PHYSICAL" 
+             Name="SduP2P" Nas="100" Nbs="100" Ncs="100" Padding="ON" 
+             RxFcPduRef="RxDiagP2P" TxPduRef="TxDiagP2P" ll_dl="64" />
+    </TxSduList>
+</CanTp>
+```
+
+#### 2. Ý nghĩa kỹ thuật các thuộc tính cấu hình:
+- **`BS="8"` (Block Size):** Sau khi nhận/phát 8 khung liên tiếp (**Consecutive Frames - CF**), CanTp bắt buộc phải tạm dừng và phát khung kiểm soát luồng (**Flow Control - FC**) để kiểm tra tình trạng bộ đệm của đối tác.
+- **`STmin="1"` (Separation Time = 1ms):** CanTp giữ khoảng cách trễ tối thiểu $1\text{ms}$ giữa 2 khung CF liên tiếp để tránh làm tràn bộ đệm phần cứng của ECU nhận.
+- **`Nar=100`, `Nbr=100`, `Ncr=100`:** Các bộ đếm thời gian mạng (Network Layer Timers theo tiêu chuẩn ISO 15765-2) tính bằng mili-giây:
+  - $N\_Ar$: Thời gian tối đa để truyền frame xác nhận ở tầng liên kết dữ liệu ($100\text{ms}$).
+  - $N\_Br$: Thời gian chờ từ lúc nhận First Frame đến khi phát Flow Control ($100\text{ms}$).
+  - $N\_Cr$: Thời gian chờ nhận Consecutive Frame tiếp theo trước khi hủy bỏ phiên giao dịch ($100\text{ms}$).
+- **`ll_dl="64"` (Link Layer Data Length):** Cho phép hỗ trợ CAN-FD với độ dài dữ liệu khung lên đến 64 bytes.
+
+#### 3. Mã C sinh ra trong cấu hình thực tế trên đĩa ([CanTp_Cfg.c: Dòng 155-160](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/CanTp_Cfg.c#L155-L160)):
+
+```c
+/* Struct gom toàn bộ cấu hình CanTp */
+const CanTp_ConfigType CanTpConfig = {
+    .CanTpGeneral  = &CanTpGeneralConfig,
+    .CanTpNSduList = CanTpNSduConfigList,
+    .CanTpRxIdList = CanTp_RxIdList
+};
+```
+
+#### 4. Các hàm BSW Runtime sử dụng cấu hình `CanTpConfig`:
+
+Struct **`CanTpConfig`** được các hàm BSW cốt lõi sau tiêu thụ tại runtime:
+
+1. **`CanTp_Init()` ([`CanTp.c: Dòng 1097-1115`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanTp/CanTp.c#L1097-L1115)):**
+   * *Nơi gọi:* Được gọi trong chu trình khởi động ECU bởi `EcuM` hoặc Task khởi tạo.
+   * *Cơ chế tiêu thụ:* Duyệt danh sách N-SDU `CanTpNSduConfigList[]`, khởi tạo trạng thái `runtimeData->mode = CANTP_TX_WAIT; runtimeData->state = CANTP_OFF;`, xóa sạch bộ đệm phân mảnh, sẵn sàng tiếp nhận phiên truyền nhận chẩn đoán.
+2. **`CanTp_Transmit(PduIdType CanTpTxSduId, const PduInfoType *CanTpTxInfoPtr)` ([`CanTp.c: Dòng 991-1050`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanTp/CanTp.c#L991-L1050)):**
+   * *Nơi gọi:* Được gọi bởi `PduR_DcmTransmit()` khi tester yêu cầu truyền dữ liệu chẩn đoán UDS.
+   * *Cơ chế tiêu thụ:* Tra cứu cấu hình `CanTpNSduConfigList[CanTpTxSduId]`:
+     * Nếu độ dài $\le 7$ bytes (hoặc $\le 63$ bytes với CAN-FD `ll_dl=64`): Đóng gói Single Frame (SF: byte `PCI = 0x00 | Length`), gọi `CanIf_Transmit()` phát thẳng ra bus.
+     * Nếu độ dài $> 7$ bytes: Đóng gói First Frame (FF: mang độ dài tổng `Length`), nạp timer $N\_As = 100\text{ms}$, gọi `PduR_CanTpCopyTxData()` lấy payload và gửi header FF qua `CanIf_Transmit()`, sau đó chuyển sang trạng thái chờ Flow Control.
+3. **`CanTp_RxIndication(PduIdType CanTpRxPduId, const PduInfoType *CanTpRxPduPtr)` ([`CanTp.c: Dòng 1128-1230`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanTp/CanTp.c#L1128-L1230)):**
+   * *Nơi gọi:* Được kích hoạt bởi `CanIf_RxIndication()` khi CAN ID nhận vào là `0x731` (UDS Diag Request).
+   * *Cơ chế tiêu thụ:* Giải mã byte N_PCI từ frame nhận:
+     * **Single Frame (SF):** Gọi `PduR_CanTpStartOfReception()`, sao chép dữ liệu và báo hoàn tất lên DCM qua `PduR_CanTpRxIndication(NTFRSLT_OK)`.
+     * **First Frame (FF):** Đọc cấu hình `CanTpBs = 8` (Block Size) và `CanTpSTmin = 1ms` từ struct để đóng gói khung Flow Control (FC: `0x30 0x08 0x01...`) phát ngược lại qua `CanIf_Transmit()`, đồng thời xin cấp phát bộ đệm từ PduR.
+     * **Consecutive Frame (CF):** So khớp chỉ số tuần tự `SN = 1, 2...` để kiểm tra mất gói, sao chép phân đoạn vào buffer, và đếm ngược số bytes còn lại.
+4. **`CanTp_TxConfirmation(PduIdType CanTpTxPduId)` ([`CanTp.c: Dòng 1240-1280`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanTp/CanTp.c#L1240-L1280)):**
+   * *Nơi gọi:* Được kích hoạt bởi `CanIf_TxConfirmation()` khi một khung tin vừa được truyền thành công trên bus vật lý.
+   * *Cơ chế tiêu thụ:* Xác nhận khung tin đã gửi, cập nhật trạng thái truyền và khởi tạo timer chờ Flow Control ($N\_Bs = 100\text{ms}$).
+5. **`CanTp_MainFunction()` ([`CanTp.c: Dòng 1302-1350`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanTp/CanTp.c#L1302-L1350)):**
+   * *Nơi gọi:* Task chu kỳ OS (chu kỳ 10ms cấu hình tại `CanTpGeneralConfig.main_function_period`).
+   * *Cơ chế tiêu thụ:* Giảm các bộ đếm timer mạng theo cấu hình (`Nar`, `Nbr`, `Ncr`, `Nas`, `Nbs`, `Ncs`). Nếu timer chạm 0 $\implies$ Hủy phiên truyền và báo lỗi timeout (`NTFRSLT_E_TIMEOUT_A/B/C`) lên PduR/DCM. Đồng thời điều phối phát các khung Consecutive Frame (CF) tiếp theo cách nhau đúng khoảng thời gian `STmin = 1ms`.
+
+---
+
+### 5.5 Cấu Hình Tầng CanIf [Tầng 2.2 — ECU Abstraction Layer]
 
 > 📌 **Vị trí kiến trúc:** Module **`CanIf` (CAN Interface)** nằm tại **Tầng 2.2: ECU Abstraction Layer** (phân nhóm *Communication Hardware Abstraction*).  
 > **Nhiệm vụ cốt lõi:** Trừu tượng hóa toàn bộ phần cứng CAN của bo mạch ECU (kết hợp CAN Controller nội vi MCU và chip CAN Transceiver ngoài mạch in PCB). Nó che giấu các Mailbox phần cứng (`Can0Hth`, `Can0Hrh`), chỉ phơi ra cho Tầng Service (`PduR`, `CanTp`, `CanNm`) các mã logic trừu tượng là `CanTxPduId` và `CanRxPduId`.
 
 Tầng CanIf chịu trách nhiệm phân loại luồng dữ liệu: frame nào của UDS Diag gửi lên CanTp, frame nào của tín hiệu điều khiển gửi lên PduR/Com, frame nào của Network Management gửi lên CanNm.
 
-#### 1. Định nghĩa trong [autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L126-L208):
+#### 1. Định nghĩa trong file cấu hình ARXML chuẩn ([STM32F107 Target: Dòng 71-109](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml#L71-L109) / [QEMU Target: Dòng 59-97](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L59-L97)) *(Template nguồn: [common/autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L126-L208))*:
 ```xml
 <CanIf>
     <ChannelList Max="TBD">
@@ -2619,7 +3098,7 @@ Tầng CanIf chịu trách nhiệm phân loại luồng dữ liệu: frame nào 
 </CanIf>
 ```
 
-#### 2. Mã C sinh ra trong [CanIf_Cfg.c](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c#L123-L200):
+#### 2. Mã C sinh ra trong [CanIf_Cfg.c (STM32 Target)](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c) và [CanIf_Cfg.c (QEMU Target)](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/CanIf_Cfg.c#L123-L200):
 ```c
 /* Bảng cấu hình gói truyền: CanIf ánh xạ trực tiếp PduId -> CAN ID và Callback */
 const CanIf_TxPduConfigType CanIfTxPduConfigData[] = {
@@ -2660,94 +3139,151 @@ const CanIf_RxPduConfigType CanIfRxPduConfigData[] = {
         .CanIfCanRxPduHrhRef   = &CanIfHrhConfigData_CANIF_CHL_LS[0]
     }
 };
+
+/* Struct gom toàn bộ cấu hình CanIf */
+const CanIf_ConfigType CanIf_Config = {
+    .ControllerConfig  = CanIfControllerConfig,
+    .DispatchConfig    = &CanIfDispatchConfig,
+    .InitConfig        = &CanIfInitConfig,
+    .TransceiverConfig = NULL
+};
 ```
+
+#### 3. Các hàm BSW Runtime & Khởi tạo sử dụng cấu hình `CanIf_Config`:
+
+Toàn bộ các mảng gói tin truyền/nhận `CanIfTxPduConfigData[]` và `CanIfRxPduConfigData[]` được gom trong struct tổng thể **`CanIf_Config`** ([`CanIf_Cfg.c: Dòng 509`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c#L509)). Struct này được các hàm BSW cốt lõi sau tiêu thụ tại runtime:
+
+1. **`CanIf_Init(const CanIf_ConfigType *ConfigPtr)` ([`CanIf.c: Dòng 475-485`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L475-L485)):**
+   * *Nơi gọi:* Được gọi trong chu trình khởi động ECU bởi `EcuM` hoặc `app.c`.
+   * *Cơ chế tiêu thụ:* Lưu con trỏ cấu hình toàn cục `CanIf_ConfigPtr = ConfigPtr;`, khởi tạo trạng thái các kênh sang `CANIF_CHANNEL_STOPPED`, sẵn sàng nhận yêu cầu điều phối.
+2. **`CanIf_InitController(uint8 Controller, uint8 ConfigurationIndex)` ([`CanIf.c: Dòng 506-555`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L506-L555)):**
+   * *Nơi gọi:* Được gọi bởi BSW State Manager (CanSM) hoặc EcuM.
+   * *Cơ chế tiêu thụ:* Trích xuất con trỏ cấu hình bộ điều khiển `canConfig = CanIf_ConfigPtr->ControllerConfig[ConfigurationIndex].CanIfInitControllerRef` và chuyển tiếp xuống MCAL `Can_InitController(canControllerId, canConfig)`.
+3. **`CanIf_Transmit(PduIdType CanTxPduId, const PduInfoType *PduInfoPtr)` ([`CanIf.c: Dòng 774-825`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L774-L825)):**
+   * *Nơi gọi:* Được gọi bởi `PduR_CanIfTransmit()` (cho tín hiệu COM) hoặc `CanTp_Transmit()` (cho bản tin UDS).
+   * *Cơ chế tiêu thụ:* Dùng `CanTxPduId` làm chỉ số tra vào mảng `CanIfTxPduConfigData[CanTxPduId]`, trích xuất CAN ID (`0x732` Diag / `0x101` Time / `0x200` BmsStatus), HTH Mailbox (`CanIfCanTxPduHthRef`), đóng gói struct `Can_PduType` và gọi hàm MCAL `Can_Write(hth, &canPdu)`.
+4. **`CanIf_RxIndication(uint16 Hrh, Can_IdType CanId, uint8 CanDlc, const uint8 *CanSduPtr)` ([`CanIf.c: Dòng 1145-1175`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L1145-L1175)):**
+   * *Nơi gọi:* Được kích hoạt trực tiếp từ ngắt nhận phần cứng của MCAL (`Can_1_RxIsr`).
+   * *Cơ chế tiêu thụ:* Quét mảng `CanIfRxPduConfigData[]`, áp dụng `FilterMask` lọc ID, kiểm tra độ dài `CanDlc`, và kích hoạt con trỏ callback tương ứng `.CanIfUserRxIndication()`:
+     * Nếu là frame chẩn đoán `0x731` $\to$ Chuyển tiếp lên `CanTp_RxIndication()`.
+     * Nếu là frame tín hiệu `0x102` (AbsInfo) $\to$ Chuyển tiếp lên `PduR_CanIfRxIndication()`.
+5. **`CanIf_TxConfirmation(PduIdType canTxPduId)` ([`CanIf.c: Dòng 1120-1140`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c#L1120-L1140)):**
+   * *Nơi gọi:* Được kích hoạt từ ngắt truyền hoàn tất của MCAL (`Can_1_TxIsr`).
+   * *Cơ chế tiêu thụ:* Tra cứu `CanIfTxPduConfigData[canTxPduId]` và gọi callback `.CanIfUserTxConfirmation()` báo thành công lên tầng trên (`PduR_CanIfTxConfirmation` hoặc `CanTp_TxConfirmation`).
 
 ---
 
-### 5.3 Cấu Hình Tầng CanTp [Tầng 2.2 / Transport — ISO 15765-2 Protocol Layer]
+### 5.6 Cấu Hình Tầng MCAL Can [Tầng 2.1 — Microcontroller Abstraction Layer]
 
-> 📌 **Vị trí kiến trúc:** Module **`CanTp` (CAN Transport Protocol)** nằm ở tầng vận chuyển giao thức mạng (thường được xếp vào **Tầng 2.2: ECU Abstraction / Transport Layer**).  
-> **Nhiệm vụ cốt lõi:** Vận chuyển các gói tin dữ liệu lớn (> 8 bytes) cho giao thức chẩn đoán UDS (ISO 14229) bằng cách phân mảnh thành các Single Frame (SF), First Frame (FF), Consecutive Frame (CF) và quản lý điều khiển luồng Flow Control (FC).
+> 🚨 **QUY CHUẨN XEM FILE CẤU HÌNH ARXML (ARXML Tree View Notice):**  
+> * **File nguồn [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L115-L125):** Là file **Template C-Preprocessor** chứa các macro `#ifdef/#endif` (ví dụ: `#ifdef USE_SMP`, `#ifdef USE_DCM`...). Nếu mở trực tiếp file này bằng parser XML chuẩn hoặc extension **ARXML Tree View**, parser SAX sẽ báo lỗi cú pháp (`Unexpected close tag Line: 48 Column: 5 Char: >`).  
+> * **File ARXML Chuẩn Sau Tiền Xử Lý (Preprocessed Clean ARXML):** Để xem cấu trúc cây hoàn chỉnh không lỗi trên **ARXML Tree View** hoặc tra cứu chính xác theo Target đã build (`scons -h`), kỹ sư **BẮT BUỘC** mở file ARXML sạch tương ứng:  
+>   - **Target Silicon Phần Cứng (STM32F107VC):** [`as/build/nt/stm32f107vc/ascore/config/autosar.arxml (Dòng 60-70)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml#L60-L70)  
+>   - **Target Mô Phỏng QEMU (lm3s6965evb):** [`as/build/nt/lm3s6965evb/ascore/config/autosar.arxml (Dòng 48-58)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L48-L58)
 
-Tầng CanTp chịu trách nhiệm cắt nhỏ và ghép lại các gói tin UDS lớn (lên tới $4095$ bytes).
-
-#### 1. Định nghĩa trong [autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L210-L230):
+#### 1. Định nghĩa trong file cấu hình ARXML chuẩn ([STM32F107 Target](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml#L60-L70) / [QEMU Target](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/autosar.arxml#L48-L58)):
 ```xml
-<CanTp>
-    <General DevelopmentErrorDetection="ON" VersionInfoApi="OFF" />
-    <RxSduList Max="TBD">
-        <!-- Cấu hình nhận chẩn đoán P2P: Block Size = 8, STmin = 1ms -->
-        <Sdu AddressingMode="STANDARD" BS="8" CommunicationType="PHYSICAL" 
-             MaxBusyTransmission="10" Name="SduP2P" 
-             Nar="100" Nbr="100" Ncr="100" Padding="ON" 
-             RxPduRef="RxDiagP2P" STmin="1" TxFcPduRef="TxDiagP2P" ll_dl="64" />
-    </RxSduList>
-    <TxSduList Max="TBD">
-        <!-- Cấu hình truyền chẩn đoán P2P -->
-        <Sdu AddressingMode="STANDARD" CommunicationType="PHYSICAL" 
-             Name="SduP2P" Nas="100" Nbs="100" Ncs="100" Padding="ON" 
-             RxFcPduRef="RxDiagP2P" TxPduRef="TxDiagP2P" ll_dl="64" />
-    </TxSduList>
-</CanTp>
+<Can>
+    <General DevelopmentErrorDetection="ON" VersionInfoApi="ON" />
+    <ControllerList Max="TBD">
+        <!-- Cấu hình bộ điều khiển CAN 0: Baudrate 250kbps, Seg1 = 12 Tq, Seg2 = 1 Tq -->
+        <Controller Baudrate="250" Comment="*" Name="CAN_CTRL_0" Seg1="12" Seg2="1">
+            <HohList Max="TBD">
+                <!-- Mailbox nhận phần cứng (HRH): Standard ID 11-bit, kiểu Basic CAN -->
+                <Hoh Comment="*" HohType="BASIC" IdentifierType="STANDARD" Name="Can0Hrh" ObjectType="RECEIVE" />
+                <!-- Mailbox truyền phần cứng (HTH): Standard ID 11-bit, kiểu Basic CAN -->
+                <Hoh Comment="*" HohType="BASIC" IdentifierType="STANDARD" Name="Can0Hth" ObjectType="TRANSMIT" />
+            </HohList>
+        </Controller>
+    </ControllerList>
+</Can>
 ```
 
-#### 2. Ý nghĩa kỹ thuật các thuộc tính cấu hình:
-- **`BS="8"` (Block Size):** Sau khi nhận/phát 8 khung liên tiếp (**Consecutive Frames - CF**), CanTp bắt buộc phải tạm dừng và phát khung kiểm soát luồng (**Flow Control - FC**) để kiểm tra tình trạng bộ đệm của đối tác.
-- **`STmin="1"` (Separation Time = 1ms):** CanTp giữ khoảng cách trễ tối thiểu $1\text{ms}$ giữa 2 khung CF liên tiếp để tránh làm tràn bộ đệm phần cứng của ECU nhận.
-- **`Nar=100`, `Nbr=100`, `Ncr=100`:** Các bộ đếm thời gian mạng (Network Layer Timers theo tiêu chuẩn ISO 15765-2) tính bằng mili-giây:
-  - $N\_Ar$: Thời gian tối đa để truyền frame xác nhận ở tầng liên kết dữ liệu ($100\text{ms}$).
-  - $N\_Br$: Thời gian chờ từ lúc nhận First Frame đến khi phát Flow Control ($100\text{ms}$).
-  - $N\_Cr$: Thời gian chờ nhận Consecutive Frame tiếp theo trước khi hủy bỏ phiên giao dịch ($100\text{ms}$).
-- **`ll_dl="64"` (Link Layer Data Length):** Cho phép hỗ trợ CAN-FD với độ dài dữ liệu khung lên đến 64 bytes.
+#### 2. Mã C sinh ra trong cấu hình thực tế trên đĩa:
+Bộ tạo mã [`GenCan.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCan.py) đọc file ARXML sạch trên và tự động sinh mảng cấu hình cấu trúc phần cứng tương ứng cho từng Target:
+* **Target STM32F107VC (Silicon thực tế):** [`as/build/nt/stm32f107vc/ascore/config/Can_PBCfg.c (Dòng 24-82)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Can_PBCfg.c#L24-L82)
+* **Target QEMU lm3s6965evb (Mô phỏng):** [`as/build/nt/lm3s6965evb/ascore/config/Can_PBCfg.c (Dòng 24-67)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/lm3s6965evb/ascore/config/Can_PBCfg.c#L24-L67)
+
+```c
+/* Cấu hình các đối tượng Mailbox phần cứng (Hardware Object Handles) */
+static const Can_HardwareObjectType CAN_CTRL_0_HOHCfgData[] = {
+    {   /* Can0Hrh - Mailbox Nhận */
+        .CanHandleType    = CAN_ARC_HANDLE_TYPE_BASIC,
+        .CanIdType        = CAN_ID_TYPE_STANDARD,
+        .CanObjectId      = Can0Hrh,
+        .CanObjectType    = CAN_OBJECT_TYPE_RECEIVE,
+        .CanFilterMaskRef = &vCanFilterMask0,
+        .Can_Arc_EOL      = FALSE
+    },
+    {   /* Can0Hth - Mailbox Truyền */
+        .CanHandleType    = CAN_ARC_HANDLE_TYPE_BASIC,
+        .CanIdType        = CAN_ID_TYPE_STANDARD,
+        .CanObjectId      = Can0Hth,
+        .CanObjectType    = CAN_OBJECT_TYPE_TRANSMIT,
+        .CanFilterMaskRef = &vCanFilterMask0,
+        .Can_Arc_EOL      = TRUE
+    }
+};
+
+/* Cấu hình bộ điều khiển phần cứng (CAN Controller Configuration) */
+const Can_ControllerConfigType Can_ControllerCfgData[] = {
+    {
+        .CanControllerId       = CAN_CTRL_0,
+        .CanRxProcessing       = CAN_ARC_PROCESS_TYPE_INTERRUPT,
+        .CanTxProcessing       = CAN_ARC_PROCESS_TYPE_INTERRUPT,
+        .CanBusOffProcessing   = CAN_ARC_PROCESS_TYPE_INTERRUPT,
+        .CanControllerBaudRate = 250, /* 250 kbps */
+        .CanControllerPropSeg  = 0,   /* SJW */
+        .CanControllerSeg1     = 12,  /* Phase Segment 1: 12 Time Quanta */
+        .CanControllerSeg2     = 1,   /* Phase Segment 2: 1 Time Quanta */
+        .Can_Arc_Hoh           = CAN_CTRL_0_HOHCfgData,
+        .Can_Arc_Loopback      = FALSE
+    }
+};
+
+/* Bảng callback chuyển tiếp lên tầng CanIf */
+const Can_CallbackType CanCallbackConfigData = {
+    .CanIf_CancelTxConfirmation = NULL,
+    .CanIf_RxIndication         = CanIf_RxIndication,
+    .CanIf_ControllerBusOff     = NULL,
+    .CanIf_TxConfirmation       = CanIf_TxConfirmation,
+    .CanIf_ControllerWakeup     = NULL,
+    .CanIf_Arc_Error            = NULL
+};
+
+/* Gộp toàn bộ cấu hình MCAL Can vào struct tổng thể Can_ConfigData */
+const Can_ConfigSetType Can_ConfigSetData = { Can_ControllerCfgData, &CanCallbackConfigData };
+const Can_ConfigType Can_ConfigData = { &Can_ConfigSetData };
+```
+
+#### 3. Các hàm BSW Runtime & Khởi tạo sử dụng cấu hình `Can_ConfigData`:
+
+Toàn bộ các mảng Mailbox `CAN_CTRL_0_HOHCfgData[]` và Controller `Can_ControllerCfgData[]` được gom lại trong struct con trỏ gốc **`Can_ConfigData`** ([`Can_PBCfg.c: Dòng 79`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Can_PBCfg.c#L79)). Struct này được các hàm BSW cốt lõi sau đây tiêu thụ tại runtime:
+
+1. **`Can_Init(const Can_ConfigType *config)` ([`arch/stm32f1/mcal/Can.c: Dòng 403-440`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c#L403-L440)):**
+   * *Nơi gọi:* Được gọi trong chu trình khởi động ECU bởi **`EcuM_AL_DriverInitOne()`** ([`EcuM_Callout_Stubs.c: Dòng 368`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/EcuM/EcuM_Callout_Stubs.c#L368)) hoặc Task khởi tạo `app.c`.
+   * *Cơ chế tiêu thụ:* Lưu con trỏ cấu hình toàn cục `Can_Global.config = config;`, duyệt mảng `Can_ControllerCfgData` để lập bản đồ kênh `Can_Global.channelMap[]`, cài đặt các vector ngắt phần cứng NVIC (`INSTALL_HANDLERS(Can_1, CAN1_SCE_IRQn, CAN1_RX0_IRQn, CAN1_TX_IRQn)`), và thiết lập trạng thái bộ điều khiển về `CANIF_CS_STOPPED`.
+2. **`Can_InitController(uint8 Controller, const Can_ControllerConfigType *Config)` ([`arch/stm32f1/mcal/Can.c: Dòng 500-610`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c#L500-L610)):**
+   * *Nơi gọi:* Được gọi bởi `CanIf_InitController()` trong quá trình chuyển trạng thái mạng CAN sang sẵn sàng.
+   * *Cơ chế tiêu thụ:* Đọc trực tiếp các trường `CanControllerSeg1 = 12`, `CanControllerSeg2 = 1`, `CanControllerBaudRate = 250` từ struct cấu hình để tính toán giá trị `Prescaler`, nạp vào thanh ghi thời gian bit `CAN_BTR` của STM32 bxCAN; đồng thời nạp địa chỉ mặt nạ phần cứng từ `CanFilterMaskRef`.
+3. **`Can_SetControllerMode(uint8 Controller, Can_StateTransitionType Transition)` ([`arch/stm32f1/mcal/Can.c: Dòng 670-730`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c#L670-L730)):**
+   * *Nơi gọi:* Được gọi bởi `CanIf_SetControllerMode()`.
+   * *Cơ chế tiêu thụ:* Điều khiển trực tiếp thanh ghi chế độ phần cứng `CAN_MCR` để chuyển vi điều khiển sang các trạng thái: `CAN_T_START` (xóa bit `INRQ`/`SLEEP` để tham gia Bus), `CAN_T_STOP` (bật `INRQ` để ngắt kết nối bus), hoặc `CAN_T_SLEEP` (tiết kiệm điện năng).
+4. **`Can_Write(Can_HwHandleType Hth, const Can_PduType *PduInfo)` ([`arch/stm32f1/mcal/Can.c: Dòng 741-798`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c#L741-L798)):**
+   * *Nơi gọi:* Được gọi bởi `CanIf_Transmit()` mỗi khi có yêu cầu truyền PDU từ tầng trên.
+   * *Cơ chế tiêu thụ:* Sử dụng định danh HTH (`Can0Hth`) tra cứu trong mảng `Can_Arc_Hoh` thuộc `Can_Global.config`, tìm Mailbox phần cứng đang rảnh trong mảng `sTxMailBox[]`, nạp CAN ID (`sTxMailBox[mbx].TIR`), DLC (`sTxMailBox[mbx].TDTR`), sao chép 8 bytes dữ liệu vào thanh ghi dữ liệu (`TDLR`/`TDHR`), và kích hoạt cờ truyền `TXRQ`.
+5. **`Can_1_RxIsr()` & `Can_1_TxIsr()` (Hardware Interrupt Service Routines):**
+   * *Cơ chế tiêu thụ:* Khi ngắt nhận hoặc ngắt truyền phát sinh, hàm ngắt ISR truy xuất con trỏ hàm callback đã đăng ký trong `Can_ConfigData->CanConfigSet->CanCallbacks` để gọi ngược lên `CanIf_RxIndication()` hoặc `CanIf_TxConfirmation()`.
+
+#### 4. Bảng tổng hợp ánh xạ phân nhánh theo Target phần cứng:
+* **Target A — Silicon Thực Tế STM32F107VC ([`arch/stm32f1/mcal/Can.c: Dòng 741-798`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/stm32f1/mcal/Can.c#L741-L798)):**
+  - Tương tác vật lý với khối phần cứng bxCAN, nạp thanh ghi `CAN_BTR`, `CAN_MCR`, `sTxMailBox[0]` và gắn vector NVIC `CAN1_TX_IRQn` / `CAN1_RX0_IRQn`.
+* **Target B — Mô Phỏng QEMU ([`arch/common/mcal/SCan.c: Dòng 83`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/common/mcal/SCan.c#L83) hoặc [`arch/lm3s/mcal/Can.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/lm3s/mcal/Can.c)):**
+  - Giả lập điều khiển thời gian bit và đóng gói PDU thành chuỗi giao thức SLCAN ASCII truyền qua UART1 của QEMU.
 
 ---
 
-### 5.4 Cấu Hình Tầng PduR [Tầng 2.3 — Service Layer: Communication Services]
-
-> 📌 **Vị trí kiến trúc:** Module **`PduR` (PDU Router)** nằm chính xác tại **Tầng 2.3: Service Layer** (phân nhóm *Communication Services*).  
-> **Nhiệm vụ cốt lõi:** Hoạt động như một "tổng đài chuyển mạch router tĩnh nội bộ" ở tầng dịch vụ. Nó hoàn toàn độc lập với phần cứng bo mạch (Hardware-Independent), chịu trách nhiệm định tuyến các gói tin PDU giữa các module Service (`Com`, `Dcm`) và tầng dưới (`CanIf`, `CanTp`).
-
-#### 1. Định nghĩa trong [autosar.arxml](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml#L231-L293):
-```xml
-<PduR>
-    <!-- Bật tính năng Zero-Cost Optimization cho CanIf và CanTp để gọi hàm trực tiếp -->
-    <General CanIfUsed="True" CanTpUsed="True" ComUsed="True" DcmUsed="True" 
-             ZeroCostIf="CanIf" ZeroCostTp="CanTp" ZeroCostOperationMode="OFF" />
-    <RoutineList Max="TBD">
-        <!-- Tuyến 1: Gói UDS từ DCM chuyển giao xuống CanTp để phân mảnh -->
-        <Source Module="Dcm" Name="DcmP2P" PduRef="TxDiagP2P">
-            <DestinationList Max="TBD">
-                <Destination Module="CanTp" Name="CanTpP2P" PduRef="TxDiagP2P" />
-            </DestinationList>
-        </Source>
-        
-        <!-- Tuyến 2: Gói UDS sau khi CanTp ghép xong chuyển giao lên DCM để giải mã service -->
-        <Source Module="CanTp" Name="CanTpP2P" PduRef="RxDiagP2P">
-            <DestinationList Max="TBD">
-                <Destination Module="Dcm" Name="DcmP2P" PduRef="RxDiagP2P" />
-            </DestinationList>
-        </Source>
-        
-        <!-- Tuyến 3: Gói tín hiệu ứng dụng từ COM gửi xuống CanIf để phát ra bus -->
-        <Source Module="Com" Name="ComMsgTime" PduRef="TxMsgTime">
-            <DestinationList Max="TBD">
-                <Destination Module="CanIf" Name="CanIfMsgTime" PduRef="TxMsgTime" />
-            </DestinationList>
-        </Source>
-        
-        <!-- Tuyến 4: Gói tín hiệu từ CanIf chuyển giao lên COM để unpack thành Signals cho SWC -->
-        <Source Module="CanIf" Name="CanIfMsgAbs" PduRef="RxMsgAbsInfo">
-            <DestinationList Max="TBD">
-                <Destination Module="Com" Name="ComMsgAbs" PduRef="RxMsgAbsInfo" />
-            </DestinationList>
-        </Source>
-    </RoutineList>
-</PduR>
-```
-
----
-
-### 5.5 Tóm Lược: So Sánh Quy Trình Cấu Hình Công Nghiệp vs Dự Án Study_AUTOSAR
+### 5.7 Tóm Lược: So Sánh Quy Trình Cấu Hình Công Nghiệp vs Dự Án Study_AUTOSAR
 
 | Tiêu chí | Công cụ thương mại (Vector DaVinci / EB Tresos) | Hiện thực trong dự án `Study_AUTOSAR` |
 | :--- | :--- | :--- |
@@ -2758,272 +3294,271 @@ Tầng CanTp chịu trách nhiệm cắt nhỏ và ghép lại các gói tin UDS
 
 ---
 
-## 6. Phụ Lục Kỹ Thuật: Giải Mã Vòng Lặp for(;;) Trong StartOS(), Vòng Đời Task OSEK Và Mô Hình Polling vs Preemptive RTOS
-
-Trong quá trình đào sâu mã nguồn dự án `Study_AUTOSAR`, một phát hiện kiến trúc rất thú vị xuất hiện tại tệp [`as/com/as.infrastructure/boot/common/main.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c): hàm `StartOS()` lại chứa một vòng lặp vĩnh cửu `for(;;)` tuần hoàn gọi hàng loạt hàm `Can_MainFunction_Read/Write`, `CanTp_MainFunction`, `Dcm_MainFunction`. 
-
-Hiện tượng này thoạt nhìn có vẻ mâu thuẫn với nguyên lý điều phối đa nhiệm tiền chiếm (Preemptive Multitasking) của hệ điều hành thời gian thực OSEK/VDX chuẩn AUTOSAR OS. Mục này sẽ bóc tách toàn diện bản chất kỹ thuật, giải tỏa các hiểu lầm về việc cấp phát bộ nhớ Task, và làm sáng tỏ mối liên hệ mật thiết giữa vòng lặp này với hai luồng dữ liệu ComStack đã học.
-
-```
-                    HỆ THỐNG PHÂN NHÁNH THỰC THI TRONG DỰ ÁN
-                                       │
-        ┌──────────────────────────────┴──────────────────────────────┐
-        ▼                                                             ▼
-[BẢN BUILD BOOTLOADER]                                      [BẢN BUILD APPLICATION]
-(as/com/as.infrastructure/boot/common/main.c)               (as/com/as.infrastructure/system/kernel/askar)
-        │                                                             │
-        ▼                                                             ▼
-#ifdef USE_ANYOS                                            OSEK RTOS Chuẩn (BCC1 / ECC1)
-Mock OS / Bare-metal Super-Loop                             Preemptive Scheduling Engine
-        │                                                             │
-        ▼                                                             ▼
-for(;;) polling liên tục                                    StartOS() khởi tạo & nhảy vào Task
-Can_MainFunction_Read/Write                                 Cpu chạy trong Task (SchM_BswService)
-CanTp_MainFunction, Dcm_MainFunction                        Được đánh thức bởi Hardware Timer (Alarm 10ms)
-        │                                                             │
-        ▼                                                             ▼
-Phục vụ: Nạp Flash UDS / XCP                                Phục vụ: Ứng dụng điều khiển ComStack đầy đủ
-(Không dùng COM, không dùng RTE)                            (Can -> CanIf -> PduR -> COM -> RTE -> SWC)
-```
+> [!TIP]
+> **Tài liệu tham chiếu chuyên sâu về Bootloader Super-Loop & Vòng đời Task OSEK:**  
+> Chi tiết phân tích kỹ thuật về vòng lặp `for(;;)` trong hàm `StartOS()` của Bootloader (`asboot`), đối chiếu cơ chế Polling vs Preemptive Multitasking RTOS (`ascore`), và bản đồ cấp phát bộ nhớ RAM Stack vs FLASH của OSEK Task đã được hợp nhất và trình bày chi tiết tại:  
+> 👉 [**Chuyên đề 04: Mục 6.6 — Giải Mã Vòng Lặp for(;;) Trong StartOS() Của asboot, Vòng Đời Task OSEK Và Mô Hình Polling vs Preemptive RTOS**](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/04_Diagnostic_UDS_And_Memory_Stack.md#66-giải-mã-vòng-lặp-for-trong-startos-của-asboot-vòng-đời-task-osek-và-mô-hình-polling-vs-preemptive-rtos)  
+> Để nghiên cứu chuyên sâu về kiến trúc hệ điều hành OSEK RTOS (Basic Task vs Extended Task, IPCP Resource, Alarm, Conformance Classes BCC1-ECC2), tham khảo thêm:  
+> 👉 [**Chuyên đề 02: AUTOSAR OS And MCAL Deep Dive**](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/docs/theory/02_AUTOSAR_OS_And_MCAL_Deep_Dive.md).
 
 ---
 
-### 6.1 Bóc Tách Bản Chất: Tại Sao Lại Có Vòng Lặp Vĩnh Cửu `for(;;)` Trong `StartOS()`?
+## 6. Phụ Lục Kỹ Thuật: Bảng Giải Mã Các Quy Ước Viết Tắt (Shorthand DSL) Trong File Cấu Hình ARXML & Trình Sinh Mã argen
 
-#### 1. Dẫn chứng mã nguồn Bootloader
-Xem xét trực tiếp hàm `StartOS()` tại [`as/com/as.infrastructure/boot/common/main.c: L171-L205`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L171-L205):
+Trong quá trình tìm hiểu mã nguồn dự án `Study_AUTOSAR`, kỹ sư sẽ nhận thấy file cấu hình [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml) có cú pháp cực kỳ ngắn gọn, dễ đọc, và khác biệt rõ rệt so với các file ARXML tiêu chuẩn công nghiệp (thường dài hàng chục ngàn dòng XML từ Vector DaVinci hay EB Tresos).
 
+Đây thực chất là một ngôn ngữ đặc thù miền (**Compact Domain-Specific Language - DSL**) được tác giả thiết kế tinh giản. Bộ sinh mã Python trong thư mục [`as/com/as.tool/config.infrastructure.system/argen/`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/) chịu trách nhiệm tự động "giải mã" các từ khóa viết tắt này để sinh ra mã C chuẩn 100% theo đặc tả AUTOSAR SWS.
+
+Bảng dưới đây tổng hợp toàn bộ 8 quy ước viết tắt và cơ chế suy diễn tự động cốt lõi của ComStack:
+
+---
+
+### 6.1 Tổng Hợp 8 Quy Ước Viết Tắt & Cơ Chế Suy Diễn Mã C Của ComStack
+
+| STT | Quy Ước Viết Tắt Trong `autosar.arxml` | Module Tác Động | Thuật Toán Tự Động Sinh Mã Trong `argen/` | Đối Chiếu Chuẩn AUTOSAR SWS (Vector / EB Tresos) |
+| :---: | :--- | :---: | :--- | :--- |
+| **1** | **`TransmitNotifier="CanTp"`**<br>**`ReceivedNotifier="CanTp"`** | `CanIf` | [`GenCanIf.py: L268-L288`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py#L268-L288)<br>• Tự ghép chuỗi: `notifier = '%s_TxConfirmation'%(Notifier)` $\rightarrow$ `CanTp_TxConfirmation`.<br>• Gán `PduR` $\rightarrow$ `PduR_CanIfTxConfirmation`.<br>• Gán `Nobody` $\rightarrow$ con trỏ `NULL`. | Chuẩn AUTOSAR dùng Enum:<br>`CanIfTxPduUserTxConfirmationUL = CAN_TP / PDUR / CAN_NM / XCP / USER`. |
+| **2** | **Tự nhận diện CAN ID 11-bit vs 29-bit**<br>*(Chỉ cần ghi ID, không cần tag Type)* | `CanIf` | [`GenCanIf.py: L289-L292, L352-L355`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py#L289-L292)<br>• Nếu `Identifier > 0x7FF` $\rightarrow$ Gán `CANIF_CAN_ID_TYPE_29`.<br>• Nếu `Identifier <= 0x7FF` $\rightarrow$ Gán `CANIF_CAN_ID_TYPE_11`. | Chuẩn AUTOSAR bắt buộc khai báo tham số riêng: `CanIfTxPduCanIdType = STANDARD_CAN / EXTENDED_CAN`. |
+| **3** | **Chu kỳ định thời dạng nhân tử:**<br>`TimePeriodFactor="100"`<br>`TxMinimumDelayFactor="1"` | `COM` | [`GenCom.py: L505-L511`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCom.py#L505-L511)<br>• Tự nhân với chu kỳ Task COM (10ms):<br>$100 \times 10\text{ms} = 1000\text{ms} = 1\text{s}$.<br>• Tránh hoàn toàn việc tính toán số thực float trong RTOS. | Chuẩn AUTOSAR quy định thời gian thực bằng giây (Float): `ComTxModeTimePeriod = 1.0` (s), `ComTxIPduMinimumDelayTimer = 0.01` (s). |
+| **4** | **Giám sát mất tín hiệu mạng:**<br>`FirstTimeoutFactor="100"`<br>`TimeoutFactor="100"` | `COM` | [`GenCom.py: L76-L78`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCom.py#L76-L78)<br>• Công thức quy đổi: `(Factor + Period - 1) / Period`.<br>• Tự sinh Deadline Monitoring Counter cho từng Signal. | Chuẩn AUTOSAR dùng số thực giây: `ComFirstTimeout = 1.0` (s), `ComTimeout = 1.0` (s). |
+| **5** | **Tự sinh Shadow Buffer cho GroupSignal**<br>*(Nhúng `<GroupSignal>` vào `<IPdu>`)* | `COM` | [`GenCom.py: L87-L90, L417-L420`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCom.py#L87-L90)<br>• Tự tính toán số byte và sinh mảng C:<br>`static uint8 <Name>_ShadowBuffer[Size];`<br>`static const uint8 <Name>_ShadowBufferMask[Size];`<br>• Tự động link mảng `ComGroupSignal_type`. | Chuẩn AUTOSAR tách rời 3 container: `ComSignalGroup`, `ComGroupSignal`, và các thẻ tham chiếu `ComGroupSignalRef` phức tạp. |
+| **6** | **Tuyến định tuyến PDU 1 dòng:**<br>`<Source Module="Com" ...>`<br>`  <Destination Module="CanIf" .../>` | `PduR` | [`GenPduR.py: L216-L285, L317-L340`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenPduR.py#L216-L285)<br>• Tự động sinh ID: `#define PDUR_ID_<PduRef>`.<br>• Tự sinh mảng `PduRDestinations[]`.<br>• Tự sinh bảng routing `PduRRoutingPaths[]`. | Chuẩn AUTOSAR đòi hỏi 4 container lồng nhau: `PduRRoutingTable` $\rightarrow$ `PduRRoutingPath` $\rightarrow$ `PduRSrcPdu` $\rightarrow$ `PduRDestPdu`. |
+| **7** | **Bộ đếm thời gian N-SDU ISO 15765-2:**<br>`BS="8" STmin="1"`<br>`Nar="100" Nbr="100" Ncr="100"` | `CanTp` | [`GenCanTp.py: L146-L205`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanTp.py#L146-L205)<br>• Đặt thẳng thuộc tính vào thẻ `<Sdu>`.<br>• `Padding="ON"` tự chuyển thành enum `CANTP_ON`.<br>• Tự sinh macro `#define CANTP_ID_<Rx/TxPduRef>`. | Chuẩn AUTOSAR chia tách thành các container: `CanTpRxNSdu`, `CanTpTxNSdu`, `CanTpRxNPdu`, `CanTpTxNPdu`, `CanTpTxFcNPdu`. |
+| **8** | **Ký tự giữ chỗ động `Max="TBD"`**<br>*(To Be Determined)* | Toàn bộ các module | [`GCF.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GCF.py) & các file `Gen*.py`<br>• Kỹ sư không cần đếm bằng tay số lượng PDU/Signal.<br>• Bộ phân tích XML tự dùng `len(list)` trên cây DOM để gán kích thước mảng C. | Trong ARXML thương mại, cấu hình công cụ đồ họa tự quản lý thuộc tính `upperMultiplicity` của container. |
+
+---
+
+### 6.2 Chi Tiết Các Case Study Điển Hình Về Viết Tắt Kỹ Thuật
+
+#### Case 1: Tự sinh Callbacks và ID Prefix trong CanIf ([`GenCanIf.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py#L268-L288))
+Khi bạn viết trong ARXML:
+```xml
+<Pdu DataLengthCode="8" Identifier="0x732" Name="P2P" TransmitNotifier="CanTp" HthRef="LS_Hth" EcuCPduRef="TxDiagP2P" />
+<Pdu DataLengthCode="8" Identifier="0x101" Name="Time" TransmitNotifier="PduR" HthRef="LS_Hth" EcuCPduRef="TxMsgTime" />
+```
+Bộ tạo mã `GenCanIf.py` kiểm tra chuỗi `TransmitNotifier`:
+1. Nếu là `"CanTp"`:
+   - Gán tiền tố định danh ID: `IdPrfix = 'CANTP_ID'` $\longrightarrow$ Tạo macro `CANTP_ID_TxDiagP2P`.
+   - Sinh tên callback: `notifier = 'CanTp_TxConfirmation'`.
+2. Nếu là `"PduR"`:
+   - Gán tiền tố định danh ID: `IdPrfix = 'PDUR_ID2'` $\longrightarrow$ Tạo macro `PDUR_ID2_TxMsgTime`.
+   - Sinh tên callback: `notifier = 'PduR_CanIfTxConfirmation'`.
+3. Kiểm tra độ lớn ID: `0x732 <= 0x7FF` và `0x101 <= 0x7FF` $\longrightarrow$ Tự gán `CANIF_CAN_ID_TYPE_11` mà không cần bạn phải thêm tag `<IdType>STANDARD</IdType>`.
+
+#### Case 2: Nhân tử thời gian nguyên hóa (Integer Period Factors) trong COM ([`GenCom.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCom.py#L505-L511))
+Trong vi điều khiển ô tô (ARM Cortex-M3 STM32F107), việc sử dụng số thực `float` trong các hàm ngắt và Task chu kỳ 10ms sẽ làm tăng kích thước mã máy và tiêu tốn nhiều chu kỳ CPU (do chip không có bộ FPU phần cứng).  
+Do đó, thay vì dùng giây dạng `float`, dự án `as` sử dụng các hệ số nhân tử nguyên (**Integer Factors**):
+- Cấu hình ARXML: `TimePeriodFactor="100"` và Task chu kỳ chạy ở tốc độ $10\text{ms}$.
+- Mã C sinh ra:
+  ```c
+  /* Trích Com_PbCfg.c */
+  .ComTxIPdu = {
+      .ComTxModeTrue = {
+          .ComTxModeTimePeriodFactor = 100, /* 100 x 10ms = 1000ms */
+          .ComTxModeMinDelayFactor   = 1    /* 1 x 10ms = 10ms */
+      }
+  }
+  ```
+- Tại runtime trong [`Com_Sched.c: Dòng 119`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/Com/Com_Sched.c#L119), kernel chỉ cần thực thi macro đơn giản:
+  ```c
+  timerDec(Arc_IPdu->Com_Arc_TxIPduTimers.ComTxModeTimePeriodTimer);
+  ```
+  Khi bộ đếm giảm về 0, gói tin lập tức được phát đi. Cơ chế này đạt hiệu năng thời gian thực tối ưu tuyệt đối.
+
+#### Case 3: Tiền Xử Lý C-Preprocessor Trong Template ARXML Gốc
+File nguồn [`as/com/as.application/common/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/autosar.arxml) là một file **Template C-Preprocessor** chứa các nhánh rẽ điều kiện:
+```xml
+#ifdef USE_CANTP
+<CanTp> ... </CanTp>
+#endif
+#if CAN_LL_DL == 64
+<IPdu PduSize="64" ... /> <!-- Hỗ trợ CAN-FD -->
+#endif
+```
+- Khi chạy `scons -h`, trình tiền xử lý C (`gcc -E -P`) được kích hoạt trước tiên để quét qua cấu hình build của bo mạch đích (Target Board).
+- Các nhánh `#ifdef` không thỏa mãn sẽ bị cắt bỏ sạch sẽ, xuất ra file ARXML thuần túy chuẩn XML trên đĩa tại [`as/build/nt/<BOARD>/<RELEASE>/config/autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml).
+- Nhờ cơ chế này, một file template duy nhất có thể dùng chung cho cả phần cứng STM32F107 vật lý, mô phỏng QEMU LM3S, và POSIX Host mà không cần nhân bản nhiều file cấu hình cồng kềnh.
+
+#### Case 4: Thuộc Tính Giữ Chỗ Mặc Định UserNotification="CanIf_User" Và Callback Tự Định Nghĩa
+Khi kiểm tra khai báo PDU chẩn đoán trong [`autosar.arxml`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/autosar.arxml):
+```xml
+<Pdu DataLengthCode="8" Identifier="0x732" Name="P2P" TransmitNotifier="CanTp" UserNotification="CanIf_User" HthRef="LS_Hth" EcuCPduRef="TxDiagP2P" />
+```
+Nhiều kỹ sư sẽ thắc mắc: *Tại sao PDU này đã khai báo `TransmitNotifier="CanTp"` mà lại vẫn có thuộc tính `UserNotification="CanIf_User"`? Thuộc tính này dùng để làm gì? Liệu nó có ảnh hưởng gì tới callback `CanTp_TxConfirmation` không?*
+
+**1. Bóc Tách Bản Chất Trong Trình Sinh Mã ([`GenCanIf.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py#L280-L288)):**
+Thuộc tính `UserNotification` trong kiến trúc `as` đóng vai trò là **tiền tố (prefix) cho hàm callback người dùng tự định nghĩa (Custom User Callback)**.
+Hãy quan sát đoạn mã xử lý nhánh phát (Tx) trong `GenCanIf.py`:
+```python
+if(pdu.has_key('TransmitNotifier')):
+    if(pdu['TransmitNotifier'] == 'CanTp'):
+        notifier = 'CanTp_TxConfirmation'
+        IdPrfix = 'CANTP_ID'
+    elif(pdu['TransmitNotifier'] == 'PduR'):
+        notifier = 'PduR_CanIfTxConfirmation'
+        IdPrfix = 'PDUR_ID2'
+    elif(pdu['TransmitNotifier'] == 'CanNm'):
+        notifier = 'CanNm_TxConfirmation'
+        IdPrfix = 'CANNM_ID'
+    elif(pdu['TransmitNotifier'] == 'Xcp'):
+        notifier = 'Xcp_CanIfTxConfirmation'
+        IdPrfix = 'XCP_ID'
+    elif(pdu['TransmitNotifier'] == 'User'):
+        notifier = '%sTxConfirmation'%(pdu['UserNotification'])
+        IdPrfix = 'USER_ID'
+    elif(pdu['TransmitNotifier'] == 'Nobody'):
+        notifier = 'NULL'
+        IdPrfix = 'USER_ID'
+```
+Và đoạn mã xử lý nhánh thu (Rx) tại [`GenCanIf.py: L335-L351`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py#L335-L351):
+```python
+if(pdu.has_key('ReceivedNotifier')):
+    ...
+    elif(pdu['ReceivedNotifier'] == 'User'):
+        notifier = '%sRxIndication'%(pdu['UserNotification'])
+        CanIfRxUserType = 'CANIF_USER_TYPE_CAN_SPECIAL'
+        IdPrfix = 'USER_ID'
+```
+
+**2. Phân Tích Logic Hoạt Động:**
+- **Khi `TransmitNotifier == "User"` (hoặc `ReceivedNotifier == "User"`):**
+  Bộ sinh mã sẽ sử dụng giá trị chuỗi của `UserNotification` để ghép thành tên hàm callback tương ứng:
+  - Nếu `UserNotification="CanIf_User"` $\longrightarrow$ Sinh hàm callback `CanIf_UserTxConfirmation` / `CanIf_UserRxIndication`.
+  - Nếu `UserNotification="CanIf_Stdio"` $\longrightarrow$ Sinh hàm callback `CanIf_StdioTxConfirmation`.
+  - Nếu `UserNotification="CanIf_OsekNm"` $\longrightarrow$ Sinh hàm callback `CanIf_OsekNmUserTxConfirmation`.
+  Cơ chế này cho phép kỹ sư bỏ qua (bypass) toàn bộ các tầng BSW chuẩn (PduR, COM) để nhận trực tiếp dữ liệu từ CanIf vào một module C tự viết chuyên biệt (như console UART print, bootloader tool, v.v.).
+- **Khi `TransmitNotifier == "CanTp"` (hoặc `"PduR"`, `"CanNm"`, `"Xcp"`):**
+  Nhánh điều kiện đầu tiên `if (pdu['TransmitNotifier'] == 'CanTp')` khớp ngay lập tức. Biến `notifier` được gán cứng thành `'CanTp_TxConfirmation'`. **Bộ sinh mã hoàn toàn phớt lờ và không hề đọc tới biến `pdu['UserNotification']`!**
+
+**3. Đối Chiếu Mã C Thực Tế Sinh Ra Trên Đĩa:**
+Kiểm tra trực tiếp trong [`as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c: Dòng 521-544`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c#L521-L544):
 ```c
-#ifdef USE_ANYOS
-void StartOS( AppModeType mode )
 {
-	static TickType preTick = 1;
-	(void) mode;
-	StartupHook();
-	OsTickCounter = 1;
-	StartOsTick();
-	for(;;)
-	{
-		Irq_Enable();
-		BL_HwMonitor();
-		#ifdef USE_CAN
-		Can_MainFunction_Read();
-		Can_MainFunction_Write();
-		#endif
-		#ifdef USE_SHELL
-		SHELL_Mainloop();
-		#endif
-
-		if(preTick != OsTickCounter)
-		{
-			#ifdef USE_CANTP
-			CanTp_MainFunction();
-			#endif
-			#ifdef USE_DCM
-			Dcm_MainFunction();
-			#endif
-			#ifdef USE_XCP
-			Xcp_MainFunction();
-			#endif
-			BL_MainFunction();
-			preTick = OsTickCounter;
-		}
-	}
-}
+    /* .CanIfTxPduId = */ CANTP_ID_TxDiagP2P,
+    /* .CanIfCanTxPduIdCanId = */ 0x732,
+    /* .CanIfCanTxPduIdDlc = */ 8,
+    /* .CanIfCanTxPduType = */ CANIF_PDU_TYPE_STATIC,
+#if (CANIF_READTXPDU_NOTIFY_STATUS_API == STD_ON)
+    /* .CanIfReadTxPduNotifyStatus = */ TRUE,
 #endif
+    /* .CanIfTxPduIdCanIdType = */ CANIF_CAN_ID_TYPE_11,
+    /* .CanIfUserTxConfirmation = */ CanTp_TxConfirmation,
+    /* .CanIfCanTxPduHthRef = */ &CanIfHthConfigData_CANIF_CHL_LS[0],
+    /* .PduIdRef = */ NULL
+},
 ```
+Chuỗi `"CanIf_User"` hoàn toàn không xuất hiện ở bất kỳ đâu trong cấu trúc C! Trường `.CanIfUserTxConfirmation` trỏ thẳng tắp tới con trỏ hàm chuẩn `CanTp_TxConfirmation`.
 
-#### 2. Vì sao có sự tồn tại của vòng lặp `for(;;)` này?
-Sự tồn tại của vòng lặp này hoàn toàn **bình thường và là một giải pháp thiết kế kinh điển** trong phần mềm nhúng ô tô vì 2 lý do:
-
-1. **Tuân thủ giao diện khởi tạo AUTOSAR EcuM (ECU State Manager):**
-   - Theo chuẩn kiến trúc AUTOSAR, chuỗi khởi động của ECU luôn đi qua hàm [`EcuM_Init()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L216-L253). Sau khi khởi tạo đồng hồ, ngoại vi, CAN Driver và các module BSW, bước cuối cùng của `EcuM_Init()` bắt buộc phải bàn giao quyền điều khiển cho hệ điều hành bằng lời gọi:
-     ```c
-     StartOS(OSDEFAULTAPPMODE); /* Dòng 251 main.c */
-     ```
-   - Để module `EcuM` có thể tái sử dụng nguyên vẹn mà không cần sửa đổi mã nguồn, Bootloader phải cung cấp một hàm mang đúng tên `StartOS(AppModeType mode)`.
-
-2. **Bản chất Bare-metal Mock OS / Super-Loop của Bootloader:**
-   - Bootloader là chương trình nằm ở vùng Flash độc lập (thường là Sector 0). Mục tiêu tối thượng của Bootloader là:
-     * **Kích thước cực nhỏ (Ultra-low Footprint):** Chiếm dung lượng FLASH tối thiểu (thường < 16KB - 32KB) và RAM cực ít để nhường tài nguyên cho Application.
-     * **Tính tất định và đơn giản:** Bootloader chỉ làm đúng một nhiệm vụ là tiếp nhận gói tin chẩn đoán UDS (hoặc XCP) qua CAN, ghi dữ liệu vào Flash và nhảy sang Application. Nó không cần các tính năng đa nhiệm phức tạp, không cần quản lý tài nguyên (Resource Mutex), không cần chuyển ngữ cảnh (Context Switching).
-   - Nếu Bootloader kéo theo toàn bộ nhân OSEK RTOS (bảng TCB, Task Stacks riêng biệt, Scheduler logic), kích thước nhị phân sẽ phình to gấp nhiều lần và làm tăng nguy cơ lỗi.
-   - Do đó, macro `#ifdef USE_ANYOS` được kích hoạt để biến `StartOS()` thành một **Super-Loop Polling Architecture** (Vòng lặp siêu tuần hoàn bare-metal).
+**4. Vì Sao Nó Lại Tồn Tại Trong File ARXML?**
+Thuộc tính `UserNotification="CanIf_User"` trên dòng `<Pdu ... TransmitNotifier="CanTp" ... />` là một **giá trị mặc định còn sót lại từ giao diện đồ họa GUI (GUI Default Value Artifact)**. Công cụ GUI sinh file cấu hình (như EasySAR hoặc `as.one.py`) khi tạo một node `<Pdu>` luôn khởi tạo sẵn giá trị mặc định cho tất cả các trường. Khi người dùng chọn `TransmitNotifier="CanTp"`, giao diện không chủ động xóa trường `UserNotification` mà cứ thế lưu nguyên vẹn xuống XML. Đây chính là một ví dụ điển hình của hiện tượng "Dư thừa cấu hình ARXML" sẽ được phân tích sâu ở mục tiếp theo.
 
 ---
 
-### 6.2 Đối Chiếu Chuyên Sâu: `StartOS()` Bootloader vs `StartOS()` OSEK RTOS Chuẩn
+### 6.3 Hiện Tượng "Dư Thừa Cấu Hình ARXML": Đặc Sản Kinh Điển Trong Công Nghiệp Ô Tô Thực Tế
 
-Để hiểu rõ sự khác biệt bản chất, hãy đối chiếu hàm `StartOS()` của Bootloader ở trên với hàm `StartOS()` thực sự của hệ điều hành OSEK RTOS trong dự án tại [`as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c: L183-L209`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c#L183-L209):
+Một câu hỏi rất sắc bén mà bất kỳ kỹ sư nhúng ô tô nào cũng đặt ra khi mới tiếp cận AUTOSAR:  
+> *"Hiện tượng thuộc tính dư thừa như `UserNotification="CanIf_User"` ở trên là do mã nguồn dự án học tập `as` viết cẩu thả, hay trong các dự án công nghiệp sản xuất xe hơi thương mại thực tế cũng có các trường hợp dư thừa như vậy?"*
 
-```c
-void StartOS ( AppModeType Mode )
-{
-	DECLARE_SMP_PROCESSOR_ID();
+Câu trả lời từ góc nhìn của **AUTOSAR Chief Engineer**:  
+**Đây không phải là lỗi hay sự cẩu thả của riêng repo `as`, mà là một "ĐẶC SẢN KINH ĐIỂN MANG TÍNH HỆ THỐNG" diễn ra hàng ngày ở 100% các dự án AUTOSAR sản xuất xe thương mại trên toàn cầu!**
 
-	appMode = Mode;
+Bất kể bạn làm việc tại các hãng xe hàng đầu (VinFast, BMW, Mercedes-Benz, Toyota, Ford, GM) hay các nhà cung ứng Tier-1 danh tiếng (Bosch, Continental, Denso, ZF, Aptiv), sử dụng các công cụ cấu hình BSW thương mại đắt tiền bậc nhất thế giới như **Vector DaVinci Configurator Classic**, **Elektrobit EB tresos Studio**, **ETAS ISOLAR-A/B**, hay **Siemens Capital VSTAR**, bạn sẽ luôn bắt gặp các file cấu hình ARXML khổng lồ (hàng trăm ngàn dòng XML) đầy ắp các tham số "dư thừa", "vô hại", hoặc "bị bỏ qua hoàn toàn".
 
-	Irq_Disable();
-
-	Os_MiscInit();
-	Os_PortInit();
-	Os_TaskInit(Mode);
-	Os_ResourceInit();
-#if (COUNTER_NUM > 0)
-	Os_CounterInit();
-#endif
-#if (ALARM_NUM > 0)
-	Os_AlarmInit(Mode);
-#endif
-
-	OSStartupHook();
-#ifdef USE_SMP
-	Os_PortSpinLock();
-#endif
-	Sched_GetReady();
-	Os_PortStartFirstDispatch();
-	while(1); /* Bẫy phòng thủ - CPU thực tế KHÔNG BAO GIỜ chạy đến dòng này */
-}
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│                        ARXML CONFIGURATION FILE                        │
+│   (Chứa hàng ngàn thuộc tính: GUI Defaults, Legacy, Don't-Care Tags)   │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                    AUTOSAR BSW CODE GENERATOR                          │
+│   (Vector DaVinci Gen / EB Tresos Gen / argen Python Scripts)          │
+│   ──► THẨM ĐỊNH NGỮ NGHĨA (Semantic & Dependency Validation)          │
+│   ──► LỌC BỎ 100% DỮ LIỆU DƯ THỪA (Noise Filtering)                    │
+│   ──► CHỈ TRÍCH XUẤT THUỘC TÍNH ACTIVE (Active Mode Extraction)        │
+└───────────────────────────────────┬────────────────────────────────────┘
+                                    │
+                                    ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                 GENERATED C SOURCE ARTIFACTS ON DISK                   │
+│   (*_Cfg.c, *_PbCfg.c, *_Cfg.h sạch sẽ 100%, tối ưu từng byte RAM/ROM) │
+└────────────────────────────────────────────────────────────────────────┘
 ```
 
-#### Bảng so sánh cơ chế hoạt động:
+#### 6.3.1 Bốn (04) Nguyên Nhân Sâu Xa Dẫn Đến "Dư Thừa Cấu Hình" Trong Ngành Ô Tô
 
-| Đặc tính kỹ thuật | `StartOS()` trong Bootloader (`boot/common/main.c`) | `StartOS()` trong OSEK RTOS Chuẩn (`askar/kernel/kernel.c`) |
-| :--- | :--- | :--- |
-| **Kiểu kiến trúc** | **Bare-metal Super-Loop Polling** (Vòng lặp quét cờ). | **Preemptive Multi-Tasking RTOS** (Hệ điều hành đa nhiệm tiền chiếm). |
-| **Hành vi hàm** | Chạy vào vòng lặp `for(;;)` vô tận ngay trong stack của hàm `main()`. | Khởi tạo cấu trúc dữ liệu Kernel rồi gọi `Os_PortStartFirstDispatch()`. |
-| **Điểm trả về (Return)** | **Không bao giờ thoát** vòng lặp `for(;;)`. | **Không bao giờ quay lại** `main()`. CPU nạp ngữ cảnh (Registers/PC) của Task ưu tiên cao nhất và nhảy thẳng vào Task đó. |
-| **Chuyển ngữ cảnh (Context Switch)** | **Không có**. Tất cả các hàm chạy tuần tự trên cùng một Stack duy nhất (Main Stack Pointer - MSP). | **Có**. CPU lưu trữ và khôi phục các thanh ghi (R0-R12, LR, PC, xPSR) giữa các Task Stack riêng rẽ. |
-| **Chiếm dụng tài nguyên** | Cực thấp (Flash ~ vài KB, RAM ~ vài trăm bytes). | Cần phân bổ RAM Stack cho từng Extended Task và bảng quản lý TCB của RTOS. |
+##### 1. Cơ Chế Khởi Tạo & Tuần Tự Hóa Mặc Định Của Công Cụ GUI (GUI Serialization Defaults)
+Mọi công cụ đồ họa cấu hình BSW đều tuân thủ các file định nghĩa mô hình tham số chuẩn của AUTOSAR (**BSW Parameter Definition - `*_Def.arxml`**).
+- Trong `CanIf_Def.arxml`, container `CanIfTxPduCfg` định nghĩa tham số `CanIfTxPduUserTxConfirmationName` kèm theo một giá trị mặc định (`defaultValue = "UserTxConfirmation"`).
+- Khi kỹ sư click chuột tạo một Tx PDU mới trên giao diện Vector DaVinci hay EB Tresos, GUI tự động điền sẵn các giá trị mặc định này vào form.
+- Khi kỹ sư nhấn **Save**, công cụ bắt buộc phải tuần tự hóa (serialize) toàn bộ cây đối tượng ra file XML. Ngay cả khi kỹ sư đã chọn cấu hình cho tầng trên là `CanTp` (không dùng tới tên callback tùy biến), công cụ vẫn ghi trường này vào file XML vì nó tồn tại trong cây dữ liệu của GUI.
 
-> [!NOTE]
-> Vòng lặp `while(1);` ở dòng 208 của [`kernel.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/kernel/askar/kernel/kernel.c#L208) là một vòng lặp phòng vệ (Defensive Trap). Trong điều kiện bình thường, `Os_PortStartFirstDispatch()` đã thay đổi Program Counter (PC) của CPU để nhảy vào mã của Task đầu tiên, nên dòng `while(1);` này không bao giờ được chạm tới.
+##### 2. Nguyên Tắc "Bảo Toàn Dữ Liệu Hai Chiều" (Round-Trip Preservation Safety)
+Chu trình phát triển phần mềm ECU trong ngành ô tô là sự phối hợp chặt chẽ giữa OEM (Hãng xe) và Tier-1 (Nhà sản xuất hộp điều khiển):
+- OEM phát hành bản trích xuất hệ thống mạng xe (**System Extract ARXML**) gửi cho Tier-1.
+- Tier-1 nhập vào tool cấu hình BSW, thêm các container của vi điều khiển (MCAL, OS, BSW), sinh mã và tích hợp.
+- Tier-1 sau đó xuất ngược lại bản trích xuất cấu hình ECU (**ECU Configuration Extract ARXML**) gửi trả OEM để thẩm định chất lượng mạng toàn xe.
+
+> [!IMPORTANT]
+> **Quy tắc an toàn bất khả xâm phạm của Toolchain:** Một công cụ cấu hình BSW **tuyệt đối không bao giờ được phép tự ý xóa** các thuộc tính XML mà nó không hiểu hoặc chưa dùng tới!  
+> Lý do: Thuộc tính đó có thể đang được một công cụ khác trong chuỗi cung ứng sử dụng (ví dụ: công cụ tự động hóa kiểm thử HIL dSPACE, script kiểm tra an ninh mạng UNECE R155, hoặc tool quản lý phân hệ Variant của OEM). Việc tool tự ý "dọn dẹp" XML sẽ làm gãy chuỗi đồng bộ dữ liệu (Broken Round-Trip). Do đó, các thẻ cấu hình thừa luôn được bảo toàn nguyên vẹn từ năm này qua năm khác.
+
+##### 3. Thuộc Tính Phụ Thuộc Có Điều Kiện (Conditional Validity / Don't-Care Parameters)
+Trong đặc tả AUTOSAR SWS, hàng trăm tham số cấu hình có tính chất "chỉ có hiệu lực khi một điều kiện khác thỏa mãn" (Conditional Dependency). Khi điều kiện đó không thỏa mãn, tham số trở thành giá trị **Don't-Care (vô hại)**:
+- **Trong tầng COM:**
+  Tham số chu kỳ phát `ComTxModeTimePeriod` chỉ có hiệu lực khi chế độ phát `ComTxMode` là `PERIODIC` hoặc `MIXED`. Nếu kỹ sư đổi sang chế độ `DIRECT` (phát theo sự kiện), giá trị số của `ComTxModeTimePeriod` (ví dụ `0.1s`) **vẫn nằm nguyên trong file ARXML**. Trình sinh mã COM tự động bỏ qua nó và không sinh bộ đếm thời gian cho PDU đó.
+- **Trong tầng CanIf:**
+  Tham số `UserNotification` chỉ có hiệu lực khi `TransmitNotifier = User`. Khi đã chọn `CanTp` hay `PduR`, thuộc tính này trở thành giá trị Don't-care.
+- **Trong tầng MCAL Can:**
+  Tham số mặt nạ lọc `CanFilterMask` chỉ có hiệu lực khi bộ lọc được cấu hình kiểu `MASK`. Nếu cấu hình kiểu `RANGE` hoặc `INDEX`, giá trị Mask trong XML bị phần cứng và driver phớt lờ hoàn toàn.
+
+##### 4. Kế Thừa Nền Tảng & Văn Hóa "Sao Chép An Toàn" (Platform Legacy & Copy-Paste Heritage)
+- Trong kỹ nghệ ô tô, chi phí thẩm định an toàn chức năng (**ISO 26262 ASIL**) và kiểm thử xác nhận (Validation/HIL) là cực kỳ đắt đỏ (lên tới hàng triệu USD cho mỗi nền tảng ECU).
+- Do đó, khi bắt đầu phát triển một mẫu xe mới, 80% - 90% cấu hình ECU được sao chép nguyên trạng từ nền tảng xe thế hệ trước (**Platform Carry-Over**).
+- Kỹ sư BSW thường chọn giải pháp an toàn cao nhất: Giữ nguyên toàn bộ cấu hình cũ, chỉ chỉnh sửa hoặc thêm mới những PDU thực sự thay đổi. Rất nhiều thẻ cấu hình dư thừa của dự án cũ (như các cờ debug, các PDU chẩn đoán thử nghiệm prototype đã bị hủy bỏ) tiếp tục tồn tại qua nhiều năm vì tâm lý: *"Hệ thống đang chạy ổn định và đã pass kiểm thử, không ai dại gì xóa bớt một thẻ XML để rồi mạo hiểm đối mặt với nguy cơ lỗi hệ thống!"*
 
 ---
 
-### 6.3 Giải Mã Vòng Đời Task OSEK & Vấn Đề Cấp Phát Bộ Nhớ (RAM vs FLASH)
+#### 6.3.2 Bảng Đối Chiếu 3 Tình Huống Thực Tế: Tool Thương Mại (Vector / EB) vs Dự Án Study_AUTOSAR
 
-Một thắc mắc kinh điển của kỹ sư nhúng khi tiếp cận AUTOSAR: *"Các Task trong AUTOSAR sau khi chạy có bị xóa đi (delete) để giải phóng vùng nhớ cho Task khác không?"*
-
-Cần phân định rạch ròi giữa hai phân vùng nhớ vật lý **FLASH** và **RAM** theo chuẩn OSEK/VDX OS:
-
-```
-                            BẢN ĐỒ BỘ NHỚ CỦA TASK TRONG AUTOSAR
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│ 1. BỘ NHỚ FLASH (MÃ NGUỒN CỐ ĐỊNH - KHÔNG BAO GIỜ BỊ XÓA)                                   │
-│ ┌─────────────────────────────┐ ┌─────────────────────────────┐ ┌─────────────────────────┐ │
-│ │ TASK(Task_10ms) Code (.text)│ │ TASK(Task_100ms) Code(.text)│ │ TASK(SchM_BswService)   │ │
-│ └─────────────────────────────┘ └─────────────────────────────┘ └─────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
-                                               │
-                                               ▼
-┌─────────────────────────────────────────────────────────────────────────────────────────────┐
-│ 2. BỘ NHỚ RAM (CALL STACK & BIẾN CỤC BỘ)                                                    │
-│                                                                                             │
-│ [MÔ HÌNH BASIC TASK (BCC1) - SINGLE-STACK SHARING]                                          │
-│ ┌─────────────────────────────────────────────────────────────────────────────────────────┐ │
-│ │                    VÙNG RAM STACK CHUNG DUY NHẤT (SHARED STACK)                         │ │
-│ │ Task A chạy -> chiếm Stack -> TerminateTask() -> GIẢI PHÓNG RAM -> Task B tái sử dụng   │ │
-│ └─────────────────────────────────────────────────────────────────────────────────────────┘ │
-│                                                                                             │
-│ [MÔ HÌNH EXTENDED TASK (ECC1) - DEDICATED STACK]                                            │
-│ ┌──────────────────────────────────────────┐ ┌────────────────────────────────────────────┐ │
-│ │ RAM Stack Riêng Của Task X (Dedicated)   │ │ RAM Stack Riêng Của Task Y (Dedicated)     │ │
-│ │ Khi WaitEvent() -> Stack giữ nguyên!     │ │ Không thể chia sẻ với Task khác.           │ │
-│ └──────────────────────────────────────────┘ └────────────────────────────────────────────┘ │
-└─────────────────────────────────────────────────────────────────────────────────────────────┘
-```
-
-#### 1. Bộ nhớ FLASH (Code Segment / `.text`)
-- Mã nhị phân của tất cả các Task (ví dụ `TASK(SchM_BswService) { ... }`) được ghi cố định vào Flash trong quá trình nạp chương trình (Flashing).
-- Task **KHÔNG BAO GIỜ** bị xóa khỏi Flash khi kết thúc. Chúng luôn nằm sẵn ở đó chờ bộ lập lịch kích hoạt.
-
-#### 2. Bộ nhớ RAM (Stack & Execution Context)
-Cơ chế giải phóng RAM phụ thuộc vào loại Task được cấu hình trong file OIL/ARXML:
-
-* **Basic Task (Chuẩn OSEK BCC1 / BCC2):**
-  - Chỉ có 3 trạng thái: `SUSPENDED` (Ngủ), `READY` (Sẵn sàng), `RUNNING` (Đang chạy). **Không có trạng thái `WAITING`**.
-  - Khi hoàn thành công việc, Task bắt buộc phải gọi API `TerminateTask()`.
-  - **Cơ chế chia sẻ Stack (Single-Stack Architecture):** Chuẩn OSEK BCC1 quy định tất cả Basic Task có thể dùng chung một vùng nhớ RAM Stack duy nhất. Khi Basic Task A kết thúc (`TerminateTask()`), toàn bộ biến cục bộ và khung ngăn xếp (Stack Frame) của nó được giải phóng (con trỏ SP thu hồi về vị trí đáy). Ngay sau đó, Basic Task B được kích hoạt sẽ sử dụng chính vùng nhớ RAM Stack này. Đây chính là hiện tượng *"nhường lại vùng nhớ RAM"* mà các kỹ sư thường liên tưởng.
-
-* **Extended Task (Chuẩn OSEK ECC1 / ECC2):**
-  - Có thêm trạng thái thứ 4: `WAITING` (chờ sự kiện qua API `WaitEvent(EventMask)`).
-  - Khi một Task gọi `WaitEvent()`, nó bị treo giữa chừng trong khi các biến cục bộ trong hàm vẫn cần được bảo toàn nguyên vẹn để tiếp tục tính toán khi có sự kiện (Event) kích hoạt.
-  - Do đó, **mỗi Extended Task BẮT BUỘC phải sở hữu một vùng nhớ RAM Stack riêng biệt (Dedicated Stack)**. Vùng RAM này không thể thu hồi hay nhường cho Task khác trong khi Task đang ở trạng thái `WAITING`.
+| Module & Ngữ Cảnh Cấu Hình | Biểu Hiện Trong File ARXML Thương Mại (Vector DaVinci / EB Tresos) | Biểu Hiện Tương Đương Trong Dự Án `Study_AUTOSAR` | Bản Chất Xử Lý Của Trình Sinh Mã (Code Generator) |
+| :--- | :--- | :--- | :--- |
+| **CanIf: User Callbacks vs Upper Layer Notification** | Thẻ `<CanIfTxPduUserTxConfirmationName>` vẫn chứa chuỗi `"MyUserTxConfirmation"` dù `<CanIfTxPduUserTxConfirmationUL>` đã chọn là `CAN_TP` hoặc `PDUR`. | Thẻ `<Pdu>` vẫn chứa `UserNotification="CanIf_User"` dù `TransmitNotifier="CanTp"` hoặc `"PduR"`. | [`GenCanIf.py: L280-L288`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py#L280-L288): Trình sinh mã kiểm tra chuỗi `Notifier`. Nếu khác `'User'`, nó bỏ qua biến `UserNotification` và gán thẳng con trỏ hàm chuẩn `CanTp_TxConfirmation`. File C sinh ra sạch sẽ 100%. |
+| **COM: Periodic Timers trên Event-Driven PDU** | Thẻ `<ComTxModeTimePeriod>` vẫn hiển thị giá trị `<VALUE>0.02</VALUE>` (20ms) dù `<ComTxModeMode>` đang chọn là `DIRECT` (phát tức thời khi có Signal update). | Thuộc tính `TimePeriodFactor="100"` vẫn còn trên các I-PDU có kiểu truyền `DIRECT` do copy-paste từ template. | [`GenCom.py: L505-L511`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCom.py#L505-L511): Generator kiểm tra Mode truyền. Nếu không phải `PERIODIC`/`MIXED`, nó gán `TimePeriodFactor = 0` hoặc không tạo Timer task, giúp CPU không tốn bất kỳ chu kỳ nào để đếm chu kỳ ảo. |
+| **NvM / Memory: Redundant Block Configuration** | Thẻ `<NvMBlockUseSyncMechanism>true</NvMBlockUseSyncMechanism>` vẫn còn trong cấu hình Block NvM dù kiểu thiết bị lưu trữ bên dưới là Internal Flash ROM (không hỗ trợ RAM mirror). | Thẻ cấu hình phân vùng bộ nhớ Flash chứa các tham số Sector Size dư thừa của dòng chip cũ khi porting từ POSIX sang STM32. | Trình sinh mã `GenNvM.py` / `GenFee.py` dựa trên bảng cấu hình Device Driver thực tế để quyết định có sinh RAM Mirror buffer hay không, loại bỏ toàn bộ dữ liệu thừa. |
 
 ---
 
-### 6.4 Chức Năng Từng Hàm Polling Trong Vòng Lặp `StartOS()` Của Bootloader
+#### 6.3.3 Vai Trò Của Generator: "Bộ Lọc Thông Minh Cuối Cùng" (The Ultimate Smart Filter)
 
-Trong vòng lặp `for(;;)` của Bootloader, các hàm được chia làm 2 nhóm tốc độ thực thi:
+Từ phân tích trên, chúng ta nhận ra một nguyên lý kiến trúc mang tính sống còn của thế giới AUTOSAR:
 
-```c
-for(;;)
-{
-    Irq_Enable();
-    BL_HwMonitor();             /* [Nhóm 1]: Quét liên tục tốc độ cao (Back-to-back Polling) */
-    Can_MainFunction_Read();
-    Can_MainFunction_Write();
-    SHELL_Mainloop();
+> **File cấu hình ARXML chỉ là một bản vẽ phác thảo thô (Draft Blueprint), còn Trình Sinh Mã (Code Generator) mới là Kiến Trúc Sư Trưởng Thi Công Thực Tế.**
 
-    if(preTick != OsTickCounter) /* [Nhóm 2]: Quét định kỳ 1ms (Pseudo-Tick Scheduling) */
-    {
-        CanTp_MainFunction();
-        Dcm_MainFunction();
-        Xcp_MainFunction();
-        BL_MainFunction();
-        preTick = OsTickCounter;
-    }
-}
-```
-
-#### Nhóm 1: Quét liên tục tốc độ tối đa (Continuous Polling)
-
-1. [`BL_HwMonitor()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L154-L159):
-   - Hàm giám sát phần cứng mức thấp (ví dụ: làm tươi bộ đếm phần cứng Watchdog Timer chống treo CPU, kiểm tra chân phần cứng Boot-Pin để xác định người dùng có yêu cầu ép vào chế độ Bootloader hay không).
-
-2. [`Can_MainFunction_Read()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L183):
-   - Thay vì dùng ngắt CAN Rx Interrupt, Bootloader cấu hình phần cứng CAN Controller ở chế độ **Polling**.
-   - Hàm này liên tục đọc cờ của các Mailbox phần cứng CAN Controller (ví dụ bit `FMP` trong thanh ghi `CAN_RF0R` của STM32). Ngay khi phát hiện có Frame mới, nó lấy ID và Payload rồi gọi trực tiếp hàm callback [`CanIf_RxIndication()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L88-L105) để chuyển giao dữ liệu.
-
-3. [`Can_MainFunction_Write()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L184):
-   - Kiểm tra trạng thái cờ truyền của phần cứng (ví dụ cờ `RQCP` trong thanh ghi `CAN_TSR`). Nếu Mailbox đã truyền xong gói tin CAN ra bus, hàm sẽ gọi `CanIf_TxConfirmation()` để thông báo tầng trên giải phóng bộ đệm truyền.
-
-#### Nhóm 2: Điều phối định kỳ 1ms bằng cờ Tick (`preTick != OsTickCounter`)
-
-Mỗi khi ngắt phần cứng SysTick xảy ra, hàm [`OsTick()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L161-L169) tăng biến toàn cục `OsTickCounter++`. Điều kiện `preTick != OsTickCounter` đóng vai trò như một **bộ chia nhịp phần mềm (Software Prescaler)** đảm bảo các hàm sau chạy đúng chu kỳ 1ms:
-
-4. [`CanTp_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L193):
-   - **Nhiệm vụ:** Quản lý toàn bộ các bộ đếm thời gian truyền nhận đa khung chuẩn ISO 15765-2 ($N\_Ar$, $N\_As$, $N\_Bs$, $N\_Cr$).
-   - **Liên hệ thực tế:** Khi nạp một file phần mềm Hex dung lượng 512KB qua UDS, dữ liệu được xé thành hàng chục ngàn gói Consecutive Frame (CF). Hàm này đảm bảo việc gửi Flow Control (FC) đúng hạn, kiểm tra timeout nếu bên gửi máy tính (Tester) bị gián đoạn giữa các khung tin.
-
-5. [`Dcm_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L196):
-   - **Nhiệm vụ:** Quản lý máy trạng thái chẩn đoán UDS (ISO 14229) và các bộ đếm thời gian dịch vụ ($P2Server$ và $P2^*Server$).
-   - **Liên hệ thực tế:** 
-     * Khi Tester gửi lệnh `$10 02` (DiagnosticSessionControl - Programming Session), `Dcm_MainFunction` duy trì phiên lập trình. Nếu Tester không gửi gói tin `$3E 80` (TesterPresent) định kỳ, bộ đếm `S3Server` hết hạn và `Dcm` sẽ tự động thoát phiên Bootloader để bảo vệ ECU.
-     * Quản lý trạng thái giải mã chuỗi xác thực bảo mật `$27` (SecurityAccess - Seed & Key) trước khi cho phép mở khóa vùng nhớ Flash.
-
-6. [`Xcp_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L199):
-   - Quản lý giao thức đo kiểm và nạp Flash nhanh theo chuẩn ASAM XCP on CAN (thay thế hoặc song song với UDS).
-
-7. [`BL_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/boot/common/main.c#L201):
-   - **Trái tim của Bootloader:** Tiếp nhận dữ liệu nhị phân từ DCM qua dịch vụ `$34` (RequestDownload) và `$36` (TransferData), trực tiếp ra lệnh cho Flash Driver xóa các Sector đích, ghi nhị phân mới vào Flash chip, và tính toán mã kiểm tra CRC checksum (dịch vụ `$31` RoutineControl) trước khi chuyển cờ báo nạp phần mềm thành công.
+Trình sinh mã BSW không bao giờ hoạt động như một công cụ copy dữ liệu mù quáng từ XML sang C. Ngược lại, nó là một **Trình Biên Dịch Ngữ Nghĩa (Semantic Compiler)** với các nhiệm vụ tối thượng:
+1. **Kiểm tra tính toàn vẹn phụ thuộc (Dependency & Consistency Checking):** Thẩm định xem tham số A có hợp lệ trong ngữ cảnh của tham số B hay không.
+2. **Lọc sạch dữ liệu rác (Noise & Don't-Care Filtering):** Triệt tiêu hoàn toàn các tham số dư thừa, các cờ mặc định bị vô hiệu hóa bởi chế độ hoạt động hiện tại.
+3. **Tối ưu hóa tài nguyên phần cứng (Resource Optimization):** Đảm bảo mã nguồn C sinh ra (`*_Cfg.c`, `*_PbCfg.c`) chỉ chiếm đúng số byte RAM và ROM tối thiểu cần thiết cho các tác vụ đang thực sự chạy trên vi điều khiển ô tô.
 
 ---
 
-### 6.5 Tổng Kết: Sự Tương Phản Giữa Hai Luồng Xử Lý Trong Hệ Thống
+#### 6.3.4 Nguyên Tắc Vàng Khi Làm Việc Với Cấu Hình AUTOSAR
 
-Để thấy rõ bức tranh tổng thể của toàn bộ tài liệu này, bảng dưới đây đối chiếu phương thức vận hành của hai luồng thông tin trong dự án:
-
-| Tiêu chí kỹ thuật | Luồng 1: Ứng dụng điều khiển thời gian thực (Mục 4.3.1) | Luồng 2: Nạp Flash Bootloader / Chẩn đoán UDS (Phụ lục 6) |
-| :--- | :--- | :--- |
-| **Chuỗi module tham gia** | `CAN Driver` $\rightarrow$ `CanIf` $\rightarrow$ `PduR` $\rightarrow$ `COM` $\rightarrow$ `RTE` $\rightarrow$ `SWC`. | `CAN Driver` $\rightarrow$ `CanIf` $\rightarrow$ `CanTp` $\rightarrow$ `PduR` $\rightarrow$ `Dcm` $\rightarrow$ `Bootloader (BL)`. |
-| **Sự hiện diện của COM & RTE** | **BẮT BUỘC**. COM giải mã Signal từ I-PDU, RTE điều phối truyền nhận tới SWC. | **HOÀN TOÀN KHÔNG CÓ**. Tầng DCM trao đổi trực tiếp với Bootloader qua Service Handlers. |
-| **Môi trường thực thi (Environment)** | **OSEK RTOS Preemptive Kernel**. Các hàm `Com_MainFunctionRx`, `Can_MainFunction_...` nằm trong Task tuần hoàn [`TASK(SchM_BswService)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491-L521) kích hoạt bởi Alarm 10ms. | **Bare-metal Super-Loop Polling**. Các hàm `Can_MainFunction_...`, `CanTp_...`, `Dcm_...` nằm trong vòng lặp `for(;;)` của `StartOS(USE_ANYOS)`. |
-| **Mục đích sử dụng trên xe** | Vận hành xe bình thường (điều khiển động cơ, phanh ABS, hiển thị đồng hồ tốc độ). | Sửa chữa tại gara (Diagnostic Tester) hoặc cập nhật phần mềm ECU tại nhà máy sản xuất (End-of-Line Flashing / OTA). |
+> [!TIP]
+> ### 👑 Lời Khuyên Vàng Cho Kỹ Sư AUTOSAR
+> Khi bạn mở một file ARXML trong bất kỳ dự án xe hơi nào và bắt gặp những tham số kỳ lạ, mâu thuẫn hoặc có vẻ dư thừa, **đừng vội hoang mang hay kết luận hệ thống bị lỗi!**
+> 
+> Hãy luôn ghi nhớ quy tắc thẩm định bằng chứng bất biến:
+> 1. **Bước 1 — Soi logic Trình Sinh Mã:** Mở script tạo mã (như [`GenCanIf.py`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.tool/config.infrastructure.system/argen/GenCanIf.py)) xem tham số đó có được thuật toán đọc vào và xử lý hay không.
+> 2. **Bước 2 — Thẩm định Mã C Trên Đĩa:** Mở trực tiếp file mã C sinh ra tương ứng (như [`CanIf_Cfg.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/CanIf_Cfg.c)) xem trường đó có xuất hiện trong struct cấu hình hay không.
+> 3. **Bước 3 — Kiểm tra Tầng Runtime:** Mở file thực thi C BSW (như [`CanIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/communication/CanIf/CanIf.c)) xem các con trỏ hàm và biến runtime được điều phối như thế nào.
+> 
+> Nếu mã C sinh ra không chứa trường đó hoặc trỏ thẳng vào handler chuẩn mực, thì thuộc tính trong ARXML đó là một **"Don't-Care Attribute" hoàn toàn vô hại**!
 
 ---
 
-> 🎉 **Tổng kết:** Qua tài liệu masterclass này, bạn đã nắm vững toàn bộ kiến trúc từ bản chất vật lý (ISO 11898), mô hình giao tiếp 4 ECU vi sai, giải mã dạng sóng oscilloscope, ngăn xếp ComStack lý thuyết, cách cấu hình thực tế từng module qua file ARXML và bộ sinh mã Python, cho đến bản chất sâu xa nhất của vòng lặp `StartOS()` và cơ chế cấp phát bộ nhớ Task trong nhân RTOS của kho mã nguồn `Study_AUTOSAR`!
+> 🎉 **Tổng kết Chuyên đề ComStack & CAN Protocol:** Qua tài liệu masterclass này, bạn đã nắm vững toàn bộ kiến trúc từ bản chất vật lý (ISO 11898), mô hình giao tiếp 4 ECU vi sai, giải mã dạng sóng oscilloscope, ngăn xếp ComStack lý thuyết, cách cấu hình thực tế từng module (`Can`, `CanIf`, `CanTp`, `PduR`, `Com`) qua file ARXML và bộ sinh mã Python trên đĩa, cho đến việc xác thực chính xác tọa độ các hàm BSW Runtime tiêu thụ cấu hình trong kho mã nguồn `Study_AUTOSAR`!
+
 
 
