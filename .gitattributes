@@ -1,0 +1,2 @@
+# Disable delta compression and line-by-line diffing for large base64 backup files
+BackUp/*.txt -delta -diff
