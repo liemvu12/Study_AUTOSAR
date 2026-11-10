@@ -1,0 +1,13 @@
+# Environment variables and API secrets
+.env
+.env.local
+
+# Python caches and compiled bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local quota and runtime states
+quota_state.json
+scout_output/
+test_temp_output/

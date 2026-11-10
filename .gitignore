@@ -9,5 +9,6 @@
 __pycache__/
 .DS_Store
 
-# Large binary backup archives (raw zip excluded; encoded txt is pushed)
+# Large binary backup archives & encoded text dumps (local backup only)
 BackUp/*.zip
+BackUp/*.txt

@@ -1,0 +1,1410 @@
+<?xml version='1.0' encoding='utf-8'?>
+<AUTOSAR>
+  <OS>
+    <SHORT-NAME>OS</SHORT-NAME>
+    <General Comment="Not Used" Conformance="ECC1" ErrorHook="ErrorHook" PTHREAD="32" PTHREAD_PRIORITY="32" PostTaskHook="PostTaskHook" PreTaskHook="PreTaskHook" ProtectionHook="NULL" ShutdownHook="ShutdownHook" StartupHook="StartupHook" Status="EXTENDED" CPU_CORE_NUMBER="1">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <ApplicationModeList Max="TBD">
+      <SHORT-NAME>ApplicationModeList</SHORT-NAME>
+      <ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE">
+        <SHORT-NAME>OSDEFAULTAPPMODE</SHORT-NAME>
+      </ApplicationMode>
+    </ApplicationModeList>
+    <ApplicationList Max="TBD">
+      <SHORT-NAME>ApplicationList</SHORT-NAME>
+      <Application Comment="*" Name="OsDefaultApp" RestartTask="SchM_Startup" Trusted="True" UseRestartTask="True">
+        <SHORT-NAME>OsDefaultApp</SHORT-NAME>
+      </Application>
+    </ApplicationList>
+    <TaskList Max="TBD">
+      <SHORT-NAME>TaskList</SHORT-NAME>
+      <Task Activation="1" Application="OsDefaultApp" Autostart="True" Comment="*" Cpu="0" Name="SchM_Startup" Priority="7" Schedule="FULL" StackSize="2048">
+        <SHORT-NAME>SchM_Startup</SHORT-NAME>
+        <ApplicationModeList Max="TBD">
+          <SHORT-NAME>ApplicationModeList</SHORT-NAME>
+          <ApplicationMode Comment="*" Name="OSDEFAULTAPPMODE">
+            <SHORT-NAME>OSDEFAULTAPPMODE</SHORT-NAME>
+          </ApplicationMode>
+        </ApplicationModeList>
+      </Task>
+      <Task Activation="1" Application="OsDefaultApp" Autostart="False" Comment="*" Cpu="0" Name="SchM_BswService" Priority="8" Schedule="FULL" StackSize="2048">
+        <SHORT-NAME>SchM_BswService</SHORT-NAME>
+        <EventList>
+          <SHORT-NAME>EventList</SHORT-NAME>
+          <Event Name="EventForLwip" Mask="0x00000001">
+            <SHORT-NAME>EventForLwip</SHORT-NAME>
+          </Event>
+        </EventList>
+      </Task>
+    </TaskList>
+    <AlarmList Max="TBD">
+      <SHORT-NAME>AlarmList</SHORT-NAME>
+      <Alarm Action="ActivateTask" Application="OsDefaultApp" Autostart="False" Callback="TBD" Comment="*" Counter="OsClock" Event="TBD" Name="Alarm_BswService" Period="100" StartTime="0" Task="SchM_BswService">
+        <SHORT-NAME>Alarm_BswService</SHORT-NAME>
+      </Alarm>
+    </AlarmList>
+    <CounterList Max="TBD">
+      <SHORT-NAME>CounterList</SHORT-NAME>
+      <Counter Application="OsDefaultApp" Comment="*" MaxAllowed="0xFFFF" MinCycle="1" Name="OsClock" TicksPerBase="1">
+        <SHORT-NAME>OsClock</SHORT-NAME>
+      </Counter>
+    </CounterList>
+    <ResourceList Max="TBD">
+      <SHORT-NAME>ResourceList</SHORT-NAME>
+      <Resource Application="TBD" Comment="*" Name="RES_SCHEDULER" Priority="15">
+        <SHORT-NAME>RES_SCHEDULER</SHORT-NAME>
+      </Resource>
+    </ResourceList>
+    <InternalResourceList Max="TBD">
+      <SHORT-NAME>InternalResourceList</SHORT-NAME>
+    </InternalResourceList>
+  </OS>
+  <EcuC>
+    <SHORT-NAME>EcuC</SHORT-NAME>
+    <PduList Max="TBD">
+      <SHORT-NAME>PduList</SHORT-NAME>
+      <Pdu Comment="*" Name="TxDiagP2P" Size="64">
+        <SHORT-NAME>TxDiagP2P</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RxDiagP2P" Size="64">
+        <SHORT-NAME>RxDiagP2P</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TxDiagP2A" Size="64">
+        <SHORT-NAME>TxDiagP2A</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RxDiagP2A" Size="64">
+        <SHORT-NAME>RxDiagP2A</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TxMsgTime" Size="64">
+        <SHORT-NAME>TxMsgTime</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RxMsgAbsInfo" Size="64">
+        <SHORT-NAME>RxMsgAbsInfo</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="LS_NM_TX" Size="64">
+        <SHORT-NAME>LS_NM_TX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="OSEK_NM_TX" Size="64">
+        <SHORT-NAME>OSEK_NM_TX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="OSEK_NM_RX" Size="64">
+        <SHORT-NAME>OSEK_NM_RX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="XCP_RX" Size="64">
+        <SHORT-NAME>XCP_RX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="XCP_TX" Size="64">
+        <SHORT-NAME>XCP_TX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="SOAD_RX" Size="64">
+        <SHORT-NAME>SOAD_RX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="SOAD_TX" Size="64">
+        <SHORT-NAME>SOAD_TX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="STDIN" Size="64">
+        <SHORT-NAME>STDIN</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="STDOUT" Size="64">
+        <SHORT-NAME>STDOUT</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RX_J1939TP_REVERSE_CM" Size="64">
+        <SHORT-NAME>RX_J1939TP_REVERSE_CM</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RX_J1939TP_DT" Size="64">
+        <SHORT-NAME>RX_J1939TP_DT</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RX_J1939TP_CM" Size="64">
+        <SHORT-NAME>RX_J1939TP_CM</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RX_J1939TP_DIRECT" Size="64">
+        <SHORT-NAME>RX_J1939TP_DIRECT</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TX_J1939TP_CmNPdu" Size="64">
+        <SHORT-NAME>TX_J1939TP_CmNPdu</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TX_J1939TP_DtNPdu" Size="64">
+        <SHORT-NAME>TX_J1939TP_DtNPdu</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TX_J1939TP_FcNPdu" Size="64">
+        <SHORT-NAME>TX_J1939TP_FcNPdu</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TX_J1939TP_DirectNPdu" Size="64">
+        <SHORT-NAME>TX_J1939TP_DirectNPdu</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="J1939TP_RX" Size="64">
+        <SHORT-NAME>J1939TP_RX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="J1939TP_TX" Size="64">
+        <SHORT-NAME>J1939TP_TX</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RxMsgFD" Size="512">
+        <SHORT-NAME>RxMsgFD</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TxMsgFD" Size="512">
+        <SHORT-NAME>TxMsgFD</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="LIN_RX_MSG1" Size="64">
+        <SHORT-NAME>LIN_RX_MSG1</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="LIN_TX_MSG1" Size="64">
+        <SHORT-NAME>LIN_TX_MSG1</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RxCan2LinDiag" Size="64">
+        <SHORT-NAME>RxCan2LinDiag</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TxCan2LinDiag" Size="64">
+        <SHORT-NAME>TxCan2LinDiag</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="RxLinDiag" Size="64">
+        <SHORT-NAME>RxLinDiag</SHORT-NAME>
+      </Pdu>
+      <Pdu Comment="*" Name="TxLinDiag" Size="64">
+        <SHORT-NAME>TxLinDiag</SHORT-NAME>
+      </Pdu>
+    </PduList>
+  </EcuC>
+  <Can>
+    <SHORT-NAME>Can</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" VersionInfoApi="ON">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <ControllerList Max="TBD">
+      <SHORT-NAME>ControllerList</SHORT-NAME>
+      <Controller Baudrate="250" Comment="*" Name="CAN_CTRL_0" Seg1="12" Seg2="1">
+        <SHORT-NAME>CAN_CTRL_0</SHORT-NAME>
+        <HohList Max="TBD">
+          <SHORT-NAME>HohList</SHORT-NAME>
+          <Hoh Comment="*" HohType="BASIC" IdentifierType="STANDARD" Name="Can0Hrh" ObjectType="RECEIVE">
+            <SHORT-NAME>Can0Hrh</SHORT-NAME>
+          </Hoh>
+          <Hoh Comment="*" HohType="BASIC" IdentifierType="STANDARD" Name="Can0Hth" ObjectType="TRANSMIT">
+            <SHORT-NAME>Can0Hth</SHORT-NAME>
+          </Hoh>
+        </HohList>
+      </Controller>
+    </ControllerList>
+  </Can>
+  <CanIf>
+    <SHORT-NAME>CanIf</SHORT-NAME>
+    <General BusOffNotification="NULL" Comment="*" DataLengthCodeCheck="ON" DevelopmentErrorDetection="ON" ErrorNotification="NULL" RxFifoSize="32" TaskFifoMode="ON" TxFifoSize="32" VersionInfoApi="OFF">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <ChannelList Max="TBD">
+      <SHORT-NAME>ChannelList</SHORT-NAME>
+      <Channel Comment="*" ControllerRef="CAN_CTRL_0" Name="CANIF_CHL_LS">
+        <SHORT-NAME>CANIF_CHL_LS</SHORT-NAME>
+        <HthList Max="TBD">
+          <SHORT-NAME>HthList</SHORT-NAME>
+          <Hth Comment="*" HthRef="Can0Hth" Name="LS_Hth">
+            <SHORT-NAME>LS_Hth</SHORT-NAME>
+          </Hth>
+        </HthList>
+        <TxPduList Max="TBD">
+          <SHORT-NAME>TxPduList</SHORT-NAME>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TxDiagP2P" HthRef="LS_Hth" Identifier="0x732" Name="P2P" TransmitNotifier="CanTp" UserNotification="CanIf_User">
+            <SHORT-NAME>P2P</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TxDiagP2A" HthRef="LS_Hth" Identifier="0x744" Name="P2A" TransmitNotifier="CanTp" UserNotification="CanIf_User">
+            <SHORT-NAME>P2A</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="LS_NM_TX" HthRef="LS_Hth" Identifier="0x502" Name="LS_NM" TransmitNotifier="CanNm" UserNotification="CanIf_User">
+            <SHORT-NAME>LS_NM</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TxMsgTime" HthRef="LS_Hth" Identifier="0x101" Name="Time" TransmitNotifier="PduR" UserNotification="CanIf_User">
+            <SHORT-NAME>Time</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="OSEK_NM_TX" HthRef="LS_Hth" Identifier="0x401" Name="OSEK_NM_TX" TransmitNotifier="User" UserNotification="CanIf_OsekNmUser">
+            <SHORT-NAME>OSEK_NM_TX</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="XCP_TX" HthRef="LS_Hth" Identifier="0x555" Name="XCP_TX" TransmitNotifier="Xcp" UserNotification="CanIf_User">
+            <SHORT-NAME>XCP_TX</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="STDOUT" HthRef="LS_Hth" Identifier="0x702" Name="STDOUT" TransmitNotifier="User" UserNotification="CanIf_Stdio">
+            <SHORT-NAME>STDOUT</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TX_J1939TP_CmNPdu" HthRef="LS_Hth" Identifier="0x761" Name="TX_J1939TP_CmNPdu" TransmitNotifier="J1939Tp" UserNotification="CanIf_User">
+            <SHORT-NAME>TX_J1939TP_CmNPdu</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TX_J1939TP_DtNPdu" HthRef="LS_Hth" Identifier="0x762" Name="TX_J1939TP_DtNPdu" TransmitNotifier="J1939Tp" UserNotification="CanIf_User">
+            <SHORT-NAME>TX_J1939TP_DtNPdu</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TX_J1939TP_FcNPdu" HthRef="LS_Hth" Identifier="0x763" Name="TX_J1939TP_FcNPdu" TransmitNotifier="J1939Tp" UserNotification="CanIf_User">
+            <SHORT-NAME>TX_J1939TP_FcNPdu</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TX_J1939TP_DirectNPdu" HthRef="LS_Hth" Identifier="0x764" Name="TX_J1939TP_DirectNPdu" TransmitNotifier="J1939Tp" UserNotification="CanIf_User">
+            <SHORT-NAME>TX_J1939TP_DirectNPdu</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="64" EcuCPduRef="TxMsgFD" HthRef="LS_Hth" Identifier="0x103" Name="TxMsgFD" TransmitNotifier="PduR" UserNotification="CanIf_User">
+            <SHORT-NAME>TxMsgFD</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="TxCan2LinDiag" HthRef="LS_Hth" Identifier="0x782" Name="TxCan2LinDiag" TransmitNotifier="CanTp" UserNotification="CanIf_User">
+            <SHORT-NAME>TxCan2LinDiag</SHORT-NAME>
+          </Pdu>
+        </TxPduList>
+        <HrhList Max="TBD">
+          <SHORT-NAME>HrhList</SHORT-NAME>
+          <Hrh Comment="*" HrhRef="Can0Hrh" Name="LS_Hrh" SoftwareFilterUsed="True">
+            <SHORT-NAME>LS_Hrh</SHORT-NAME>
+          </Hrh>
+        </HrhList>
+        <RxPduList Max="TBD">
+          <SHORT-NAME>RxPduList</SHORT-NAME>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="RxDiagP2P" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x731" Name="P2P" ReceivedNotifier="CanTp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>P2P</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="RxDiagP2A" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x743" Name="P2A" ReceivedNotifier="CanTp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>P2A</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="RxMsgAbsInfo" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x102" Name="AbsInfo" ReceivedNotifier="PduR" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>AbsInfo</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="OSEK_NM_RX" FilterMask="0x700" HrhRef="LS_Hrh" Identifier="0x400" Name="OSEK_NM_RX" ReceivedNotifier="User" UserNotification="CanIf_OsekNmUser">
+            <SHORT-NAME>OSEK_NM_RX</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="1" EcuCPduRef="XCP_RX" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x554" Name="XCP_RX" ReceivedNotifier="Xcp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>XCP_RX</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="1" EcuCPduRef="STDIN" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x701" Name="STDIN" ReceivedNotifier="User" UserNotification="CanIf_Stdio">
+            <SHORT-NAME>STDIN</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="1" EcuCPduRef="RX_J1939TP_REVERSE_CM" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x751" Name="RX_J1939TP_REVERSE_CM" ReceivedNotifier="J1939Tp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>RX_J1939TP_REVERSE_CM</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="1" EcuCPduRef="RX_J1939TP_DT" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x752" Name="RX_J1939TP_DT" ReceivedNotifier="J1939Tp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>RX_J1939TP_DT</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="1" EcuCPduRef="RX_J1939TP_CM" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x753" Name="RX_J1939TP_CM" ReceivedNotifier="J1939Tp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>RX_J1939TP_CM</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="1" EcuCPduRef="RX_J1939TP_DIRECT" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x754" Name="RX_J1939TP_DIRECT" ReceivedNotifier="J1939Tp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>RX_J1939TP_DIRECT</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="64" EcuCPduRef="RxMsgFD" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x104" Name="RxMsgCanFD" ReceivedNotifier="PduR" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>RxMsgCanFD</SHORT-NAME>
+          </Pdu>
+          <Pdu Comment="*" DataLengthCode="8" EcuCPduRef="RxCan2LinDiag" FilterMask="0x7FF" HrhRef="LS_Hrh" Identifier="0x781" Name="RxCan2LinDiag" ReceivedNotifier="CanTp" UserNotification="CanIf_UserRxIndication">
+            <SHORT-NAME>RxCan2LinDiag</SHORT-NAME>
+          </Pdu>
+        </RxPduList>
+      </Channel>
+    </ChannelList>
+  </CanIf>
+  <CanTp>
+    <SHORT-NAME>CanTp</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" VersionInfoApi="OFF">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <RxSduList Max="TBD">
+      <SHORT-NAME>RxSduList</SHORT-NAME>
+      <Sdu AddressingMode="STANDARD" BS="8" Comment="*" CommunicationType="PHYSICAL" MaxBusyTransmission="10" N_SA="TBD" N_TA="TBD" Name="SduP2P" Nar="100" Nbr="100" Ncr="100" Padding="ON" RxPduRef="RxDiagP2P" STmin="1" TxFcPduRef="TxDiagP2P" ll_dl="64">
+        <SHORT-NAME>SduP2P</SHORT-NAME>
+      </Sdu>
+      <Sdu AddressingMode="STANDARD" BS="8" Comment="*" CommunicationType="PHYSICAL" MaxBusyTransmission="10" N_SA="TBD" N_TA="TBD" Name="SduP2A" Nar="100" Nbr="100" Ncr="100" Padding="ON" RxPduRef="RxDiagP2A" STmin="1" TxFcPduRef="TxDiagP2A" ll_dl="64">
+        <SHORT-NAME>SduP2A</SHORT-NAME>
+      </Sdu>
+      <Sdu AddressingMode="EXTENDED" BS="8" Comment="*" CommunicationType="PHYSICAL" MaxBusyTransmission="10" N_SA="0x11" N_TA="0x11" Name="RxCan2LinDiag" Nar="100" Nbr="100" Ncr="100" Padding="ON" RxPduRef="RxCan2LinDiag" STmin="1" TxFcPduRef="TxCan2LinDiag" ll_dl="8">
+        <SHORT-NAME>RxCan2LinDiag</SHORT-NAME>
+      </Sdu>
+    </RxSduList>
+    <TxSduList Max="TBD">
+      <SHORT-NAME>TxSduList</SHORT-NAME>
+      <Sdu AddressingMode="STANDARD" Comment="*" CommunicationType="PHYSICAL" N_SA="TBD" N_TA="TBD" Name="SduP2P" Nas="100" Nbs="100" Ncs="100" Padding="ON" RxFcPduRef="RxDiagP2P" TxPduRef="TxDiagP2P" ll_dl="64">
+        <SHORT-NAME>SduP2P</SHORT-NAME>
+      </Sdu>
+      <Sdu AddressingMode="STANDARD" Comment="*" CommunicationType="PHYSICAL" N_SA="TBD" N_TA="TBD" Name="SduP2A" Nas="100" Nbs="100" Ncs="100" Padding="ON" RxFcPduRef="RxDiagP2A" TxPduRef="TxDiagP2A" ll_dl="64">
+        <SHORT-NAME>SduP2A</SHORT-NAME>
+      </Sdu>
+      <Sdu AddressingMode="EXTENDED" Comment="*" CommunicationType="PHYSICAL" N_SA="0x11" N_TA="0x11" Name="TxCan2LinDiag" Nas="100" Nbs="100" Ncs="100" Padding="ON" RxFcPduRef="RxCan2LinDiag" TxPduRef="TxCan2LinDiag" ll_dl="8">
+        <SHORT-NAME>TxCan2LinDiag</SHORT-NAME>
+      </Sdu>
+    </TxSduList>
+  </CanTp>
+  <PduR>
+    <SHORT-NAME>PduR</SHORT-NAME>
+    <General CanIfUsed="True" CanTpUsed="True" ComUsed="True" Comment="*" DcmUsed="True" DevelopmentErrorDetection="ON" J1939TpUsed="True" LinIfUsed="True" LinTpUsed="False" VersionInfoApi="OFF" ZeroCostIf="CanIf" ZeroCostOperationMode="OFF" ZeroCostTp="CanTp">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <RoutineList Max="TBD">
+      <SHORT-NAME>RoutineList</SHORT-NAME>
+      <Source Comment="*" Module="Dcm" Name="DcmP2P" PduRef="TxDiagP2P">
+        <SHORT-NAME>DcmP2P</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="CanTp" Name="CanTpP2P" PduRef="TxDiagP2P">
+            <SHORT-NAME>CanTpP2P</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="CanTp" Name="CanTpP2P" PduRef="RxDiagP2P">
+        <SHORT-NAME>CanTpP2P</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Dcm" Name="DcmP2P" PduRef="RxDiagP2P">
+            <SHORT-NAME>DcmP2P</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="Dcm" Name="DcmP2A" PduRef="TxDiagP2A">
+        <SHORT-NAME>DcmP2A</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="CanTp" Name="CanTpP2A" PduRef="TxDiagP2A">
+            <SHORT-NAME>CanTpP2A</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="CanTp" Name="CanTpP2A" PduRef="RxDiagP2A">
+        <SHORT-NAME>CanTpP2A</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Dcm" Name="DcmP2A" PduRef="RxDiagP2A">
+            <SHORT-NAME>DcmP2A</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="LinTpGw" Name="TxCan2LinDiag" PduRef="TxCan2LinDiag">
+        <SHORT-NAME>TxCan2LinDiag</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="CanTp" Name="TxCan2LinDiag" PduRef="TxCan2LinDiag">
+            <SHORT-NAME>TxCan2LinDiag</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="CanTp" Name="RxCan2LinDiag" PduRef="RxCan2LinDiag">
+        <SHORT-NAME>RxCan2LinDiag</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="LinTpGw" Name="RxCan2LinDiag" PduRef="RxCan2LinDiag">
+            <SHORT-NAME>RxCan2LinDiag</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="LinTpGw" Name="TxLinDiag" PduRef="TxLinDiag">
+        <SHORT-NAME>TxLinDiag</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="LinTp" Name="TxLinDiag" PduRef="TxLinDiag">
+            <SHORT-NAME>TxLinDiag</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="LinTp" Name="RxLinDiag" PduRef="RxLinDiag">
+        <SHORT-NAME>RxLinDiag</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="LinTpGw" Name="RxLinDiag" PduRef="RxLinDiag">
+            <SHORT-NAME>RxLinDiag</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="Com" Name="ComMsgTime" PduRef="TxMsgTime">
+        <SHORT-NAME>ComMsgTime</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="CanIf" Name="CanIfMsgTime" PduRef="TxMsgTime">
+            <SHORT-NAME>CanIfMsgTime</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="CanIf" Name="CanIfMsgAbs" PduRef="RxMsgAbsInfo">
+        <SHORT-NAME>CanIfMsgAbs</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Com" Name="ComMsgAbs" PduRef="RxMsgAbsInfo">
+            <SHORT-NAME>ComMsgAbs</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="SoAdTp" Name="SOAD_RX" PduRef="SOAD_RX">
+        <SHORT-NAME>SOAD_RX</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Dcm" Name="DCM_SOAD_RX" PduRef="SOAD_RX">
+            <SHORT-NAME>DCM_SOAD_RX</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="Dcm" Name="SOAD_TX" PduRef="SOAD_TX">
+        <SHORT-NAME>SOAD_TX</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="SoAdTp" Name="DCM_SOAD_TX" PduRef="SOAD_TX">
+            <SHORT-NAME>DCM_SOAD_TX</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="Dcm" Name="DcmTxOnJ1939" PduRef="J1939TP_TX">
+        <SHORT-NAME>DcmTxOnJ1939</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="J1939Tp" Name="DcmTxOnJ1939" PduRef="J1939TP_TX">
+            <SHORT-NAME>DcmTxOnJ1939</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="J1939Tp" Name="DcmRxOnJ1939" PduRef="J1939TP_RX">
+        <SHORT-NAME>DcmRxOnJ1939</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Dcm" Name="Destination1" PduRef="J1939TP_RX">
+            <SHORT-NAME>Destination1</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="CanIf" Name="RxMsgFD" PduRef="RxMsgFD">
+        <SHORT-NAME>RxMsgFD</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Com" Name="Destination1" PduRef="RxMsgFD">
+            <SHORT-NAME>Destination1</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="Com" Name="TxMsgFD" PduRef="TxMsgFD">
+        <SHORT-NAME>TxMsgFD</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="CanIf" Name="Destination1" PduRef="TxMsgFD">
+            <SHORT-NAME>Destination1</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="LinIf" Name="LIN_RX_MSG1" PduRef="LIN_RX_MSG1">
+        <SHORT-NAME>LIN_RX_MSG1</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="Com" Name="Destination1" PduRef="LIN_RX_MSG1">
+            <SHORT-NAME>Destination1</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+      <Source Comment="*" Module="Com" Name="LIN_TX_MSG1" PduRef="LIN_TX_MSG1">
+        <SHORT-NAME>LIN_TX_MSG1</SHORT-NAME>
+        <DestinationList Max="TBD">
+          <SHORT-NAME>DestinationList</SHORT-NAME>
+          <Destination Comment="*" Module="LinIf" Name="Destination1" PduRef="LIN_TX_MSG1">
+            <SHORT-NAME>Destination1</SHORT-NAME>
+          </Destination>
+        </DestinationList>
+      </Source>
+    </RoutineList>
+  </PduR>
+  <Com>
+    <SHORT-NAME>Com</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" VersionInfoApi="OFF">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <PduGroupList Max="TBD">
+      <SHORT-NAME>PduGroupList</SHORT-NAME>
+      <PduGroup Comment="*" Name="PduGroup1">
+        <SHORT-NAME>PduGroup1</SHORT-NAME>
+      </PduGroup>
+    </PduGroupList>
+    <IPduList Max="TBD">
+      <SHORT-NAME>IPduList</SHORT-NAME>
+      <IPdu Callout="NULL" Comment="*" DefaultValueForUnusedArea="0x5A" Direction="SEND" Name="MsgTime" NumberOfRepetions="0" PduGroupRef="PduGroup1" PduRef="TxMsgTime" PduSize="8" RepetionsPeriodFactor="10" RxSignalProcessing="DEFERRED" TimeOffsetFactor="0" TimePeriodFactor="100" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+        <SHORT-NAME>MsgTime</SHORT-NAME>
+        <GroupSignalList Max="TBD">
+          <SHORT-NAME>GroupSignalList</SHORT-NAME>
+          <GroupSignal Comment="*" Endianess="OPAQUE" FirstTimeoutFactor="TBD" Name="SystemTime" ReceivedNotification="NULL" Size="56" StartBit="0" TimeoutAction="REPLACE" TimeoutFactor="TBD" TimeoutNotification="NULL" TransferProperty="PENDING" UpdateBitPosition="0" UpdateBitUsed="False">
+            <SHORT-NAME>SystemTime</SHORT-NAME>
+            <SignalList Max="TBD">
+              <SHORT-NAME>SignalList</SHORT-NAME>
+              <Signal Comment="*" Endianess="BIG_ENDIAN" InitialValue="2013" Name="year" Size="16" StartBit="7" Type="uint16" UpdateBitPosition="TBD" UpdateBitUsed="False">
+                <SHORT-NAME>year</SHORT-NAME>
+              </Signal>
+              <Signal Comment="*" Endianess="BIG_ENDIAN" InitialValue="12" Name="month" Size="8" StartBit="23" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+                <SHORT-NAME>month</SHORT-NAME>
+              </Signal>
+              <Signal Comment="*" Endianess="BIG_ENDIAN" InitialValue="15" Name="day" Size="8" StartBit="31" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+                <SHORT-NAME>day</SHORT-NAME>
+              </Signal>
+              <Signal Comment="*" Endianess="BIG_ENDIAN" InitialValue="19" Name="hour" Size="8" StartBit="39" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+                <SHORT-NAME>hour</SHORT-NAME>
+              </Signal>
+              <Signal Comment="*" Endianess="BIG_ENDIAN" InitialValue="49" Name="minute" Size="8" StartBit="47" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+                <SHORT-NAME>minute</SHORT-NAME>
+              </Signal>
+              <Signal Comment="*" Endianess="BIG_ENDIAN" InitialValue="0" Name="second" Size="8" StartBit="55" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+                <SHORT-NAME>second</SHORT-NAME>
+              </Signal>
+            </SignalList>
+          </GroupSignal>
+        </GroupSignalList>
+      </IPdu>
+      <IPdu Callout="NULL" Comment="*" DefaultValueForUnusedArea="0x5A" Direction="RECEIVE" Name="AbsInfo" NumberOfRepetions="0" PduGroupRef="PduGroup1" PduRef="RxMsgAbsInfo" PduSize="8" RepetionsPeriodFactor="10" RxSignalProcessing="DEFERRED" TimeOffsetFactor="0" TimePeriodFactor="10" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+        <SHORT-NAME>AbsInfo</SHORT-NAME>
+        <SignalList Max="TBD">
+          <SHORT-NAME>SignalList</SHORT-NAME>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="100" InitialValue="0" Name="VehicleSpeed" ReceivedNotification="NULL" Size="16" StartBit="7" TimeoutAction="NONE" TimeoutFactor="100" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint16" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>VehicleSpeed</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="100" InitialValue="0" Name="TachoSpeed" ReceivedNotification="NULL" Size="16" StartBit="23" TimeoutAction="NONE" TimeoutFactor="100" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint16" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>TachoSpeed</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="Led1Sts" ReceivedNotification="NULL" Size="2" StartBit="39" TimeoutAction="NONE" TimeoutFactor="500" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>Led1Sts</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="Led2Sts" ReceivedNotification="NULL" Size="2" StartBit="37" TimeoutAction="NONE" TimeoutFactor="500" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>Led2Sts</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="Led3Sts" ReceivedNotification="NULL" Size="2" StartBit="35" TimeoutAction="NONE" TimeoutFactor="500" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>Led3Sts</SHORT-NAME>
+          </Signal>
+        </SignalList>
+      </IPdu>
+      <IPdu Callout="NULL" Comment="*" DefaultValueForUnusedArea="0x5A" Direction="RECEIVE" Name="RxMsgFD" NumberOfRepetions="0" PduGroupRef="PduGroup1" PduRef="RxMsgFD" PduSize="64" RepetionsPeriodFactor="10" RxSignalProcessing="DEFERRED" TimeOffsetFactor="0" TimePeriodFactor="10" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+        <SHORT-NAME>RxMsgFD</SHORT-NAME>
+        <SignalList Max="TBD">
+          <SHORT-NAME>SignalList</SHORT-NAME>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="RxMsgFD_Signal1" ReceivedNotification="NULL" Size="32" StartBit="63" TimeoutAction="NONE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint32" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>RxMsgFD_Signal1</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="RxMsgFD_Signal2" ReceivedNotification="NULL" Size="16" StartBit="95" TimeoutAction="NONE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint16" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>RxMsgFD_Signal2</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="RxMsgFD_Signal3" ReceivedNotification="NULL" Size="8" StartBit="111" TimeoutAction="NONE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>RxMsgFD_Signal3</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="RxMsgFD_Signal4" ReceivedNotification="NULL" Size="8" StartBit="511" TimeoutAction="NONE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>RxMsgFD_Signal4</SHORT-NAME>
+          </Signal>
+        </SignalList>
+      </IPdu>
+      <IPdu Callout="NULL" Comment="*" DefaultValueForUnusedArea="0x5A" Direction="SEND" Name="TxMsgFD" NumberOfRepetions="0" PduGroupRef="PduGroup1" PduRef="TxMsgFD" PduSize="64" RepetionsPeriodFactor="10" RxSignalProcessing="DEFERRED" TimeOffsetFactor="0" TimePeriodFactor="100" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+        <SHORT-NAME>TxMsgFD</SHORT-NAME>
+        <SignalList Max="TBD">
+          <SHORT-NAME>SignalList</SHORT-NAME>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0x12345678" Name="TxMsgFD_Signal1" ReceivedNotification="NULL" Size="32" StartBit="63" TimeoutAction="REPLACE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint32" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>TxMsgFD_Signal1</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0xabcd" Name="TxMsgFD_Signal2" ReceivedNotification="NULL" Size="16" StartBit="95" TimeoutAction="REPLACE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint16" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>TxMsgFD_Signal2</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0xef" Name="TxMsgFD_Signal3" ReceivedNotification="NULL" Size="8" StartBit="111" TimeoutAction="REPLACE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>TxMsgFD_Signal3</SHORT-NAME>
+          </Signal>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0xdb" Name="TxMsgFD_Signal4" ReceivedNotification="NULL" Size="8" StartBit="511" TimeoutAction="REPLACE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>TxMsgFD_Signal4</SHORT-NAME>
+          </Signal>
+        </SignalList>
+      </IPdu>
+      <IPdu Callout="NULL" Comment="*" DefaultValueForUnusedArea="0x5A" Direction="SEND" Name="LIN_TX_MSG1" NumberOfRepetions="0" PduGroupRef="PduGroup1" PduRef="LIN_TX_MSG1" PduSize="8" RepetionsPeriodFactor="10" RxSignalProcessing="DEFERRED" TimeOffsetFactor="0" TimePeriodFactor="100" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+        <SHORT-NAME>LIN_TX_MSG1</SHORT-NAME>
+        <SignalList Max="TBD">
+          <SHORT-NAME>SignalList</SHORT-NAME>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="LIN_TX_MSG1_DATA" ReceivedNotification="NULL" Size="64" StartBit="7" TimeoutAction="REPLACE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8_n" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>LIN_TX_MSG1_DATA</SHORT-NAME>
+          </Signal>
+        </SignalList>
+      </IPdu>
+      <IPdu Callout="NULL" Comment="*" DefaultValueForUnusedArea="0x5A" Direction="RECEIVE" Name="LIN_RX_MSG1" NumberOfRepetions="0" PduGroupRef="PduGroup1" PduRef="LIN_RX_MSG1" PduSize="8" RepetionsPeriodFactor="100" RxSignalProcessing="DEFERRED" TimeOffsetFactor="0" TimePeriodFactor="100" TxMinimumDelayFactor="1" TxMode="PERIODIC">
+        <SHORT-NAME>LIN_RX_MSG1</SHORT-NAME>
+        <SignalList Max="TBD">
+          <SHORT-NAME>SignalList</SHORT-NAME>
+          <Signal Comment="*" Endianess="BIG_ENDIAN" FirstTimeoutFactor="500" InitialValue="0" Name="LIN_RX_MSG1_DATA" ReceivedNotification="NULL" Size="64" StartBit="7" TimeoutAction="NONE" TimeoutFactor="200" TimeoutNotification="NULL" TransferProperty="PENDING" Type="uint8_n" UpdateBitPosition="TBD" UpdateBitUsed="False">
+            <SHORT-NAME>LIN_RX_MSG1_DATA</SHORT-NAME>
+          </Signal>
+        </SignalList>
+      </IPdu>
+    </IPduList>
+  </Com>
+  <Dcm>
+    <SHORT-NAME>Dcm</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" MaxPeriodDIDNumber="8" PeriodicDIDFastModeTime="50" PeriodicDIDMediumModeTime="100" PeriodicDIDSlowModeTime="200" VersionInfoApi="OFF">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <BufferList Max="TBD">
+      <SHORT-NAME>BufferList</SHORT-NAME>
+      <Buffer Comment="*" Name="Buffer1" Size="512">
+        <SHORT-NAME>Buffer1</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer2" Size="512">
+        <SHORT-NAME>Buffer2</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer3" Size="512">
+        <SHORT-NAME>Buffer3</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer4" Size="512">
+        <SHORT-NAME>Buffer4</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer5" Size="512">
+        <SHORT-NAME>Buffer5</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer6" Size="512">
+        <SHORT-NAME>Buffer6</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer7" Size="512">
+        <SHORT-NAME>Buffer7</SHORT-NAME>
+      </Buffer>
+      <Buffer Comment="*" Name="Buffer8" Size="512">
+        <SHORT-NAME>Buffer8</SHORT-NAME>
+      </Buffer>
+    </BufferList>
+    <SessionList Max="TBD">
+      <SHORT-NAME>SessionList</SHORT-NAME>
+      <Session Comment="*" Identifier="1" Name="DS" P2ServerMaxTimeMs="5000" P2StartServerMaxTimeMs="500">
+        <SHORT-NAME>DS</SHORT-NAME>
+      </Session>
+      <Session Comment="*" Identifier="2" Name="PRGS" P2ServerMaxTimeMs="5000" P2StartServerMaxTimeMs="500">
+        <SHORT-NAME>PRGS</SHORT-NAME>
+      </Session>
+      <Session Comment="*" Identifier="3" Name="EXTDS" P2ServerMaxTimeMs="5000" P2StartServerMaxTimeMs="500">
+        <SHORT-NAME>EXTDS</SHORT-NAME>
+      </Session>
+    </SessionList>
+    <SecurityList Max="TBD">
+      <SHORT-NAME>SecurityList</SHORT-NAME>
+      <Security Comment="*" CompareKeyCallback="NULL" GetSeedCallback="NULL" Identifier="6" KeySize="4" Name="PRGS" SeedSize="4">
+        <SHORT-NAME>PRGS</SHORT-NAME>
+      </Security>
+      <Security Comment="*" CompareKeyCallback="Diag_CompareKeyEXTDS" GetSeedCallback="Diag_GetSeedEXTDS" Identifier="1" KeySize="4" Name="EXTDS" SeedSize="4">
+        <SHORT-NAME>EXTDS</SHORT-NAME>
+      </Security>
+      <Security Comment="Level 0, is the default for each session when enterred" CompareKeyCallback="NULL" GetSeedCallback="NULL" Identifier="0" KeySize="4" Name="DS" SeedSize="4">
+        <SHORT-NAME>DS</SHORT-NAME>
+      </Security>
+    </SecurityList>
+    <DIDControlRecordList Max="TBD">
+      <SHORT-NAME>DIDControlRecordList</SHORT-NAME>
+    </DIDControlRecordList>
+    <DIDInfoList Max="TBD">
+      <SHORT-NAME>DIDInfoList</SHORT-NAME>
+    </DIDInfoList>
+    <DIDList Max="TBD">
+      <SHORT-NAME>DIDList</SHORT-NAME>
+    </DIDList>
+    <RoutineInfoList Max="TBD">
+      <SHORT-NAME>RoutineInfoList</SHORT-NAME>
+    </RoutineInfoList>
+    <RoutineList Max="TBD">
+      <SHORT-NAME>RoutineList</SHORT-NAME>
+    </RoutineList>
+    <MemoryList Max="TBD">
+      <SHORT-NAME>MemoryList</SHORT-NAME>
+    </MemoryList>
+    <ProtocolList Max="TBD">
+      <SHORT-NAME>ProtocolList</SHORT-NAME>
+      <Protocol Comment="*" Name="P2P" ProtocolID="UDS_ON_CAN" RxBufferRef="Buffer1" ServiceTableRef="ServiceTableP2P" TimingLimitRef="Timing1" TransmissionType="TYPE_1" TxBufferRef="Buffer2">
+        <SHORT-NAME>P2P</SHORT-NAME>
+        <ConnectionList Max="TBD">
+          <SHORT-NAME>ConnectionList</SHORT-NAME>
+          <Connection Comment="*" Name="Connection1">
+            <SHORT-NAME>Connection1</SHORT-NAME>
+            <RxChannelList Max="TBD">
+              <SHORT-NAME>RxChannelList</SHORT-NAME>
+              <RxChannel AddressingType="PHYSICAL" Comment="*" Name="RxChannel1" PduRef="RxDiagP2P">
+                <SHORT-NAME>RxChannel1</SHORT-NAME>
+              </RxChannel>
+            </RxChannelList>
+            <TxChannel Comment="*" Name="TxChannel2" PduRef="TxDiagP2P">
+              <SHORT-NAME>TxChannel2</SHORT-NAME>
+            </TxChannel>
+          </Connection>
+        </ConnectionList>
+      </Protocol>
+      <Protocol Comment="*" Name="P2A" ProtocolID="UDS_ON_CAN" RxBufferRef="Buffer3" ServiceTableRef="ServiceTableP2A" TimingLimitRef="Timing1" TransmissionType="TYPE_1" TxBufferRef="Buffer4">
+        <SHORT-NAME>P2A</SHORT-NAME>
+        <ConnectionList Max="TBD">
+          <SHORT-NAME>ConnectionList</SHORT-NAME>
+          <Connection Comment="*" Name="Connection1">
+            <SHORT-NAME>Connection1</SHORT-NAME>
+            <RxChannelList Max="TBD">
+              <SHORT-NAME>RxChannelList</SHORT-NAME>
+              <RxChannel AddressingType="PHYSICAL" Comment="*" Name="RxChannel1" PduRef="RxDiagP2A">
+                <SHORT-NAME>RxChannel1</SHORT-NAME>
+              </RxChannel>
+            </RxChannelList>
+            <TxChannel Comment="*" Name="TxChannel2" PduRef="TxDiagP2A">
+              <SHORT-NAME>TxChannel2</SHORT-NAME>
+            </TxChannel>
+          </Connection>
+        </ConnectionList>
+      </Protocol>
+      <Protocol Comment="*" Name="DoIP" ProtocolID="UDS_ON_DOIP" RxBufferRef="Buffer5" ServiceTableRef="ServiceTableP2P" TimingLimitRef="Timing1" TransmissionType="TYPE_1" TxBufferRef="Buffer6">
+        <SHORT-NAME>DoIP</SHORT-NAME>
+        <ConnectionList Max="TBD">
+          <SHORT-NAME>ConnectionList</SHORT-NAME>
+          <Connection Comment="*" Name="Connection1">
+            <SHORT-NAME>Connection1</SHORT-NAME>
+            <RxChannelList Max="TBD">
+              <SHORT-NAME>RxChannelList</SHORT-NAME>
+              <RxChannel AddressingType="PHYSICAL" Comment="*" Name="RxChannel1" PduRef="SOAD_RX">
+                <SHORT-NAME>RxChannel1</SHORT-NAME>
+              </RxChannel>
+            </RxChannelList>
+            <TxChannel Comment="*" Name="TxChannel2" PduRef="SOAD_TX">
+              <SHORT-NAME>TxChannel2</SHORT-NAME>
+            </TxChannel>
+          </Connection>
+        </ConnectionList>
+      </Protocol>
+      <Protocol Comment="*" Name="J1939" ProtocolID="UDS_ON_CAN" RxBufferRef="Buffer7" ServiceTableRef="ServiceTableP2P" TimingLimitRef="Timing1" TransmissionType="TYPE_1" TxBufferRef="Buffer8">
+        <SHORT-NAME>J1939</SHORT-NAME>
+        <ConnectionList Max="TBD">
+          <SHORT-NAME>ConnectionList</SHORT-NAME>
+          <Connection Comment="*" Name="Connection1">
+            <SHORT-NAME>Connection1</SHORT-NAME>
+            <RxChannelList Max="TBD">
+              <SHORT-NAME>RxChannelList</SHORT-NAME>
+              <RxChannel AddressingType="PHYSICAL" Comment="*" Name="RxChannel1" PduRef="J1939TP_RX">
+                <SHORT-NAME>RxChannel1</SHORT-NAME>
+              </RxChannel>
+            </RxChannelList>
+            <TxChannel Comment="*" Name="TBD" PduRef="J1939TP_TX">
+              <SHORT-NAME>TBD</SHORT-NAME>
+            </TxChannel>
+          </Connection>
+        </ConnectionList>
+      </Protocol>
+    </ProtocolList>
+    <RequestServiceList Max="TBD">
+      <SHORT-NAME>RequestServiceList</SHORT-NAME>
+      <RequestService Comment="*" Name="RequestService1" ProtocolIndicationCbk="Diag_ProtocolIndicationCbk" StartProtocolCbk="Diag_StartProtocolCbk" StopProtocolCbk="Diag_StopProtocolCbk">
+        <SHORT-NAME>RequestService1</SHORT-NAME>
+      </RequestService>
+    </RequestServiceList>
+    <ServiceTableList Max="TBD">
+      <SHORT-NAME>ServiceTableList</SHORT-NAME>
+      <ServiceTable Comment="*" Name="ServiceTableP2P">
+        <SHORT-NAME>ServiceTableP2P</SHORT-NAME>
+        <ServiceList Max="TBD">
+          <SHORT-NAME>ServiceList</SHORT-NAME>
+          <Service Comment="*" Name="DIAGNOSTIC_SESSION_CONTROL" SubFunctionSupported="True">
+            <SHORT-NAME>DIAGNOSTIC_SESSION_CONTROL</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="PRGS">
+                <SHORT-NAME>PRGS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Session>
+              <Session Comment="*" Name="PRGS">
+                <SHORT-NAME>PRGS</SHORT-NAME>
+              </Session>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="SECURITY_ACCESS" SubFunctionSupported="True">
+            <SHORT-NAME>SECURITY_ACCESS</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="PRGS">
+                <SHORT-NAME>PRGS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="TESTER_PRESENT" SubFunctionSupported="True">
+            <SHORT-NAME>TESTER_PRESENT</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="PRGS">
+                <SHORT-NAME>PRGS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="ECU_RESET" SubFunctionSupported="True">
+            <SHORT-NAME>ECU_RESET</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="READ_DATA_BY_IDENTIFIER" SubFunctionSupported="False">
+            <SHORT-NAME>READ_DATA_BY_IDENTIFIER</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="PRGS">
+                <SHORT-NAME>PRGS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+              <Session Comment="*" Name="PRGS">
+                <SHORT-NAME>PRGS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="READ_DTC_INFORMATION" SubFunctionSupported="True">
+            <SHORT-NAME>READ_DTC_INFORMATION</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="CLEAR_DIAGNOSTIC_INFORMATION" SubFunctionSupported="False">
+            <SHORT-NAME>CLEAR_DIAGNOSTIC_INFORMATION</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+        </ServiceList>
+      </ServiceTable>
+      <ServiceTable Comment="*" Name="ServiceTableP2A">
+        <SHORT-NAME>ServiceTableP2A</SHORT-NAME>
+        <ServiceList Max="TBD">
+          <SHORT-NAME>ServiceList</SHORT-NAME>
+          <Service Comment="*" Name="DIAGNOSTIC_SESSION_CONTROL" SubFunctionSupported="False">
+            <SHORT-NAME>DIAGNOSTIC_SESSION_CONTROL</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+              <Session Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+          <Service Comment="*" Name="TESTER_PRESENT" SubFunctionSupported="False">
+            <SHORT-NAME>TESTER_PRESENT</SHORT-NAME>
+            <SecurityList Max="TBD">
+              <SHORT-NAME>SecurityList</SHORT-NAME>
+              <Security Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Security>
+              <Security Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Security>
+            </SecurityList>
+            <SessionList Max="TBD">
+              <SHORT-NAME>SessionList</SHORT-NAME>
+              <Session Comment="*" Name="DS">
+                <SHORT-NAME>DS</SHORT-NAME>
+              </Session>
+              <Session Comment="*" Name="EXTDS">
+                <SHORT-NAME>EXTDS</SHORT-NAME>
+              </Session>
+            </SessionList>
+          </Service>
+        </ServiceList>
+      </ServiceTable>
+    </ServiceTableList>
+    <SessionControlList Max="TBD">
+      <SHORT-NAME>SessionControlList</SHORT-NAME>
+      <SessionControl Comment="*" GetSessionChangePermissionCbk="Diag_GetSesChgPer" Name="SessionControl1">
+        <SHORT-NAME>SessionControl1</SHORT-NAME>
+      </SessionControl>
+    </SessionControlList>
+    <TimingList Max="TBD">
+      <SHORT-NAME>TimingList</SHORT-NAME>
+      <Timing Comment="*" Name="Timing1" P2ServerMaxTimeMs="5000" P2ServerMinTimeMs="3000" S3ServerTimeMs="10000">
+        <SHORT-NAME>Timing1</SHORT-NAME>
+      </Timing>
+    </TimingList>
+  </Dcm>
+  <Fls>
+    <SHORT-NAME>Fls</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" FlashBaseAddress="0" MaxFastReadSize="512" MaxFastWriteSize="32" MaxNormalReadSize="32" MaxNormalWriteSize="8" VersionInfoApi="OFF">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <SectorList Max="TBD">
+      <SHORT-NAME>SectorList</SHORT-NAME>
+      <Sector Comment="*" Name="NVM" NumberOfSectors="2048" PageSize="8" SectorSize="512" StartAddress="0">
+        <SHORT-NAME>NVM</SHORT-NAME>
+      </Sector>
+    </SectorList>
+  </Fls>
+  <Fee>
+    <SHORT-NAME>Fee</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" NvmJobEndNotification="NULL" NvmJobErrorNotification="NULL" PollingMode="ON" VersionInfoApi="OFF" VirtualPageSize="8">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <BlockList Max="TBD">
+      <SHORT-NAME>BlockList</SHORT-NAME>
+      <Block ArraySize="2" BlockSize="16" Comment="*" ImmediateData="False" IsArray="False" Name="Time" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>Time</SHORT-NAME>
+      </Block>
+      <Block ArraySize="2" BlockSize="264" Comment="*" ImmediateData="False" IsArray="False" Name="Config" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>Config</SHORT-NAME>
+      </Block>
+      <Block ArraySize="2" BlockSize="36" Comment="*" ImmediateData="False" IsArray="False" Name="Finger_Print" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>Finger_Print</SHORT-NAME>
+      </Block>
+      <Block ArraySize="2" BlockSize="68" Comment="*" ImmediateData="False" IsArray="False" Name="DemHealing" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>DemHealing</SHORT-NAME>
+      </Block>
+      <Block ArraySize="5" BlockSize="28" Comment="ArraySize must be the size value of DemFreezeFrame" ImmediateData="False" IsArray="True" Name="Dem_DemFreezeFrame" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>Dem_DemFreezeFrame</SHORT-NAME>
+      </Block>
+    </BlockList>
+  </Fee>
+  <Ea>
+    <SHORT-NAME>Ea</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" NvmJobEndNotification="NULL" NvmJobErrorNotification="NULL" SetModeApi="ON" VersionInfoApi="OFF" VirtualPageSize="8">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <BlockList Max="TBD">
+      <SHORT-NAME>BlockList</SHORT-NAME>
+      <Block ArraySize="2" BlockSize="32" Comment="*" ImmediateData="False" IsArray="False" Name="EaTest1" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>EaTest1</SHORT-NAME>
+      </Block>
+      <Block ArraySize="2" BlockSize="32" Comment="*" ImmediateData="False" IsArray="False" Name="EaTest2" NumberOfWriteCycles="0xFFFFFFFF">
+        <SHORT-NAME>EaTest2</SHORT-NAME>
+      </Block>
+    </BlockList>
+  </Ea>
+  <NvM>
+    <SHORT-NAME>NvM</SHORT-NAME>
+    <General Comment="*" ConfigClass="CLASS_2" DevelopmentErrorDetection="ON" ImmediateJobQueueSize="8" MultiBlockCallback="NULL" PollingMode="OFF" RamBlockStatusApi="OFF" StandardJobQueueSize="8" VersionInfoApi="OFF">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <BlockList Max="TBD">
+      <SHORT-NAME>BlockList</SHORT-NAME>
+      <Block ArraySize="2" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="Time" BlockNumRef1="TBD" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="False" Name="Time" NvramDeviceId="Fee" SelectBlockForReadall="True">
+        <SHORT-NAME>Time</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Data ArraySize="2" Comment="*" DefaultValue="2015" IsArray="False" Name="Year" Type="uint16">
+            <SHORT-NAME>Year</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="12" IsArray="False" Name="Month" Type="uint8">
+            <SHORT-NAME>Month</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="3" IsArray="False" Name="Day" Type="uint8">
+            <SHORT-NAME>Day</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="21" IsArray="False" Name="Hour" Type="uint8">
+            <SHORT-NAME>Hour</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="49" IsArray="False" Name="Minute" Type="uint8">
+            <SHORT-NAME>Minute</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="7" IsArray="False" Name="Second" Type="uint8">
+            <SHORT-NAME>Second</SHORT-NAME>
+          </Data>
+        </DataList>
+      </Block>
+      <Block ArraySize="2" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="Finger_Print" BlockNumRef1="TBD" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="False" Name="FingerPrint" NvramDeviceId="Fee" SelectBlockForReadall="True">
+        <SHORT-NAME>FingerPrint</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Data ArraySize="32" Comment="*" DefaultValue="{0,}" IsArray="True" Name="bytes" Type="uint8">
+            <SHORT-NAME>bytes</SHORT-NAME>
+          </Data>
+        </DataList>
+      </Block>
+      <Block ArraySize="2" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="Config" BlockNumRef1="TBD" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="False" Name="Config" NvramDeviceId="Fee" SelectBlockForReadall="True">
+        <SHORT-NAME>Config</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Data ArraySize="260" Comment="*" DefaultValue="{0,}" IsArray="True" Name="bytes" Type="uint8">
+            <SHORT-NAME>bytes</SHORT-NAME>
+          </Data>
+        </DataList>
+      </Block>
+      <Block ArraySize="2" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="TBD" BlockNumRef1="EaTest1" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="False" Name="EaTest1" NvramDeviceId="Ea" SelectBlockForReadall="True">
+        <SHORT-NAME>EaTest1</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="Data0" Type="uint32">
+            <SHORT-NAME>Data0</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="Data1" Type="uint32">
+            <SHORT-NAME>Data1</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="Data2" Type="uint32">
+            <SHORT-NAME>Data2</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="Data3" Type="uint32">
+            <SHORT-NAME>Data3</SHORT-NAME>
+          </Data>
+        </DataList>
+      </Block>
+      <Block ArraySize="2" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="TBD" BlockNumRef1="EaTest2" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="False" Name="EaTest2" NvramDeviceId="Ea" SelectBlockForReadall="True">
+        <SHORT-NAME>EaTest2</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Data ArraySize="2" Comment="*" DefaultValue="1" IsArray="False" Name="Data1" Type="uint32">
+            <SHORT-NAME>Data1</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="2" IsArray="False" Name="Data2" Type="uint32">
+            <SHORT-NAME>Data2</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="3" IsArray="False" Name="Data3" Type="uint32">
+            <SHORT-NAME>Data3</SHORT-NAME>
+          </Data>
+          <Data ArraySize="2" Comment="*" DefaultValue="4" IsArray="False" Name="Data4" Type="uint32">
+            <SHORT-NAME>Data4</SHORT-NAME>
+          </Data>
+        </DataList>
+      </Block>
+      <Block ArraySize="2" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="DemHealing" BlockNumRef1="TBD" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="False" Name="DemHealing" NvramDeviceId="Fee" SelectBlockForReadall="True">
+        <SHORT-NAME>DemHealing</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Struct ArraySize="8" Comment="*" IsArray="True" Name="HealingRec">
+            <SHORT-NAME>HealingRec</SHORT-NAME>
+            <DataList Max="TBD">
+              <SHORT-NAME>DataList</SHORT-NAME>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="eventId" Type="uint16">
+                <SHORT-NAME>eventId</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="agingCounter" Type="uint8">
+                <SHORT-NAME>agingCounter</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="checksum" Type="uint16">
+                <SHORT-NAME>checksum</SHORT-NAME>
+              </Data>
+            </DataList>
+          </Struct>
+        </DataList>
+      </Block>
+      <Block ArraySize="5" BlockCRCType="Crc16" BlockManagementType="NATIVE" BlockNumRef0="Dem_DemFreezeFrame" BlockNumRef1="TBD" BlockUseCrc="True" Comment="*" InitBlockCallback="NULL" IsArray="True" Name="DemFreezeFrame" NvramDeviceId="Fee" SelectBlockForReadall="True">
+        <SHORT-NAME>DemFreezeFrame</SHORT-NAME>
+        <DataList Max="TBD">
+          <SHORT-NAME>DataList</SHORT-NAME>
+          <Struct ArraySize="2" Comment="*" IsArray="False" Name="FreezeFrameRec">
+            <SHORT-NAME>FreezeFrameRec</SHORT-NAME>
+            <DataList Max="TBD">
+              <SHORT-NAME>DataList</SHORT-NAME>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="eventId" Type="uint16">
+                <SHORT-NAME>eventId</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="kind" Type="uint8">
+                <SHORT-NAME>kind</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="occurrence" Type="uint16">
+                <SHORT-NAME>occurrence</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="dataSize" Type="uint16">
+                <SHORT-NAME>dataSize</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="recordNumber" Type="uint8">
+                <SHORT-NAME>recordNumber</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="timeStamp" Type="uint32">
+                <SHORT-NAME>timeStamp</SHORT-NAME>
+              </Data>
+              <Data ArraySize="10" Comment="DEM_MAX_SIZE_FF_DATA" DefaultValue="0" IsArray="True" Name="data" Type="uint8">
+                <SHORT-NAME>data</SHORT-NAME>
+              </Data>
+              <Data ArraySize="2" Comment="*" DefaultValue="0" IsArray="False" Name="checksum" Type="uint16">
+                <SHORT-NAME>checksum</SHORT-NAME>
+              </Data>
+            </DataList>
+          </Struct>
+        </DataList>
+      </Block>
+    </BlockList>
+  </NvM>
+  <Xcp>
+    <SHORT-NAME>Xcp</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" VersionInfoApi="ON" XcpCounterRef="TBD" XcpDaqConfigType="DAQ_DYNAMIC" XcpDaqCount="8" XcpFlashProgrammingEnabled="True" XcpIdentificationFieldType="ABSOLUTE" XcpMainFunctionPeriod="10" XcpMaxCto="8" XcpMaxDto="8" XcpMaxEventChannel="8" XcpMaxRxTxQueue="8" XcpMinDaq="0" XcpNvRamBlockIdRef="TBD" XcpOdtCount="8" XcpOdtEntriesCount="8" XcpOdtEntrySizeDaq="0" XcpOdtEntrySizeStim="0" XcpPrescalerSupported="True" XcpProtocal="CAN" XcpSuppressTxSupport="True" XcpTimestampTicks="1" XcpTimestampType="FOUR_BYTE" XcpTimestampUnit="1ms">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <XcpStaticDaqList Max="TBD">
+      <SHORT-NAME>XcpStaticDaqList</SHORT-NAME>
+      <XcpDaq Comment="*" Name="XcpDaq1" XcpMaxOdt="8" XcpOdtCount="8">
+        <SHORT-NAME>XcpDaq1</SHORT-NAME>
+        <XcpOdtList Max="TBD">
+          <SHORT-NAME>XcpOdtList</SHORT-NAME>
+          <XcpOdt Comment="*" Name="XcpOdt1">
+            <SHORT-NAME>XcpOdt1</SHORT-NAME>
+            <XcpOdtEntryList Max="TBD">
+              <SHORT-NAME>XcpOdtEntryList</SHORT-NAME>
+              <XcpEntry Address="&amp;xcpSimMTAMemory[0]" Comment="*" Extension="MEMORY" Length="1" Name="XcpEntry1">
+                <SHORT-NAME>XcpEntry1</SHORT-NAME>
+              </XcpEntry>
+              <XcpEntry Address="&amp;xcpSimMTAMemory[1]" Comment="*" Extension="MEMORY" Length="2" Name="XcpEntry2">
+                <SHORT-NAME>XcpEntry2</SHORT-NAME>
+              </XcpEntry>
+              <XcpEntry Address="&amp;xcpSimMTAMemory[3]" Comment="*" Extension="MEMORY" Length="3" Name="XcpEntry3">
+                <SHORT-NAME>XcpEntry3</SHORT-NAME>
+              </XcpEntry>
+            </XcpOdtEntryList>
+          </XcpOdt>
+          <XcpOdt Comment="*" Name="XcpOdt2">
+            <SHORT-NAME>XcpOdt2</SHORT-NAME>
+            <XcpOdtEntryList Max="TBD">
+              <SHORT-NAME>XcpOdtEntryList</SHORT-NAME>
+              <XcpEntry Address="&amp;xcpSimMTAMemory[6]" Comment="*" Extension="MEMORY" Length="1" Name="XcpEntry1">
+                <SHORT-NAME>XcpEntry1</SHORT-NAME>
+              </XcpEntry>
+              <XcpEntry Address="&amp;xcpSimMTAMemory[7]" Comment="*" Extension="MEMORY" Length="2" Name="XcpEntry2">
+                <SHORT-NAME>XcpEntry2</SHORT-NAME>
+              </XcpEntry>
+              <XcpEntry Address="&amp;xcpSimMTAMemory[9]" Comment="*" Extension="MEMORY" Length="3" Name="XcpEntry3">
+                <SHORT-NAME>XcpEntry3</SHORT-NAME>
+              </XcpEntry>
+            </XcpOdtEntryList>
+          </XcpOdt>
+        </XcpOdtList>
+      </XcpDaq>
+    </XcpStaticDaqList>
+    <XcpEventChannelList Max="TBD">
+      <SHORT-NAME>XcpEventChannelList</SHORT-NAME>
+      <XcpEventChannel Comment="*" DAQListRefSize="8" Name="1000ms">
+        <SHORT-NAME>1000ms</SHORT-NAME>
+        <XcpStaticDaqList Max="TBD">
+          <SHORT-NAME>XcpStaticDaqList</SHORT-NAME>
+          <XcpDaq Comment="*" Name="XcpDaq1">
+            <SHORT-NAME>XcpDaq1</SHORT-NAME>
+          </XcpDaq>
+        </XcpStaticDaqList>
+      </XcpEventChannel>
+    </XcpEventChannelList>
+  </Xcp>
+  <Rte>
+    <SHORT-NAME>Rte</SHORT-NAME>
+    <DataTypeList Max="TBD">
+      <SHORT-NAME>DataTypeList</SHORT-NAME>
+      <DataType Comment="*" Maximum="TBD" Minimum="TBD" Name="InactiveActive_T" Type="Integer" ValueTable="InactiveActive_Inactive, InactiveActive_Active, InactiveActive_Error, InactiveActive_NotAvailable">
+        <SHORT-NAME>InactiveActive_T</SHORT-NAME>
+      </DataType>
+      <DataType Comment="*" Maximum="TBD" Minimum="TBD" Name="OnOff_T" Type="Integer" ValueTable="OnOff_Off, OnOff_On, OnOff_1Hz, OnOff_2Hz, OnOff_3Hz">
+        <SHORT-NAME>OnOff_T</SHORT-NAME>
+      </DataType>
+    </DataTypeList>
+    <ConstantList Max="TBD">
+      <SHORT-NAME>ConstantList</SHORT-NAME>
+      <Constant Comment="*" Name="C_TELLTALE_OFF_IV" Type="OnOff_T" Value="0">
+        <SHORT-NAME>C_TELLTALE_OFF_IV</SHORT-NAME>
+      </Constant>
+    </ConstantList>
+    <SwcList Max="TBD">
+      <SHORT-NAME>SwcList</SHORT-NAME>
+      <Swc Comment="*" Name="Telltale" Runnable="Telltale_run">
+        <SHORT-NAME>Telltale</SHORT-NAME>
+        <PortList Max="TBD">
+          <SHORT-NAME>PortList</SHORT-NAME>
+          <Port Comment="*" DataTypeRef="OnOff_T" InitValueRef="C_TELLTALE_OFF_IV" Name="TelltaleTPMSStatus" Type="Provide">
+            <SHORT-NAME>TelltaleTPMSStatus</SHORT-NAME>
+          </Port>
+          <Port Comment="*" DataTypeRef="OnOff_T" InitValueRef="C_TELLTALE_OFF_IV" Name="TelltaleAutoCruiseStatus" Type="Provide">
+            <SHORT-NAME>TelltaleAutoCruiseStatus</SHORT-NAME>
+          </Port>
+          <Port Comment="*" DataTypeRef="OnOff_T" InitValueRef="C_TELLTALE_OFF_IV" Name="TelltaleHighBeamStatus" Type="Provide">
+            <SHORT-NAME>TelltaleHighBeamStatus</SHORT-NAME>
+          </Port>
+        </PortList>
+      </Swc>
+    </SwcList>
+  </Rte>
+  <Dem>
+    <SHORT-NAME>Dem</SHORT-NAME>
+    <General Comment="DEM_MAX_NUMBER_FF_DATA_PRI_MEM must be the size value of DemFreezeFrame" DEM_CLEAR_ALL_EVENTS="OFF" DEM_DTC_STATUS_AVAILABILITY_MASK="0xFF" DEM_MAX_NUMBER_FF_DATA_PRI_MEM="5" DEM_OBD_SUPPORT="OFF" DEM_PTO_SUPPORT="OFF" DEM_TYPE_OF_DTC_SUPPORTED="0x01" DEM_USE_NVM="ON" DevelopmentErrorDetection="ON" NvMFreezeFrameBlock="DemFreezeFrame" NvMHealingBlock="DemHealing" VersionInfoApi="ON">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <ExtendedDataRecordClassList Max="TBD">
+      <SHORT-NAME>ExtendedDataRecordClassList</SHORT-NAME>
+      <ExtendedDataRecordClass CallbackGetExtDataRecord="USED" Comment="*" DataSize="4" InternalDataElement="NO_ELEMENT" Name="ExtendedDataRecordClass_Odometer" RecordNumber="1" UpdateRule="VOLATILE">
+        <SHORT-NAME>ExtendedDataRecordClass_Odometer</SHORT-NAME>
+      </ExtendedDataRecordClass>
+    </ExtendedDataRecordClassList>
+    <DTCClassList Max="TBD">
+      <SHORT-NAME>DTCClassList</SHORT-NAME>
+      <DTCClass Comment="*" DTC="0x180001" DTCFunctionalUnit="0" DTCKind="ALL_DTCS" Name="DTCAirbag">
+        <SHORT-NAME>DTCAirbag</SHORT-NAME>
+      </DTCClass>
+    </DTCClassList>
+    <FFIdClassList Max="TBD">
+      <SHORT-NAME>FFIdClassList</SHORT-NAME>
+      <FFIdClass Comment="*" DidConditionCheckReadFnc="USED" DidIdentifier="0xFFFF" DidReadDataLengthFnc="USED" DidReadFnc="USED" Name="AirbagFFIdClass" PidIndentifier="1" PidOrDidSize="1" PidReadFnc="USED">
+        <SHORT-NAME>AirbagFFIdClass</SHORT-NAME>
+      </FFIdClass>
+    </FFIdClassList>
+    <FreezeFrameClassList Max="TBD">
+      <SHORT-NAME>FreezeFrameClassList</SHORT-NAME>
+      <FreezeFrameClass Comment="*" FFKind="NON_OBD" FFRecordNumber="1" FFStorageCondition="FAILED" Name="AirbagFreezeFrameClass">
+        <SHORT-NAME>AirbagFreezeFrameClass</SHORT-NAME>
+        <FFIdClassRefList Max="TBD">
+          <SHORT-NAME>FFIdClassRefList</SHORT-NAME>
+          <FFIdClassRef Comment="*" Name="AirbagFFIdClass">
+            <SHORT-NAME>AirbagFFIdClass</SHORT-NAME>
+          </FFIdClassRef>
+        </FFIdClassRefList>
+      </FreezeFrameClass>
+    </FreezeFrameClassList>
+    <EventClassList Max="TBD">
+      <SHORT-NAME>EventClassList</SHORT-NAME>
+      <EventClass Comment="*" ConfirmationCycleCounterThreshold="8" ConsiderPtoStatus="False" EventPriority="1" FFPrestorageSupported="False" HealingAllowed="False" HealingCycleCounter="8" HealingCycleRef="IGNITION" Name="BSWEventClass" OperationCycleRef="IGNITION">
+        <SHORT-NAME>BSWEventClass</SHORT-NAME>
+      </EventClass>
+      <EventClass Comment="*" ConfirmationCycleCounterThreshold="8" ConsiderPtoStatus="False" EventPriority="1" FFPrestorageSupported="False" HealingAllowed="False" HealingCycleCounter="8" HealingCycleRef="IGNITION" Name="SWCEventClass" OperationCycleRef="IGNITION">
+        <SHORT-NAME>SWCEventClass</SHORT-NAME>
+      </EventClass>
+    </EventClassList>
+    <EventParameterList Max="TBD">
+      <SHORT-NAME>EventParameterList</SHORT-NAME>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="EEP_E_WRITE_FAILED">
+        <SHORT-NAME>EEP_E_WRITE_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="EEP_E_READ_FAILED">
+        <SHORT-NAME>EEP_E_READ_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="FLS_E_ERASE_FAILED">
+        <SHORT-NAME>FLS_E_ERASE_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="FLS_E_WRITE_FAILED">
+        <SHORT-NAME>FLS_E_WRITE_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="FLS_E_READ_FAILED">
+        <SHORT-NAME>FLS_E_READ_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="CANNM_E_NETWORK_TIMEOUT">
+        <SHORT-NAME>CANNM_E_NETWORK_TIMEOUT</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="PDUR_E_PDU_INSTANCE_LOST">
+        <SHORT-NAME>PDUR_E_PDU_INSTANCE_LOST</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="NVM_E_INTEGRITY_FAILED">
+        <SHORT-NAME>NVM_E_INTEGRITY_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="NVM_E_REQ_FAILED">
+        <SHORT-NAME>NVM_E_REQ_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="ECUM_E_ALL_RUN_REQUESTS_KILLED">
+        <SHORT-NAME>ECUM_E_ALL_RUN_REQUESTS_KILLED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="NULL" Comment="*" DTCClassRef="NULL" EventClassRef="BSWEventClass" EventKind="BSW" Name="ECUM_E_RAM_CHECK_FAILED">
+        <SHORT-NAME>ECUM_E_RAM_CHECK_FAILED</SHORT-NAME>
+      </EventParameter>
+      <EventParameter CallbackInitMForEFnc="USED" Comment="*" DTCClassRef="DTCAirbag" EventClassRef="SWCEventClass" EventKind="SWC" Name="AIRBAG_FAILED">
+        <SHORT-NAME>AIRBAG_FAILED</SHORT-NAME>
+        <FreezeFrameClassRefList Max="TBD">
+          <SHORT-NAME>FreezeFrameClassRefList</SHORT-NAME>
+          <FreezeFrameClassRef Comment="*" Name="AirbagFreezeFrameClass">
+            <SHORT-NAME>AirbagFreezeFrameClass</SHORT-NAME>
+          </FreezeFrameClassRef>
+        </FreezeFrameClassRefList>
+        <ExtendedDataClassRefList>
+          <SHORT-NAME>ExtendedDataClassRefList</SHORT-NAME>
+          <ExtendedDataClassRef Comment="*" Name="ExtendedDataRecordClass_Odometer">
+            <SHORT-NAME>ExtendedDataRecordClass_Odometer</SHORT-NAME>
+          </ExtendedDataClassRef>
+        </ExtendedDataClassRefList>
+      </EventParameter>
+    </EventParameterList>
+  </Dem>
+  <J1939Tp>
+    <SHORT-NAME>J1939Tp</SHORT-NAME>
+    <General Comment="*" DevelopmentErrorDetection="ON" PACKETS_PER_BLOCK="8" TX_CONF_TIMEOUT="1000" VersionInfoApi="ON">
+      <SHORT-NAME>General</SHORT-NAME>
+    </General>
+    <ChannelList Max="TBD">
+      <SHORT-NAME>ChannelList</SHORT-NAME>
+      <Channel CmNPdu="TX_J1939TP_CmNPdu" Comment="*" Direction="RX" DtNPdu="TX_J1939TP_DtNPdu" FcNPdu="TX_J1939TP_FcNPdu" Name="J1939TP_RX_CHL" Protocol="CMDT">
+        <SHORT-NAME>J1939TP_RX_CHL</SHORT-NAME>
+      </Channel>
+      <Channel CmNPdu="TX_J1939TP_CmNPdu" Comment="*" Direction="TX" DtNPdu="TX_J1939TP_DtNPdu" FcNPdu="TX_J1939TP_FcNPdu" Name="J1939TP_TX_CHL" Protocol="CMDT">
+        <SHORT-NAME>J1939TP_TX_CHL</SHORT-NAME>
+      </Channel>
+    </ChannelList>
+    <ParameterGroupList Max="TBD">
+      <SHORT-NAME>ParameterGroupList</SHORT-NAME>
+      <ParameterGroup Channel="J1939TP_RX_CHL" Comment="*" DirectNPdu="TX_J1939TP_DirectNPdu" DynLength="True" NSdu="J1939TP_RX" Name="PG_RX" PgnType="0">
+        <SHORT-NAME>PG_RX</SHORT-NAME>
+      </ParameterGroup>
+      <ParameterGroup Channel="J1939TP_TX_CHL" Comment="*" DirectNPdu="TX_J1939TP_DirectNPdu" DynLength="True" NSdu="J1939TP_TX" Name="PG_TX" PgnType="1">
+        <SHORT-NAME>PG_TX</SHORT-NAME>
+      </ParameterGroup>
+    </ParameterGroupList>
+    <PduInfoList Max="TBD">
+      <SHORT-NAME>PduInfoList</SHORT-NAME>
+      <PduInfo Channel="J1939TP_TX_CHL" Comment="*" Name="RX_J1939TP_REVERSE_CM" PacketType="REVERSE_CM" ParameterGroup="PG_TX">
+        <SHORT-NAME>RX_J1939TP_REVERSE_CM</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_RX_CHL" Comment="*" Name="RX_J1939TP_CM" PacketType="CM" ParameterGroup="PG_RX">
+        <SHORT-NAME>RX_J1939TP_CM</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_RX_CHL" Comment="*" Name="RX_J1939TP_DT" PacketType="DT" ParameterGroup="PG_RX">
+        <SHORT-NAME>RX_J1939TP_DT</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_RX_CHL" Comment="*" Name="RX_J1939TP_DIRECT" PacketType="DIRECT" ParameterGroup="PG_RX">
+        <SHORT-NAME>RX_J1939TP_DIRECT</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_TX_CHL" Comment="*" Name="TX_J1939TP_CmNPdu" PacketType="CM" ParameterGroup="PG_TX">
+        <SHORT-NAME>TX_J1939TP_CmNPdu</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_TX_CHL" Comment="*" Name="TX_J1939TP_DtNPdu" PacketType="DT" ParameterGroup="PG_TX">
+        <SHORT-NAME>TX_J1939TP_DtNPdu</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_RX_CHL" Comment="*" Name="TX_J1939TP_FcNPdu" PacketType="REVERSE_CM" ParameterGroup="PG_RX">
+        <SHORT-NAME>TX_J1939TP_FcNPdu</SHORT-NAME>
+      </PduInfo>
+      <PduInfo Channel="J1939TP_TX_CHL" Comment="*" Name="TX_J1939TP_DirectNPdu" PacketType="DIRECT" ParameterGroup="PG_TX">
+        <SHORT-NAME>TX_J1939TP_DirectNPdu</SHORT-NAME>
+      </PduInfo>
+    </PduInfoList>
+  </J1939Tp>
+</AUTOSAR>

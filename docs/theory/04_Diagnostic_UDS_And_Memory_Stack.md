@@ -1268,7 +1268,7 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* tinh gọn, tập 
    ──► Gọi: [`Dem_PreInit();`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2337)
    - Tác động lên các vùng nhớ:
      * operationCycleStateList[i] = DEM_CYCLE_STATE_END; ([`Dem.c: L2351`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2351))
-       ──► Khóa cứng cửa ải: Mọi sự kiện phát ra trước khi bật chu kỳ đều bị vứt bỏ (returnCode = E_NOT_OK).
+       ──► Thiết lập điều kiện bảo vệ ban đầu: Toàn bộ chu kỳ vận hành ở trạng thái kết thúc (END), DEM sẽ từ chối mọi sự kiện báo lỗi phát ra trước khi chu kỳ được kích hoạt (returnCode = E_NOT_OK).
      * eventStatusBuffer[DEM_MAX_NUMBER_EVENT] ([`Dem.c: L2354-L2364`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2354-L2364)):
        - Ánh xạ sự kiện: eventId = DEM_EVENT_ID_AIRBAG_FAILED (2) (từ EventParameterList trong Dem_Cfg.c: L127).
        - Xóa trắng bộ đếm: faultDetectionCounter = 0; occurrence = 0; confirmationCounter = 0;
@@ -1283,13 +1283,25 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* tinh gọn, tập 
   PHA 2: NẠP DỮ LIỆU TỪ FLASH & KHÔI PHỤC LỊCH SỬ LỖI LÊN RAM (Memory Stack & Dem_Init)
 ==================================================================================================
 
-2. [BƯỚC 1: NẠP FLASH LÊN RAM MIRROR NVM QUA NVM_READALL]
+2. [BƯỚC 1: KÍCH HOẠT VÀ NẠP FLASH LÊN RAM MIRROR NVM QUA NVM_READALL & READALLINIT]
    - Sau khi RTOS khởi động, tác vụ khởi tạo BSW gọi:
    ──► Gọi: [`NvM_ReadAll();`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1392)
-   - Tác động lên các vùng nhớ:
-     * Đọc các sector Flash phi bốc hơi (chứa snapshot DID và bản ghi lỗi từ các chu kỳ nổ máy trước) nạp vào:
-       NvM_Block_DemFreezeFrame_DataGroup_RAM[] (trỏ bởi FreezeFrameMirrorBuffer[] trong Dem_Cfg.c: L262-L269).
-   ◄── Trả về (Return): void (NvM xử lý đọc bất đồng bộ trong nền cho đến khi hoàn tất NVM_REQ_OK).
+   - **Bản chất 3 nhịp (3 giai đoạn) bất đồng bộ của chu trình ReadAll:**
+     * **Nhịp 1 (Kích hoạt yêu cầu):**
+       `NvM_ReadAll()` chỉ gài cờ yêu cầu `AdminMultiReq.state = NVM_READ_ALL` và `AdminMultiBlock.ErrorStatus = NVM_REQ_PENDING` rồi trả về `void` ngay lập tức (không đọc trực tiếp Flash).
+     * **Nhịp 2 (Khởi tạo danh sách đọc - ReadAllInit):**
+       Khi tác vụ nền gọi [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887), nó gọi hàm nội bộ [`ReadAllInit()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L605) để quét toàn bộ `BlockDescriptorList[]`. Các khối có cấu hình `.SelectBlockForReadall == True` (gồm 5 khối `DemFreezeFrame` và 1 khối `DemHealing` trong [`NvM_Cfg.c: L196-L245`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/NvM_Cfg.c#L196-L245)) được đánh dấu `BLOCK_STATE_MEMIF_REQ` để sẵn sàng nạp dữ liệu.
+     * **Nhịp 3 (Thực thi đọc Flash nền - ReadAllMain):**
+       Trong các chu kỳ tiếp theo của `NvM_MainFunction()`, tiến trình đọc bất đồng bộ được thực hiện qua chuỗi gọi hàm:
+       ──► Gọi: [`ReadAllMain();`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1195)
+           - Quét tuần tự các khối có trạng thái `BLOCK_STATE_MEMIF_REQ`.
+       ──► Gọi: [`DriveBlock(&NvM_Config.BlockDescriptor[currBlockIndex], ...);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L696)
+           - Điều phối trạng thái đọc khối và nạp lệnh xuống tầng trừu tượng bộ nhớ.
+       ──► Gọi: [`MemIf_Read(bPtr->NvramDeviceId, BlockNumber, 0, Nvm_WorkBuffer, length);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/MemIf/MemIf.c#L32)
+                 │ ──► [`Fee_Read();`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L1480) ──► [`Fls_Read();`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/Fls.h#L133)
+       - Nhiệm vụ: Tuần tự kéo dữ liệu snapshot từ Flash vào vùng RAM Mirror trung gian:
+         `NvM_Block_DemFreezeFrame_DataGroup_RAM[]` (được trỏ bởi `FreezeFrameMirrorBuffer[]` trong [`Dem_Cfg.c: L262-L269`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Dem_Cfg.c#L262-L269)).
+   ◄── Trả về (Return): void (NvM xử lý đọc bất đồng bộ trong nền cho đến khi hoàn tất `AdminMultiBlock.ErrorStatus = NVM_REQ_OK`).
        │
        ▼
 3. [BƯỚC 2: SAO CHÉP VÀO RAM NỘI BỘ DEM & HÒA NHẬP TRẠNG THÁI TẠI DEM_INIT]
@@ -1311,19 +1323,27 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* tinh gọn, tập 
   PHA 3: MỞ KHÓA CHU KỲ NỔ MÁY & CHUẨN HÓA CỜ RAM (Operation Cycle START)
 ==================================================================================================
 
-4. [BẬT CHU KỲ IGNITION & RESET CỜ TEST CỦA CHU KỲ MỚI]
-   - BswM/EcuM (xe thật) hoặc Dem_Test() (bản test - [`nvm_test.c: L207`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/test/nvm_test.c#L207)) kích hoạt:
+4. [KÍCH HOẠT CHU KỲ VẬN HÀNH IGNITION & THIẾT LẬP LẠI CỜ TRẠNG THÁI CHU KỲ MỚI]
+   - Bối cảnh & Chủ thể kích hoạt:
+     * Trên xe thương mại: Module quản lý chế độ ECU (`BswM` hoặc `EcuM`) phát hiện tín hiệu khóa điện KL15 (Ignition ON 12V).
+     * Trong môi trường thử nghiệm: Hàm [`Dem_Test();`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.application/common/test/nvm_test.c#L207) đóng vai tài xế bật khóa điện ảo.
    ──► Gọi: [`Dem_SetOperationCycleState(DEM_IGNITION, DEM_CYCLE_STATE_START);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2716)
-   ──► Gọi: [`setOperationCycleState(DEM_IGNITION, DEM_CYCLE_STATE_START);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2267)
-   - Tác động lên các vùng nhớ:
-     * operationCycleStateList[DEM_IGNITION] = DEM_CYCLE_STATE_START; ([`Dem.c: L2276`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2276))
-       👉 Mở "Cửa Ải Tử Thần" tại [`Dem.c: L1917`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1917), cho phép hàm handleEvent() bên dưới tiếp nhận và xử lý sự kiện.
-     * eventStatusBuffer[DEM_EVENT_ID_AIRBAG_FAILED] ([`Dem.c: L2280-L2281`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2280-L2281)):
-       - eventStatusExtended &= ~DEM_TEST_FAILED_THIS_OPERATION_CYCLE;
-         👉 Xóa Bit 1: Bắt đầu chu kỳ nổ máy mới, chưa có lỗi nào bị trượt trong chu kỳ này!
-       - eventStatusExtended |= DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE;
-         👉 Dựng Bit 6: Đánh dấu bài kiểm tra của các Monitor chưa hoàn thành trong chu kỳ mới này!
-   ◄── Trả về (Return): E_OK.
+       - Chức năng: Là API chuẩn của BSW DEM tiếp nhận yêu cầu thay đổi trạng thái chu kỳ vận hành.
+       - Kiểm tra điều kiện tiên quyết: Xác thực module DEM đã hoàn tất khởi tạo (`demState == DEM_INITIALIZED` tại [`Dem.c: L2723`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2723)), nếu chưa khởi tạo sẽ báo lỗi `DEM_E_UNINIT` và trả về `E_NOT_OK`.
+       - Điều phối thực thi: Chuyển tiếp thực hiện 2 hàm nội bộ bên dưới:
+       ──► Gọi: [`setOperationCycleState(DEM_IGNITION, DEM_CYCLE_STATE_START);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2267)
+           - Chức năng: Trực tiếp thay đổi biến trạng thái chu kỳ và thiết lập lại các cờ kiểm tra của chu kỳ mới trên RAM.
+           * Cập nhật trạng thái chu kỳ vận hành:
+             `operationCycleStateList[DEM_IGNITION] = DEM_CYCLE_STATE_START;` ([`Dem.c: L2276`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2276))
+             👉 Thiết lập điều kiện tiên quyết bắt buộc tại [`Dem.c: L1917`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1917): Cho phép hàm `handleEvent()` tiếp nhận và xử lý các sự kiện báo lỗi từ Application SWC (nếu chu kỳ chưa ở trạng thái `START`, hàm `handleEvent()` sẽ từ chối tiếp nhận và trả về mã lỗi `E_NOT_OK`).
+           * Quét toàn bộ `eventStatusBuffer[]` của các sự kiện gắn với chu kỳ `DEM_IGNITION`:
+             - `eventStatusBuffer[i].eventStatusExtended &= ~DEM_TEST_FAILED_THIS_OPERATION_CYCLE;` ([`Dem.c: L2280`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2280))
+               👉 Xóa Bit 1: Xác nhận bắt đầu chu kỳ nổ máy mới, chưa có bài kiểm tra nào bị trượt (Fail) trong chu kỳ này.
+             - `eventStatusBuffer[i].eventStatusExtended |= DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE;` ([`Dem.c: L2281`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2281))
+               👉 Dựng Bit 6: Đánh dấu bài kiểm tra của các Diagnostic Monitor chưa hoàn thành trong chu kỳ mới này.
+       ──► Gọi: [`handleAging(DEM_IGNITION, DEM_CYCLE_STATE_START);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2173)
+           - Chức năng: Xử lý bộ đếm tự phục hồi / lão hóa lỗi (Aging / Healing Counter) cho các sự kiện không còn xuất hiện lỗi trong các chu kỳ vận hành tiếp theo.
+   ◄── Trả về (Return): E_OK (Chu kỳ vận hành IGNITION chính thức hoạt động, mở quyền cho các Diagnostic Monitor báo cáo lỗi).
 
 ==================================================================================================
   KẾT QUẢ TỔNG HỢP: TRẠNG THÁI VÙNG NHỚ TRƯỚC KHI BẮT ĐẦU TẦNG 0
@@ -1368,9 +1388,9 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh khi 
         ──► Gọi: `Dem_GetEventStatus(DEM_EVENT_ID_AIRBAG_FAILED, &status);` ([`Dem.c: L2641`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2641))
         - Nhiệm vụ: Đọc 8-bit DTC Status Byte hiện tại từ RAM `eventStatusBuffer[]` (đã được khởi tạo tại Giai đoạn 0A và nạp phục hồi từ Flash qua Giai đoạn 0B ở Mục 4.5.0) để kiểm tra máy trạng thái của Monitor trước khi ra quyết định tác động.
 
-      • Bước 2: Bật chu kỳ nổ máy Ignition Cycle ("Cửa Ải Tử Thần" của DEM):
+      • Bước 2: Kích hoạt chu kỳ vận hành Ignition (Xác thực điều kiện tiếp nhận lỗi):
         ──► Gọi: `Dem_SetOperationCycleState(DEM_IGNITION, DEM_CYCLE_STATE_START);` ([`Dem.c: L2716`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L2716))
-        - **Bản chất sống còn:** Trong [`[`Dem.c: L1917`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1917), L1942-L1944`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1917), DEM kiểm tra nghiêm ngặt:
+        - **Điều kiện tiên quyết bắt buộc:** Trong [`Dem.c: L1917, L1942-L1944`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1917), DEM kiểm tra nghiêm ngặt:
           `if (operationCycleStateList[eventParam->EventClass->OperationCycleRef] == DEM_CYCLE_STATE_START)`
           *Nếu chu kỳ nổ máy chưa bắt đầu (START), DEM sẽ lập tức trả về `returnCode = E_NOT_OK` và âm thầm vứt bỏ sự kiện (Silently Dropped)!* Toàn bộ thuật toán lọc rung, nhảy cờ DTC và lưu Flash sẽ bị tê liệt hoàn toàn.
         - **Đối chiếu xe thương mại:** Trên xe thật, hàm này do `BswM` (BSW Mode Manager) hoặc `EcuM` gọi khi tài xế bật chìa khóa điện ON (chân KL15 có điện 12V). Trong môi trường thí nghiệm/test, `Dem_Test()` bắt buộc phải đóng vai tài xế "bật khóa điện ảo" bằng lệnh này!
@@ -1401,13 +1421,24 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh khi 
       ──► Gọi: `updateEventStatusRec(eventParam, eventStatus, TRUE, &eventStatusLocal);` ([`Dem.c: L1921`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1921))
 
    b) [`updateEventStatusRec(...)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L569-L653):
-      - Nhiệm vụ: Kích hoạt bộ lọc rung lỗi trước khi thay đổi trạng thái chính thức:
-      ──► Gọi: `preDebounceCounterBased(eventStatus, eventStatusRecPtr);` ([`Dem.c: L482-L540`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L482-L540))
-      - Trích xuất: `CountInStepSize = 2`, `statusRecord->faultDetectionCounter`.
-      - Tăng biến đếm: `faultDetectionCounter = DEBOUNCE_FDC_TEST_FAILED (127)`.
-      ◄── Trả về (Return): return DEM_EVENT_STATUS_FAILED; (Xác nhận lỗi đã vượt ngưỡng lọc rung!)
-      - Kích hoạt xác nhận lỗi: `handleFaultConfirmation(eventParam, eventStatusRecPtr);` ([`Dem.c: L554-L562`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L554-L562))
-        Tăng `confirmationCounter++`, đạt điều kiện `faultConfirmationCriteriaFulfilled()` $\rightarrow$ giương cờ `DEM_CONFIRMED_DTC`!
+      - Nhiệm vụ: Kích hoạt thuật toán lọc rung lỗi (Debouncing) và xác nhận lỗi trước khi chuyển trạng thái:
+      - Kiểm tra cấu hình bộ lọc rung:
+        `if (eventParam->EventClass->PreDebounceAlgorithmClass != NULL)` ([`Dem.c: L600`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L600))
+        *(Trường hợp cấu hình thuật toán `DEM_PRE_DEBOUNCE_COUNTER_BASED` tại [`Dem.c: L606`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L606))*:
+        ──► Gọi: `eventStatus = preDebounceCounterBased(eventStatus, eventStatusRecPtr);` ([`Dem.c: L607`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L607))
+        - Biểu thức gán mốc chặn khi nhận `reportedStatus == DEM_EVENT_STATUS_FAILED`:
+          `statusRecord->faultDetectionCounter = DEBOUNCE_FDC_TEST_FAILED;` ([`Dem.c: L516`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L516)) (mốc chặn lỗi tối đa = 127).
+          *(Ghi chú: Nếu nhận `DEM_EVENT_STATUS_PREFAILED`, biểu thức tích lũy từng bước là `statusRecord->faultDetectionCounter += (sint8)pdVars->CountInStepSize;` tại [`Dem.c: L493`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L493))*.
+        - Biểu thức gán mã trả về: `returnCode = DEM_EVENT_STATUS_FAILED;` ([`Dem.c: L531`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L531)) (giá trị enum = 0x01).
+        ◄── Trả về (Return): `return returnCode;` ([`Dem.c: L544`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L544)) (xác nhận lỗi đã vượt ngưỡng lọc rung).
+      - Đánh giá điều kiện lỗi lần đầu trong chu kỳ vận hành:
+        `if( !(eventStatusRecPtr->eventStatusExtended & DEM_TEST_FAILED_THIS_OPERATION_CYCLE) )` ([`Dem.c: L623`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L623))
+        ──► Gọi: `handleFaultConfirmation(eventParam, eventStatusRecPtr);` ([`Dem.c: L625`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L625))
+        - Tăng bộ đếm xác nhận: `eventStatusRecPtr->confirmationCounter++;` ([`Dem.c: L557`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L557)).
+        - Kiểm tra ngưỡng xác nhận: `if( faultConfirmationCriteriaFulfilled(eventParam, eventStatusRecPtr) )` ([`Dem.c: L559`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L559)):
+          Biểu thức so sánh: `eventStatusRecPtr->confirmationCounter >= eventParam->EventClass->ConfirmationCycleCounterThreshold` ([`Dem.c: L548`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L548)) (với giá trị cấu hình `.ConfirmationCycleCounterThreshold = 8` tại [`Dem_Cfg.c: L83, L96`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Dem_Cfg.c#L83)).
+          Khi đạt điều kiện: `eventStatusRecPtr->eventStatusExtended |= DEM_CONFIRMED_DTC;` ([`Dem.c: L560`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L560)) (bật Bit 3 ConfirmedDTC).
+        ◄── Trả về (Return): `void`.
 
 ==================================================================================================
   GIAI ĐOẠN 2: CHUYỂN TRẠNG THÁI DTC STATUS BYTE, THU THẬP EXTENDED DATA & FREEZE FRAME SNAPSHOT
@@ -1416,14 +1447,19 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh khi 
 4. [TẦNG 3: CẬP NHẬT MÁY TRẠNG THÁI DTC STATUS BYTE VÀ LƯU VÀO PRIMARY RAM]
    a) Hoàn tất logic trong [`updateEventStatusRec()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L619-L653):
       - Cập nhật 8-bit DTC Status Byte theo quy chuẩn ISO 14229-1:
-        * Đặt Bit 0: `testFailed = 1`
-        * Đặt Bit 1: `testFailedThisOperationCycle = 1`
-        * Đặt Bit 2: `pendingDTC = 1`
-        * Đặt Bit 3: `confirmedDTC = 1` (khi `handleFaultConfirmation` xác nhận đạt ngưỡng chu kỳ)
-        * Đặt Bit 5: `testFailedSinceLastClear = 1`
-        * Đặt Bit 7: `warningIndicatorRequested = 1` (Yêu cầu sáng đèn Airbag Warning Lamp)
-      - Đánh dấu: `eventStatusLocal.errorStatusChanged = TRUE`.
-      ◄── Trả về (Return): Hoàn tất hàm updateEventStatusRec về cho handleEvent (Dem.c: L1921).
+        * Biểu thức bật các cờ lỗi: `eventStatusRecPtr->eventStatusExtended |= (DEM_TEST_FAILED | DEM_TEST_FAILED_THIS_OPERATION_CYCLE | DEM_TEST_FAILED_SINCE_LAST_CLEAR | DEM_PENDING_DTC);` ([`Dem.c: L629`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L629))
+          - `DEM_TEST_FAILED` (Đặt Bit 0 = 1, giá trị macro 0x01: Lỗi đang hiện hữu).
+          - `DEM_TEST_FAILED_THIS_OPERATION_CYCLE` (Đặt Bit 1 = 1, giá trị macro 0x02: Lỗi xảy ra trong chu kỳ này).
+          - `DEM_PENDING_DTC` (Đặt Bit 2 = 1, giá trị macro 0x04: Lỗi đang chờ xác nhận).
+          - `DEM_TEST_FAILED_SINCE_LAST_CLEAR` (Đặt Bit 5 = 1, giá trị macro 0x20: Đã từng lỗi kể từ lần xóa DTC gần nhất).
+        * Biểu thức giải trừ các cờ chưa hoàn tất: `eventStatusRecPtr->eventStatusExtended &= (Dem_EventStatusExtendedType)~(DEM_TEST_NOT_COMPLETED_SINCE_LAST_CLEAR | DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE);` ([`Dem.c: L630`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L630))
+          - `DEM_TEST_NOT_COMPLETED_SINCE_LAST_CLEAR` (Xóa Bit 4 = 0: Bài test đã hoàn tất từ lần xóa gần nhất).
+          - `DEM_TEST_NOT_COMPLETED_THIS_OPERATION_CYCLE` (Xóa Bit 6 = 0: Bài test đã hoàn tất trong chu kỳ này).
+        * Biểu thức kiểm tra và bật cờ cảnh báo taplo: `if ((eventParam->DTCClassRef != NULL) && (eventParam->DTCClassRef->DTCKind == DEM_DTC_KIND_EMISSION_REL_DTCS))` ([`Dem.c: L631`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L631))
+          `eventStatusRecPtr->eventStatusExtended |= DEM_WARNING_INDICATOR_REQUESTED;` ([`Dem.c: L632`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L632)) (Đặt Bit 7 = 1, giá trị macro 0x80).
+      - Đánh dấu trạng thái thay đổi: `eventStatusRecPtr->errorStatusChanged = TRUE;` ([`Dem.c: L622`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L622)).
+      - Sao chép bản ghi ra vùng đệm cục bộ: `memcpy(eventStatusRec, eventStatusRecPtr, sizeof(EventStatusRecType));` ([`Dem.c: L652`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L652)).
+      ◄── Trả về (Return): `void` (Hoàn tất hàm `updateEventStatusRec`, trao quyền xử lý lại cho `handleEvent` tại [`Dem.c: L1921`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1921)).
 
    b) [`handleEvent()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L1923):
       - Nhận diện `errorStatusChanged == TRUE`, tiến hành lưu vết:
@@ -1540,8 +1576,9 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh khi 
       `[0x04, 0x14, 0xFF, 0xFF, 0xFF]` (Yêu cầu xóa toàn bộ DTC nhóm All Groups).
    b) DSD phân phối tới DSP:
       ──► Gọi: [`DspUdsClearDiagnosticInformation(pduRxData, pduTxData);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm_Dsp.c#L662)
-      - Trích xuất: `dtc = BYTES_TO_DTC(0xFF, 0xFF, 0xFF) = 0xFFFFFF`.
-      ──► Gọi: [`Dem_ClearDTC(0xFFFFFF, DEM_DTC_KIND_ALL_DTCS, DEM_DTC_ORIGIN_PRIMARY_MEMORY);`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L3000)
+      - Biểu thức trích xuất mã DTC: `dtc = BYTES_TO_DTC(pduRxData->SduDataPtr[1], pduRxData->SduDataPtr[2], pduRxData->SduDataPtr[3]);` ([`Dcm_Dsp.c: L669`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm_Dsp.c#L669))
+        (Với mảng byte yêu cầu `pduRxData->SduDataPtr` = `[0x14, 0xFF, 0xFF, 0xFF]` $\rightarrow$ giải mã thành `dtc = 0xFFFFFF`, tương ứng nhóm tất cả mã lỗi `DEM_DTC_GROUP_ALL_DTCS`).
+      ──► Gọi: `result = Dem_ClearDTC(dtc, DEM_DTC_KIND_ALL_DTCS, DEM_DTC_ORIGIN_PRIMARY_MEMORY);` ([`Dcm_Dsp.c: L671`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dcm/Dcm_Dsp.c#L671), định nghĩa tại [`Dem.c: L3000`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L3000))
 
    c) [`Dem_ClearDTC(...)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/diagnostic/Dem/Dem.c#L3000-L3060) xử lý xóa sạch:
       - Quét toàn bộ mảng `eventStatusBuffer[]`:
@@ -1847,60 +1884,70 @@ const NvM_BlockIdType HealingBlockId = NVM_BLOCK_ID_DemHealing;
 > 🔧 **Source code đối chiếu tại repo:**  
 > - [`as/com/as.infrastructure/memory/NvM/NvM.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c)  
 > - [`as/com/as.infrastructure/memory/MemIf/MemIf.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/MemIf/MemIf.c)  
-> - [`as/com/as.infrastructure/memory/Fee/Fee.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c)
+> - [`as/com/as.infrastructure/memory/Fee/Fee.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c)  
+> - [`as/com/as.infrastructure/memory/Ea/Ea.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Ea/Ea.c)  
+> - [`as/com/as.infrastructure/include/Fls.h`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/include/Fls.h)  
+> - [`as/com/as.infrastructure/arch/posix/mcal/Eep.c`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/posix/mcal/Eep.c)
 
 
 ### 5.1 Kiến Trúc 4 Tầng Của Memory Stack
 
 ```text
-┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
-│              KIẾN TRÚC 4 TẦNG CỦA NGĂN XẾP BỘ NHỚ PHI BỐC HƠI (AUTOSAR MEMORY STACK)             │
-├──────────────────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                                  │
-│   ┌──────────────────────────────────────────────────────────────────────────────────────────┐   │
-│   │                        Application SWCs / DEM (Diagnostic Event Manager)                 │   │
-│   └─────────────────────────────────────────────┬────────────────────────────────────────────┘   │
-│                                                 │ Rte_Call_NvM_WriteBlock / NvM_ReadBlock        │
-│                                                 ▼                                                │
-│   ┌──────────────────────────────────────────────────────────────────────────────────────────┐   │
-│   │ 1. Module NvM (Non-Volatile Memory Manager)                                              │   │
-│   │    • Quản lý hàng đợi bất đồng bộ (Async Multi-Block & Single-Block Requests)            │   │
-│   │    • Quản lý vùng đệm RAM Mirror & Cơ chế kiểm tra toàn vẹn dữ liệu (CRC16/CRC32)        │   │
-│   │    • Xử lý khôi phục cấu hình dự phòng mặc định từ ROM khi dữ liệu NVRAM bị hỏng        │   │
-│   └─────────────────────────────────────────────┬────────────────────────────────────────────┘   │
-│                                                 │ MemIf_Read() / MemIf_Write() / MemIf_Erase()   │
-│                                                 ▼                                                │
-│   ┌──────────────────────────────────────────────────────────────────────────────────────────┐   │
-│   │ 2. Module MemIf (Memory Abstraction Interface)                                           │   │
-│   │    • Trừu tượng hóa hoàn toàn phần cứng lưu trữ đối với tầng trên NvM                     │   │
-│   │    • Định tuyến lời gọi API dựa vào DeviceIndex sang driver Flash (Fee) hoặc EEPROM (Eep)│   │
-│   └───────────────────────┬──────────────────────────────────────────────────┬───────────────┘   │
-│                           │ Fee_Read / Fee_Write                             │ Eep_Read/Write    │
-│                           ▼                                                  ▼                   │
-│   ┌─────────────────────────────────────────────────┐      ┌─────────────────────────────────┐   │
-│   │ 3. Module Fee (Flash EEPROM Emulation)          │      │ Module Eep (EEPROM Abstraction) │   │
-│   │    • Giả lập đặc tính đọc/ghi theo byte của     │      │ • Giao tiếp trực tiếp với chip  │   │
-│   │      EEPROM trên nền chip Flash vật lý          │      │   EEPROM vật lý (SPI / I2C hoặc │   │
-│   │    • Quản lý Sector ảo (Virtual Sectors),       │      │   EEPROM tích hợp nội bộ vi     │   │
-│   │      Dàn đều hao mòn (Wear Leveling)            │      │   điều khiển)                   │   │
-│   │    • Thu gom rác & Hoán đổi dữ liệu             │      │ • Ghi/xóa trực tiếp từng Byte   │   │
-│   │      (Garbage Collection / Swapping)            │      │                                 │   │
-│   └───────────────────────┬─────────────────────────┘      └────────────────┬────────────────┘   │
-│                           │ Fls_Read / Fls_Write / Fls_Erase                │                    │
-│                           ▼                                                 ▼                    │
-│   ┌─────────────────────────────────────────────────┐      ┌─────────────────────────────────┐   │
-│   │ 4. Module MCAL Fls (Flash Driver)               │      │ Hardware SPI/I2C Controller /   │   │
-│   │    • Trực tiếp điều khiển thanh ghi phần cứng   │      │ EEPROM On-chip Bus Controller   │   │
-│   │    • Thực thi xóa theo Sector (Sector Erase)    │      └────────────────┬────────────────┘   │
-│   │    • Ghi dữ liệu theo Page/Word vật lý          │                       │                    │
-│   └───────────────────────┬─────────────────────────┘                       │                    │
-│                           ▼                                                 ▼                    │
-│            ┌─────────────────────────────┐                   ┌─────────────────────────────┐     │
-│            │   CHIP BỘ NHỚ FLASH VẬT LÝ  │                   │  CHIP BỘ NHỚ EEPROM VẬT LÝ  │     │
-│            │  (On-Chip / External NOR)   │                   │    (External SPI / I2C)     │     │
-│            └─────────────────────────────┘                   └─────────────────────────────┘     │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│              VỊ TRÍ CỦA MEMORY STACK TRONG KIẾN TRÚC PHÂN TẦNG CHUẨN MỰC AUTOSAR CLASSIC PLATFORM                       │
+├─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                                                         │
+│ ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════════ │
+│  1. APPLICATION LAYER (ASW)                                                                                             │
+│     ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐     │
+│     │ Application SWCs (Seat Control, Airbag SWC, Dashboard, Engine Management, ...)                              │     │
+│     └──────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┘     │
+│                                                            │ Rte_Call_<Port>_WriteBlock / ReadBlock                     │
+│ ═══════════════════════════════════════════════════════════╪═══════════════════════════════════════════════════════════ │
+│  2. RUNTIME ENVIRONMENT (RTE LAYER)                        │                                                            │
+│     ┌──────────────────────────────────────────────────────┴──────────────────────────────────────────────────────┐     │
+│     │ RTE (Vận chuyển lời gọi API Client/Server từ SWC sang BSW Service Port)                                     │     │
+│     └──────────────────────────────────────────────────────┬──────────────────────────────────────────────────────┘     │
+│                                                            │ NvM_WriteBlock / NvM_ReadBlock                             │
+│ ═══════════════════════════════════════════════════════════╪═══════════════════════════════════════════════════════════ │
+│  3. BASIC SOFTWARE (BSW)                                   │                                                            │
+│                                                            │                                                            │
+│  [SERVICES LAYER]                                          │ (Gọi trực tiếp C-API nội bộ BSW)                           │
+│     ┌────────────────────────────────────────────────┐     │ ┌────────────────────────────────────────────────────┐     │
+│     │ DEM (Diagnostic Event Manager)                 ├─────┴─► 1. Module NvM (Non-Volatile Memory Manager)        │     │
+│     │ • Chụp Freeze Frame, gom Odometer qua BSW      │       │    • Quản lý NVRAM Blocks (Native/Redundant/Dataset)│     │
+│     └────────────────────────────────────────────────┘       │    • Quản lý Async Queue, RAM Mirror, CRC16/CRC32   │     │
+│                                                              └─────────────────────────┬──────────────────────────┘     │
+│                                                                                        │ MemIf_Read / Write / Erase     │
+│  [ECU ABSTRACTION LAYER]                                                               ▼                                │
+│     ┌─────────────────────────────────────────────────────────────────────────────────────────────────────────────┐     │
+│     │ 2. Module MemIf (Memory Abstraction Interface)                                                              │     │
+│     │    • Trừu tượng hóa hoàn toàn phần cứng lưu trữ đối với tầng trên NvM (Hardware-Independent Router)          │     │
+│     │    • Dùng DeviceIndex định tuyến cuộc gọi sang nhánh Flash (Fee) hoặc EEPROM (Ea)                           │     │
+│     └──────────────────────────────────────┬──────────────────────────────────────────┬───────────────────────────┘     │
+│                                            │ Fee_Read / Fee_Write                     │ Ea_Read / Ea_Write              │
+│                                            ▼                                          ▼                                 │
+│     ┌────────────────────────────────────────────────────────┐     ┌──────────────────────────────────────────────┐     │
+│     │ 3. Module Fee (Flash EEPROM Emulation)                 │     │ Module Ea (EEPROM Abstraction)               │     │
+│     │    • Giả lập đọc/ghi theo byte trên chip Flash         │     │ • Giao tiếp với chip EEPROM vật lý           │     │
+│     │    • Quản lý Virtual Sectors, Wear Leveling, Swapping  │     │ • Ghi/xóa trực tiếp từng Byte dữ liệu        │     │
+│     └──────────────────────────────────────┬─────────────────┘     └──────────────────┬───────────────────────────┘     │
+│                                            │ Fls_Read / Write / Erase                 │ Eep_Read / Eep_Write            │
+│  [MICROCONTROLLER ABSTRACTION LAYER (MCAL)]▼                                          ▼                                 │
+│     ┌────────────────────────────────────────────────────────┐     ┌──────────────────────────────────────────────┐     │
+│     │ 4. Module MCAL Fls (Flash Driver)                      │     │ Module MCAL Eep (EEPROM Driver)              │     │
+│     │    • Điều khiển thanh ghi MCU, xóa Sector, nạp Page    │     │ • Điều khiển bus vật lý SPI / I2C / On-chip  │     │
+│     └──────────────────────────────────────┬─────────────────┘     └──────────────────┬───────────────────────────┘     │
+│                                            │                                          │                                 │
+│ ═══════════════════════════════════════════╪══════════════════════════════════════════╪════════════════════════════════ │
+│  4. PHYSICAL HARDWARE LAYER (SILICON)      ▼                                          ▼                                 │
+│     ┌────────────────────────────────────────────────────────┐     ┌──────────────────────────────────────────────┐     │
+│     │ CHIP BỘ NHỚ FLASH VẬT LÝ (On-Chip / External NOR Flash)│     │ CHIP BỘ NHỚ EEPROM VẬT LÝ (External SPI/I2C) │     │
+│     └────────────────────────────────────────────────────────┘     └──────────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
+
+---
 
 ### 5.2 3 Loại Khối Bộ Nhớ NVRAM Block Types (Native, Redundant, Dataset)
 
