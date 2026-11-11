@@ -2116,29 +2116,66 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
   GIAI ĐOẠN 2: CHU KỲ OS TASK QUÉT HÀNG ĐỢI & ĐIỀU PHỐI MEMIF (Cyclic Task Execution & DriveBlock)
 ==================================================================================================
 
-3. [HỆ ĐIỀU HÀNH OSEK RTOS KÍCH HOẠT TASK ĐỊNH KỲ (SchM_BswService)]
+3. [LẦN GỌI NvM_MainFunction THỨ 1: POP HÀNG ĐỢI FIFO & TÍNH TOÁN CRC CHO KHỐI (Chu kỳ OS Task 10ms lần 1)]
    a) Hệ điều hành OSEK RTOS kích hoạt Task định kỳ [`TASK(SchM_BswService)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491-L521) (chu kỳ 10ms):
       ──► Gọi: [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887-L1963)
 
-   b) [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887-L1963):
-      - Nhiệm vụ: Quét hàng đợi `nvmQueue`. Khi `nvmState == NVM_IDLE`:
-        * Lấy tác vụ ra khỏi FIFO: `rv = CirqBuffPop(&nvmQueue, &qEntry);` ([`NvM.c: L1899`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1899)).
-        * Thiết lập trạng thái hoạt động: `nvmState = qEntry.op;` (`NVM_WRITE_BLOCK`), trỏ tới cấu trúc cấu hình `nvmBlock = &bList[qEntry.blockId - 1];`.
-      - Rẽ nhánh máy trạng thái vào khối lệnh ghi:
+   b) [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887-L1963) - Xử lý Nhịp 1:
+      - Kiểm tra máy trạng thái toàn cục rảnh: `if( nvmState == NVM_IDLE )` ([`NvM.c: L1897`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1897)) -> Thỏa mãn (`nvmState == NVM_IDLE`).
+      - Rút tác vụ khỏi hàng đợi FIFO:
+      ──► Gọi: `rv = CirqBuffPop(&nvmQueue, &qEntry);` ([`NvM.c: L1899`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1899))
+      - Trích xuất thông số từ phần tử hàng đợi:
+        * Thiết lập trạng thái hoạt động: `nvmState = qEntry.op;` (`NVM_WRITE_BLOCK`).
+        * Trỏ cấu trúc cấu hình: `nvmBlock = &bList[qEntry.blockId - 1];` ([`NvM.c: L1903`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1903)).
+        * Trỏ cấu trúc quản trị: `admBlock = &AdminBlock[qEntry.blockId - 1];` ([`NvM.c: L1904`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1904)).
+        * Đặt lại cờ kết quả tác vụ: `admBlock->ErrorStatus = NVM_REQ_PENDING;` ([`NvM.c: L1906`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1906)).
+      - Rẽ nhánh switch máy trạng thái: `switch (nvmState)` vào `case NVM_WRITE_BLOCK:` ([`NvM.c: L1960`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1960)):
       ──► Gọi: `DriveBlock(nvmBlock, admBlock, qEntry.dataPtr, true /*write*/, false, false);` ([`NvM.c: L1961`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1961))
 
-   c) [`DriveBlock(bPtr, admPtr, dataPtr, write, multiBlock, restoreFromRom)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L696-L765):
-      - Nhiệm vụ:
-        1. Tính toán mã kiểm tra toàn vẹn CRC: Nếu `bPtr->BlockUseCrc == TRUE` (cấu hình `BlockCRCType = NVM_CRC16` tại [`NvM_Cfg.c: L154`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/NvM_Cfg.c#L154)), hàm tính mã CRC16 trên toàn bộ byte dữ liệu khối.
-        2. Sao chép dữ liệu từ RAM mirror vào bộ đệm nội bộ:
-           `memcpy(Nvm_WorkBuffer, ramData, bPtr->NvBlockLength);` ([`NvM.c: L724`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L724)).
-        3. Nạp mã CRC vào cuối bộ đệm: `writeCrcToBuffer(Nvm_WorkBuffer, bPtr, admPtr);`.
-        4. Đánh dấu tác vụ MemIf bận: `SetMemifJobBusy(); MemIfJobAdmin.BlockAdmin = admPtr; MemIfJobAdmin.BlockDescriptor = bPtr;`.
-        5. Khóa ngắt an toàn `Irq_Save(state)` và chuyển giao PDU bộ nhớ xuống MemIf:
+   c) [`DriveBlock(...)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L696-L1043) - Xử lý Nhịp 1:
+      - Khởi tạo cờ hoàn tất nội bộ: `boolean blockDone = 0;` ([`NvM.c: L703`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L703)).
+      - Kiểm tra trạng thái khối: `switch (admPtr->BlockState)`. Do ở Giai đoạn 1 đã cài `BLOCK_STATE_CALC_CRC_WRITE`, hàm nhảy vào:
+        `case BLOCK_STATE_CALC_CRC_WRITE:` ([`NvM.c: L1007-L1043`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1007-L1043)):
+        * Xác định con trỏ RAM: `void *ramData = (dataPtr != NULL) ? dataPtr : bPtr->RamBlockDataAddress;`.
+        * Tính toán mã kiểm tra toàn vẹn CRC16:
+        ──► Gọi: `crc16 = Crc_CalculateCRC16(ramData, bPtr->NvBlockLength, 0xffff);` ([`NvM.c: L1024`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1024))
+        * Lưu mã kiểm tra: `admPtr->RamCrc.crc16 = crc16;` ([`NvM.c: L1028`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1028)).
+        * Chuyển trạng thái máy trạng thái khối sang bước yêu cầu ghi MemIf:
+          `admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;` ([`NvM.c: L1040`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1040)).
+        * Gặp lệnh `break;`, thoát switch. Cờ `blockDone` vẫn là `0` -> Bỏ qua khối `if( blockDone )`.
+      ◄── Trả về (Return): return; (void) (DriveBlock kết thúc xử lý của Nhịp 1, thoát về NvM_MainFunction).
+
+   d) Kết thúc Lần gọi 1 & Điểm dừng máy trạng thái:
+      ◄── Trả về (Return): return; (void) (NvM_MainFunction kết thúc chu kỳ quét 10ms lần 1).
+      - Điểm dừng & Trạng thái lưu trữ trên RAM:
+        * `nvmState = NVM_WRITE_BLOCK;` (Máy trạng thái NvM đang bận).
+        * `admBlock->BlockState = BLOCK_STATE_MEMIF_REQ;` (Khối đã sẵn sàng dữ liệu và CRC để ghi sang MemIf).
+      - Lưu ý then chốt: Ở Lần gọi thứ nhất, NvM chỉ tính toán xong mã CRC, hoàn toàn CHƯA gọi hàm `MemIf_Write()`, Call Stack được giải phóng và nhường CPU cho các Task khác!
+
+4. [LẦN GỌI NvM_MainFunction THỨ 2: ĐÓNG GÓI BỘ ĐỆM & BÀN GIAO XUỐNG MEMIF/FEE (Chu kỳ OS Task 10ms lần 2)]
+   a) Hệ điều hành OSEK RTOS kích hoạt Task định kỳ [`TASK(SchM_BswService)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491-L521) lần 2 (10ms sau):
+      ──► Gọi: [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887-L1963)
+
+   b) [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887-L1963) - Xử lý Nhịp 2:
+      - Kiểm tra: `if( nvmState == NVM_IDLE )` -> SAI (vì `nvmState == NVM_WRITE_BLOCK`). Bỏ qua lệnh `CirqBuffPop`, bảo toàn tác vụ đang xử lý!
+      - Rẽ nhánh: `switch (nvmState)` nhảy thẳng vào `case NVM_WRITE_BLOCK:` ([`NvM.c: L1960`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1960)):
+      ──► Gọi: `DriveBlock(nvmBlock, admBlock, qEntry.dataPtr, true /*write*/, false, false);` ([`NvM.c: L1961`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1961))
+
+   c) [`DriveBlock(...)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L710-L765) - Xử lý Nhịp 2:
+      - Kiểm tra trạng thái khối: `switch (admPtr->BlockState)`. Do `BlockState == BLOCK_STATE_MEMIF_REQ`, hàm nhảy vào:
+        `case BLOCK_STATE_MEMIF_REQ:` ([`NvM.c: L710-L765`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L710-L765)):
+        * Kiểm tra chiều ghi: `if( write )` -> ĐÚNG (tác vụ ghi).
+        * Sao chép dữ liệu từ RAM mirror vào bộ đệm nội bộ:
+          `memcpy(Nvm_WorkBuffer, ramData, bPtr->NvBlockLength);` ([`NvM.c: L724`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L724)).
+        * Nạp mã CRC16 vào đuôi bộ đệm:
+          `writeCrcToBuffer(Nvm_WorkBuffer, bPtr, admPtr);` ([`NvM.c: L726`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L726)).
+        * Đánh dấu tác vụ MemIf bận:
+          `SetMemifJobBusy(); MemIfJobAdmin.BlockAdmin = admPtr; MemIfJobAdmin.BlockDescriptor = bPtr;` ([`NvM.c: L733-L735`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L733-L735)).
+        * Khóa ngắt an toàn `Irq_Save(state);` và chuyển giao PDU bộ nhớ xuống MemIf:
         ──► Gọi: `MemIf_Write(bPtr->NvramDeviceId, BLOCK_BASE_AND_SET_TO_BLOCKNR(bPtr->NvBlockBaseNumber, admPtr->DataIndex), Nvm_WorkBuffer);` ([`NvM.c: L739`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L739))
          │
          ▼
-4. [TẦNG 4: TẦNG TRỪU TƯỢNG BỘ NHỚ MEMORY ABSTRACTION INTERFACE (MemIf.c & MemIf.h)]
+5. [TẦNG 4 & TẦNG 3: ĐIỀU PHỐI QUA MEMIF VÀ TIẾP NHẬN TẠI FEE (MemIf.c & Fee.c)]
    a) [`MemIf_Write(DeviceIndex, BlockNumber, DataBufferPtr)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/MemIf/MemIf.c#L53-L72):
       - Nhiệm vụ: Giải đa hợp căn cứ theo chỉ số thiết bị:
         * Với `DeviceIndex == FEE_INDEX` (`0xFE` - cấu hình tại [`Fee_Cfg.h: L27`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/build/nt/stm32f107vc/ascore/config/Fee_Cfg.h#L27)):
@@ -2148,8 +2185,7 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
       - Kiến trúc Zero-Copy: MemIf chuyển thẳng con trỏ `DataBufferPtr` (vẫn trỏ trực tiếp tới mảng `Nvm_WorkBuffer`) mà không sao chép thêm dữ liệu.
          │
          ▼
-5. [TẦNG 3: TẦNG GIẢ LẬP FLASH EEPROM FEE (Fee.c, Fee_Cfg.h & Fee_Cfg.c)]
-   a) [`Fee_Write(blockNumber, dataBufferPtr)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L1518-L1544):
+   b) [`Fee_Write(blockNumber, dataBufferPtr)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L1518-L1544):
       - Nhiệm vụ: Xác thực module đã khởi tạo và đang rảnh: `ModuleStatus == MEMIF_IDLE`.
       - Tra cứu chỉ số cấu hình khối: `blockIndex = GetBlockIdxFromBlockNumber(blockNumber);` ([`Fee.c: L1530`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L1530)).
       - Cài đặt trạng thái thiết bị:
@@ -2159,18 +2195,48 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
       - Bật cờ tác vụ chờ: `AdminFls.pendingJob |= PENDING_WRITE_JOB;`.
       ◄── Trả về (Return): return E_OK; (Báo nhận tác vụ ghi về cho MemIf_Write)
 
-   b) Chuỗi Unwind giải phóng Call Stack Task Giai đoạn 2:
-      ◄── Trả về (Return): MemIf_Write nhận E_OK và trả về E_OK cho DriveBlock (tại NvM.c: L739).
-      - `DriveBlock()`: Nhận `rv == E_OK`, chuyển trạng thái khối sang chờ xử lý phần cứng:
-        `admPtr->BlockState = BLOCK_STATE_MEMIF_PROCESS;` ([`NvM.c: L843`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L843)), mở ngắt `Irq_Restore(state)`.
-      ◄── Trả về (Return): return; (void) (DriveBlock thoát về NvM_MainFunction tại NvM.c: L1961)
-      ◄── Trả về (Return): return; (void) (NvM_MainFunction kết thúc chu kỳ quét, nhường CPU cho các BSW Task khác trong hệ thống).
+   c) Chuỗi Unwind giải phóng Call Stack sau Lần gọi thứ 2:
+      ◄── Trả về (Return): MemIf_Write nhận E_OK và trả về E_OK cho DriveBlock ([`NvM.c: L739`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L739)).
+      - `DriveBlock()`: Nhận `rv == E_OK`, mở lại ngắt `Irq_Restore(state);`.
+      - Chuyển trạng thái máy trạng thái khối sang chờ phần cứng xử lý:
+        `admPtr->BlockState = BLOCK_STATE_MEMIF_PROCESS;` ([`NvM.c: L843`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L843)).
+      - Gặp lệnh `break;`, thoát switch. Cờ `blockDone` vẫn là `0` -> Bỏ qua khối `if( blockDone )`.
+      ◄── Trả về (Return): return; (void) (DriveBlock thoát về NvM_MainFunction tại [`NvM.c: L1961`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1961)).
+      ◄── Trả về (Return): return; (void) (NvM_MainFunction kết thúc chu kỳ quét lần 2).
+      - Điểm dừng & Trạng thái lưu trữ trên RAM:
+        * `nvmState = NVM_WRITE_BLOCK;`
+        * `admBlock->BlockState = BLOCK_STATE_MEMIF_PROCESS;` (Khối chuyển sang trạng thái chờ kết quả từ MemIf/Fee).
+      - Bàn giao quyền điều khiển sang Giai đoạn 3 (nơi máy trạng thái Fee và Fls thực thi xóa và nạp từng trang Flash vật lý ngầm)!
+
+6. [CÁC LẦN GỌI NvM_MainFunction THỨ 3 ĐẾN N: POLLING BẤT ĐỒNG BỘ CHỜ FLASH GHI XONG (Chu kỳ OS Task 3..N)]
+   a) Trong các chu kỳ 10ms tiếp theo của Task [`TASK(SchM_BswService)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491-L521):
+      - Trong lúc này, ở tầng dưới (Giai đoạn 3), các máy trạng thái `Fee_MainFunction()` và `Fls_MainFunction()` đang chạy ngầm để xóa Flash và ghi từng trang 8-byte vật lý (tiêu tốn từ 20ms đến 100ms).
+      - OSEK RTOS kích hoạt `NvM_MainFunction()`:
+        * Bỏ qua `if( nvmState == NVM_IDLE )` (vì `nvmState == NVM_WRITE_BLOCK`).
+        * Rẽ nhánh: `switch (nvmState)` vào `case NVM_WRITE_BLOCK:`.
+        ──► Gọi: `DriveBlock(nvmBlock, admBlock, qEntry.dataPtr, true /*write*/, false, false);` ([`NvM.c: L1961`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1961))
+
+   b) [`DriveBlock(...)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L847-L854) - Xử lý Nhịp 3..N:
+      - Kiểm tra trạng thái khối: `switch (admPtr->BlockState)`. Do `BlockState == BLOCK_STATE_MEMIF_PROCESS`, hàm nhảy vào:
+        `case BLOCK_STATE_MEMIF_PROCESS:` ([`NvM.c: L847`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L847)):
+      - Thăm dò kết quả tác vụ MemIf:
+      ──► Gọi: `jobResult = MemIf_GetJobResult(bPtr->NvramDeviceId);` ([`NvM.c: L850`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L850))
+      - Do phần cứng Flash đang bận ghi dữ liệu, `Fee_GetJobResult()` trả về `MEMIF_JOB_PENDING`.
+      - Xử lý trạng thái chờ:
+        `if( MEMIF_JOB_PENDING == jobResult ) { /* Keep on waiting */ }` ([`NvM.c: L852-L853`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L852-L853)).
+      - Gặp lệnh `break;`, thoát switch. Cờ `blockDone` vẫn là `0`.
+      ◄── Trả về (Return): return; (void) (DriveBlock thoát về NvM_MainFunction).
+      ◄── Trả về (Return): return; (void) (NvM_MainFunction kết thúc chu kỳ quét, nhường CPU).
+
+   c) Cơ chế Non-blocking Polling:
+      - NvM chỉ tiêu tốn vài lệnh assembly để kiểm tra giá trị RAM `jobResult` rồi nhường quyền điều khiển cho CPU thực thi các tác vụ thời gian thực khác, hoàn toàn không chiếm giữ tài nguyên vi điều khiển.
+      - Tiến trình thăm dò này tiếp tục qua các chu kỳ 3, 4,... N cho đến khi Flash vật lý ghi xong toàn bộ và kích hoạt chuỗi hoàn tất ở Giai đoạn 4!
 
 ==================================================================================================
   GIAI ĐOẠN 3: GIẢ LẬP EEPROM FEE & XỬ LÝ GHI PHẦN CỨNG MCAL FLS (Fee & Fls State Machines)
 ==================================================================================================
 
-6. [MÁY TRẠNG THÁI FEE ĐIỀU PHỐI VIRTUAL SECTOR & GỌI MCAL FLASH DRIVER]
+7. [MÁY TRẠNG THÁI FEE ĐIỀU PHỐI VIRTUAL SECTOR & GỌI MCAL FLASH DRIVER]
    a) Trong chu kỳ Task tiếp theo, hệ điều hành gọi [`Fee_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L1675-L1710):
       - Nhiệm vụ: Máy trạng thái (State Machine) điều phối tuần tự các pha ghi Flash:
         1. Trạng thái `FEE_WRITE`: kiểm tra khoảng trống trong Virtual Sector hiện tại. Nếu sector đầy, kích hoạt Garbage Collection để dọn rác và đảo Virtual Sector; nếu còn chỗ, tính toán địa chỉ mới `AdminFls.Write.NewBlockDataAddress`.
@@ -2182,7 +2248,7 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
       ──► Gọi: `Fls_Write(AdminFls.Write.NewBlockDataAddress, CurrentJob.Write.DataPtr, PAGE_ALIGN(Fee_Config.BlockConfig[CurrentJob.Write.BlockIdx].BlockSize));` ([`Fee.c: L934`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L934))
          │
          ▼
-7. [TẦNG 1: TRÌNH ĐIỀU KHIỂN PHẦN CỨNG MCAL FLASH DRIVER (PHÂN NHÁNH RÕ RÀNG THEO TARGET)]
+8. [TẦNG 1: TRÌNH ĐIỀU KHIỂN PHẦN CỨNG MCAL FLASH DRIVER (PHÂN NHÁNH RÕ RÀNG THEO TARGET)]
    a) [`Fls_Write(TargetAddress, SourceAddressPtr, Length)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/arch/posix/mcal/Fls.c#L512-L570):
       - Nhiệm vụ: Xác thực căn chỉnh trang Flash: `TargetAddress % FLASH_PAGE_SIZE == 0` (8 bytes).
       - Thiết lập trạng thái tác vụ:
@@ -2215,7 +2281,7 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
    └──────────────────────────────────────────────┴──────────────────────────────────────────────┘
          │
          ▼
-8. [TẦNG 0: MẢNG VÙNG NHỚ VẬT LÝ EMBEDDED FLASH (NOR FLASH ARRAY)]
+9. [TẦNG 0: MẢNG VÙNG NHỚ VẬT LÝ EMBEDDED FLASH (NOR FLASH ARRAY)]
    • Trên Silicon Thật: Các tế bào nhớ Floating-gate MOSFET tích lũy điện tích âm trên oxide gate qua hiện tượng Tunneling,
      chuyển đổi trạng thái logic từ bit 1 (Erased state 0xFF) thành bit 0 (Programmed state).
    • Trên QEMU: Các byte nhị phân được ghi bền vững vào tệp nhị phân ảo `flash.img` trên ổ cứng máy chủ.
@@ -2224,7 +2290,7 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
   GIAI ĐOẠN 4: VÒNG LẶP PHẢN HỒI KẾT THÚC TÁC VỤ GHI & THÔNG BÁO SWC (Job End Notification Loop)
 ==================================================================================================
 
-9. [VÒNG LẶP PHẢN HỒI KẾT THÚC TÁC VỤ GHI (Job End Notification Loop)]
+10. [VÒNG LẶP PHẢN HỒI KẾT THÚC TÁC VỤ GHI & LẦN GỌI NVM THỨ N+1 ĐƯA NVM VỀ IDLE]
    Sau khi toàn bộ các chunk dữ liệu đã ghi xong an toàn vào Flash vật lý, chuỗi callback thông báo hoàn tất khép kín từ dưới lên trên:
 
    a) MCAL Fls hoàn tất & Báo Fee:
@@ -2241,15 +2307,31 @@ Dưới đây là chuỗi gọi hàm *Function-Call-Function* hoàn chỉnh hai 
       - `FinishJob()` gọi hàm callback cấp trên:
       ──► Gọi: `Fee_Config.General.NvmJobEndCallbackNotificationCallback();` ([`Fee.c: L546`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/Fee/Fee.c#L546)) (ánh xạ tới `NvM_JobEndNotification`).
 
-   c) Tầng NvM hoàn tất & Phản hồi Application SWC:
+   c) LẦN GỌI NvM_MainFunction THỨ N+1: XÁC NHẬN HOÀN TẤT, GỌI SWC CALLBACK & ĐƯA NVM VỀ IDLE:
       - Hàm [`NvM_JobEndNotification()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L2073-L2081) cập nhật:
         `MemIfJobAdmin.JobFinished = TRUE; MemIfJobAdmin.JobResult = MEMIF_JOB_OK;`
       ◄── Trả về (Return): return; (void) (Thoát về FinishJob trong Fee.c).
-      - Trong chu kỳ [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L850-L865) tiếp theo, NvM phát hiện `jobResult == MEMIF_JOB_OK`:
-        Cập nhật trạng thái quản trị khối: `admPtr->ErrorStatus = NVM_REQ_OK; admPtr->BlockState = BLOCK_STATE_MEMIF_REQ; nvmState = NVM_IDLE;`.
-      - Kích hoạt callback thông báo về SWC (nếu cấu hình `.SingleBlockCallback != NULL`):
-      ──► Gọi: `bPtr->SingleBlockCallback(NVM_WRITE_BLOCK_ID, NVM_REQ_OK);` ([`NvM.c: L1162`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1162))
-      ◄── Trả về (Return): return; (void) (SWC nhận thông báo khối dữ liệu cấu hình đã được ghi vĩnh viễn an toàn vào Flash).
+      - Trong chu kỳ OS Task [`TASK(SchM_BswService)`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/system/SchM/SchM.c#L491-L521) tiếp theo (Lần gọi thứ N+1):
+      ──► Gọi: [`NvM_MainFunction()`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1887-L1963)
+        * Bỏ qua `if( nvmState == NVM_IDLE )` (do `nvmState == NVM_WRITE_BLOCK`).
+        * Rẽ nhánh: `switch (nvmState)` vào `case NVM_WRITE_BLOCK:`.
+        ──► Gọi: `DriveBlock(nvmBlock, admBlock, qEntry.dataPtr, true /*write*/, false, false);` ([`NvM.c: L1961`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1961))
+      - Trong `DriveBlock()`:
+        * Kiểm tra: `switch (admPtr->BlockState)` vào `case BLOCK_STATE_MEMIF_PROCESS:` ([`NvM.c: L847`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L847)).
+        ──► Gọi: `jobResult = MemIf_GetJobResult(bPtr->NvramDeviceId);` ([`NvM.c: L850`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L850))
+        * Lần này: `jobResult == MEMIF_JOB_OK` ([`NvM.c: L854`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L854))!
+        * Xử lý hoàn tất ghi:
+          `admPtr->BlockState = BLOCK_STATE_MEMIF_REQ;` ([`NvM.c: L857`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L857))
+          `admPtr->ErrorStatus = NVM_REQ_OK;` ([`NvM.c: L858`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L858))
+          `blockDone = 1;` ([`NvM.c: L859`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L859)) (Kích hoạt hoàn tất khối!).
+        * Thoát switch, chạm khối xử lý hoàn tất: `if( blockDone )` ([`NvM.c: L1150-L1188`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1150-L1188)):
+          - Xóa cờ thay đổi: `admPtr->BlockChanged = FALSE; admPtr->BlockValid = TRUE;` ([`NvM.c: L1155-L1156`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1155-L1156)).
+          - Kích hoạt callback thông báo về SWC (nếu cấu hình `.SingleBlockCallback != NULL`):
+          ──► Gọi: `bPtr->SingleBlockCallback(serviceId, admPtr->ErrorStatus);` ([`NvM.c: L1162`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1162))
+          - Đưa máy trạng thái NvM về trạng thái nghỉ:
+            `nvmState = NVM_IDLE; nvmSubState = 0;` ([`NvM.c: L1185-L1186`](file:///C:/Users/liem.vu/Liem.vuOD/Study_AUTOSAR-main/as/com/as.infrastructure/memory/NvM/NvM.c#L1185-L1186)).
+        ◄── Trả về (Return): return; (void) (DriveBlock thoát về NvM_MainFunction).
+        ◄── Trả về (Return): return; (void) (NvM_MainFunction hoàn tất, NvM sẵn sàng nhận tác vụ mới từ hàng đợi nvmQueue).
       - Toàn bộ chu trình ghi bộ nhớ Flash bất đồng bộ hai chiều hoàn tất an toàn 100%, bảo vệ dữ liệu chống mất mát khi ECU ngắt nguồn đột ngột!
 ```
 
